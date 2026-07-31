@@ -1,0 +1,33 @@
+name: "Bug Fix"
+description: "버그 수정 이슈 템플릿"
+title: "[BUGFIX] "
+labels: ["bug"]
+assignees: []
+
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "🐛 발생한 문제"
+      placeholder: |
+        - 어떤 문제가 발생했는지 간단히 작성해주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: "📍 문제 지점"
+      placeholder: |
+        - 어디에서 문제가 발생했는지 작성해주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: "✨ 예상 결과"
+      placeholder: |
+        - 정상적으로 동작해야 하는 결과를 작성해주세요.
+    validations:
+      required: true
