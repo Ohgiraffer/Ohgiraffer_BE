@@ -1,0 +1,36 @@
+name: "Feature"
+description: "기능 구현 이슈 템플릿"
+title: "[FEATURE] "
+labels: ["feature"]
+assignees: []
+
+body:
+  - type: textarea
+    id: feature
+    attributes:
+      label: "📌 구현할 기능 내용"
+      placeholder: |
+        - 어떤 기능인지 간단히 작성해주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: "✅ 작업 할 내용"
+      placeholder: |
+        - [ ] 작업 1
+        - [ ] 작업 2
+        - [ ] 작업 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: "📎 참고 사항 (선택)"
+      placeholder: |
+        - 참고 링크:
+        - 메모:
+    validations:
+      required: false

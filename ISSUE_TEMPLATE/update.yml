@@ -1,0 +1,24 @@
+name: "Update"
+description: "수정 내용 이슈 템플릿"
+title: "[UPDATE] "
+labels: ["update"]
+assignees: []
+
+body:
+  - type: textarea
+    id: content
+    attributes:
+      label: "🛠️ 수정 할 내용"
+      placeholder: |
+        - 어떤 부분을 어떻게 수정할지 작성해주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: "📍 수정 할 지점"
+      placeholder: |
+        - 어느 기능 / 파일 / 위치를 수정하는지 작성해주세요.
+    validations:
+      required: true
