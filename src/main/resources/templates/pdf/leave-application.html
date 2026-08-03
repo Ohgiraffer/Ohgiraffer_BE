@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <style>
+        @page {
+            size: A4;
+            margin: 28mm 24mm;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            color: #111111;
+            font-size: 14px;
+            line-height: 1.8;
+            margin: 0;
+        }
+
+        .medium {
+            font-family: 'Noto Sans KR Medium', sans-serif;
+        }
+
+        .bold {
+            font-family: 'Noto Sans KR Bold', sans-serif;
+        }
+
+        .title {
+            text-align: center;
+            font-family: 'Noto Sans KR Bold', sans-serif;
+            font-size: 24px;
+            margin: 0 0 42px;
+        }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 36px;
+        }
+
+        .info-table th {
+            width: 130px;
+            text-align: left;
+            font-family: 'Noto Sans KR Bold', sans-serif;
+            padding: 6px 0;
+            vertical-align: top;
+            white-space: nowrap;
+        }
+
+        .info-table td {
+            padding: 6px 0;
+            border-bottom: 1px solid #dddddd;
+        }
+
+        .content {
+            text-align: center;
+            margin: 44px 0 50px;
+            font-size: 15px;
+            line-height: 2.1;
+        }
+
+        .date-line {
+            font-family: 'Noto Sans KR Bold', sans-serif;
+        }
+
+        .request-table {
+            width: 280px;
+            margin-left: auto;
+            margin-top: 50px;
+            border-collapse: collapse;
+        }
+
+        .request-table th {
+            width: 80px;
+            text-align: left;
+            font-family: 'Noto Sans KR Bold', sans-serif;
+            padding: 6px 0;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .request-table td {
+            padding: 6px 0;
+            vertical-align: middle;
+        }
+
+        .signature-image {
+            max-width: 110px;
+            max-height: 48px;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+
+        .approver {
+            margin-top: 80px;
+            font-family: 'Noto Sans KR Bold', sans-serif;
+        }
+
+        .placeholder {
+            color: #999999;
+        }
+    </style>
+</head>
+<body>
+<h1 class="title">휴가 신청서</h1>
+
+<table class="info-table">
+    <tr>
+        <th>성명</th>
+        <td th:text="${studentName}">김훈련</td>
+    </tr>
+    <tr>
+        <th>생년월일</th>
+        <td th:text="${birthDate}">2000.01.01</td>
+    </tr>
+    <tr>
+        <th>전화번호</th>
+        <td th:text="${phoneNumber}">010-0000-0000</td>
+    </tr>
+    <tr>
+        <th>훈련과정명</th>
+        <td th:text="${courseName}">생성형 AI 기반 FE/BE 협업과정</td>
+    </tr>
+</table>
+
+<div class="content">
+    <p>
+        위 본인은 주식회사 원티드랩에서<br />
+        K-Digital Training 훈련을 받는 중
+    </p>
+
+    <p class="date-line">
+        <span th:text="${leaveStartDate}">2026.07.07</span>
+        ~
+        <span th:text="${leaveEndDate}">2026.07.10</span>
+        /
+        (
+        <span th:text="${leaveDays}">1</span>
+        )
+        일
+    </p>
+
+    <p>휴가를 신청합니다.</p>
+</div>
+
+<table class="request-table">
+    <tr>
+        <th>신청일 :</th>
+        <td th:text="${requestedDate}">2026.07.01</td>
+    </tr>
+    <tr>
+        <th>신청자 :</th>
+        <td>
+            <span th:text="${studentName}">김훈련</span>
+            <img
+                    class="signature-image"
+                    th:if="${signatureImage != null}"
+                    th:src="${signatureImage}"
+                    alt="신청자 서명"
+            />
+        </td>
+    </tr>
+</table>
+
+<div class="approver">
+    확인자 :
+    <span th:text="${approverName}">매니저</span>
+</div>
+</body>
+</html>
