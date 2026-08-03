@@ -1,3 +1,9 @@
 spring:
   application:
     name: ohgiraffer
+
+google:
+  sheets:
+    enabled: ${GOOGLE_SHEETS_ENABLED:false}
+    application-name: ${GOOGLE_SHEETS_APPLICATION_NAME:ohgiraffer}
+    credentials-location: ${GOOGLE_SHEETS_CREDENTIALS_LOCATION:}
