@@ -13,6 +13,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.ResourceLoader;
 
 import java.io.IOException;
@@ -37,10 +40,11 @@ public class GoogleSheetsConfig {
 
         validateProperties(properties);
 
-        Resource credentialsResource =
-                resourceLoader.getResource(
-                        properties.credentialsLocation()
-                );
+       Resource credentialsResource =
+        resolveCredentialsResource(
+                properties.credentialsLocation(),
+                resourceLoader
+        );
 
         if (!credentialsResource.exists()) {
             throw new IllegalStateException(
@@ -96,4 +100,20 @@ public class GoogleSheetsConfig {
             );
         }
     }
+
+        private Resource resolveCredentialsResource(
+        String credentialsLocation,
+        ResourceLoader resourceLoader
+) {
+    String trimmedLocation = credentialsLocation.trim();
+
+    if (trimmedLocation.startsWith("classpath:")
+            || trimmedLocation.startsWith("file:")) {
+        return resourceLoader.getResource(trimmedLocation);
+    }
+
+    return new FileSystemResource(trimmedLocation);
+}
+
+        
 }
