@@ -80,22 +80,36 @@ public class GlobalExceptionHandler {
      * @RequestParam, @PathVariable의 직접 검증 실패
      */
     @ExceptionHandler(HandlerMethodValidationException.class)
-    public ResponseEntity<ErrorResponse> handleMethodValidation(
-            HandlerMethodValidationException exception,
-            HttpServletRequest request
-    ) {
-        log.warn(
-                "Method validation failed. path={} message={}",
+public ResponseEntity<ErrorResponse> handleMethodValidation(
+        HandlerMethodValidationException exception,
+        HttpServletRequest request
+) {
+    if (exception.isForReturnValue()) {
+        log.error(
+                "Return value validation failed. path={}",
                 request.getRequestURI(),
-                exception.getMessage()
+                exception
         );
 
         return createResponse(
-                ErrorCode.INVALID_INPUT_VALUE,
-                ErrorCode.INVALID_INPUT_VALUE.getMessage(),
+                ErrorCode.INTERNAL_SERVER_ERROR,
+                ErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
                 request
         );
     }
+
+    log.warn(
+            "Request parameter validation failed. path={} message={}",
+            request.getRequestURI(),
+            exception.getMessage()
+    );
+
+    return createResponse(
+            ErrorCode.INVALID_INPUT_VALUE,
+            ErrorCode.INVALID_INPUT_VALUE.getMessage(),
+            request
+    );
+}
 
     /*
      * 서비스 또는 메서드 Validation 검증 실패
