@@ -10,17 +10,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
-
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
-
       - name: Build, tag, and push image to ECR
         env:
           ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
@@ -31,6 +28,20 @@ jobs:
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+  check-monitoring-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.filter.outputs.monitoring }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            monitoring:
+              - 'docker-compose.monitor.yml'
+              - 'docker/**'
 
   deploy-backend:
     needs: build-and-push
@@ -47,20 +58,18 @@ jobs:
             git fetch origin
             git checkout deploy
             git reset --hard origin/deploy
-
             aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
-
             export DB_HOST=${{ secrets.DB_HOST }}
             export DB_NAME=${{ secrets.DB_NAME }}
             export DB_USER=${{ secrets.DB_USER }}
             export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-
             docker compose -f docker-compose.backend.yml down
             docker compose -f docker-compose.backend.yml pull
             docker compose -f docker-compose.backend.yml up -d
 
   deploy-monitoring:
-    needs: build-and-push
+    needs: check-monitoring-changes
+    if: needs.check-monitoring-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Copy monitoring files to server
