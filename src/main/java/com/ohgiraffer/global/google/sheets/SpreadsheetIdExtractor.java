@@ -10,12 +10,15 @@ import java.util.regex.Pattern;
 @Component
 public class SpreadsheetIdExtractor {
 
-    private static final Pattern SPREADSHEET_URL_PATTERN =
-            Pattern.compile(
-                    "^https://docs\\.google\\.com/spreadsheets/d/"
-                            + "([a-zA-Z0-9_-]+)"
-                            + "(?:/.*)?$"
-            );
+   private static final Pattern SPREADSHEET_URL_PATTERN =
+        Pattern.compile(
+                "^https://docs\\.google\\.com/spreadsheets/"
+                        + "(?:u/\\d+/)?"
+                        + "d/"
+                        + "([a-zA-Z0-9_-]+)"
+                        + "(?:/[^?#]*)?"
+                        + "(?:[?#].*)?$"
+        );
 
     public String extract(String spreadsheetUrl) {
         if (spreadsheetUrl == null
