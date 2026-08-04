@@ -1,3 +1,8 @@
+### 주의
+# /notices 와 /notice-categories 는 SecurityConfig 에서 인증을 요구한다.
+# 로그인 API 가 들어오면 토큰을 발급받아 아래처럼 헤더를 붙여야 한다.
+#   Authorization: Bearer {{accessToken}}
+
 ### 카테고리 목록 조회 (공지 작성 화면 드롭다운)
 GET http://localhost:8080/notice-categories
 
