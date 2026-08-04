@@ -8,9 +8,7 @@ import com.ohgiraffer.survey.application.port.GoogleFormPort;
 import com.ohgiraffer.survey.application.usecase.CreateSurveyFormResult;
 import com.ohgiraffer.survey.application.usecase.CreateSurveyFormUseCase;
 import com.ohgiraffer.survey.domain.model.SurveyForm;
-import com.ohgiraffer.survey.domain.repository.SurveyFormRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -20,21 +18,20 @@ public class CreateSurveyFormService
         implements CreateSurveyFormUseCase {
 
     private final GoogleFormPort googleFormPort;
-    private final SurveyFormRepository surveyFormRepository;
+    private final SurveyFormPersistenceService persistenceService;
     private final Clock clock;
 
     public CreateSurveyFormService(
             GoogleFormPort googleFormPort,
-            SurveyFormRepository surveyFormRepository,
+            SurveyFormPersistenceService persistenceService,
             Clock clock
     ) {
         this.googleFormPort = googleFormPort;
-        this.surveyFormRepository = surveyFormRepository;
+        this.persistenceService = persistenceService;
         this.clock = clock;
     }
 
     @Override
-    @Transactional
     public CreateSurveyFormResult create(
             CreateSurveyFormCommand command
     ) {
@@ -71,7 +68,7 @@ public class CreateSurveyFormService
              * INSERT 오류를 확인할 수 있습니다.
              */
             SurveyForm savedSurveyForm =
-                    surveyFormRepository.save(
+                    persistenceService.save(
                             surveyForm
                     );
 

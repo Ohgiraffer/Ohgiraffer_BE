@@ -20,6 +20,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.context.annotation.Primary;
 
 import java.io.File;
 import java.io.IOException;
@@ -190,6 +191,7 @@ public class GoogleFormsConfig {
     }
 
     @Bean
+    @Primary
     public GoogleFormPort googleFormPort(
             Forms googleForms,
             Drive googleDriveForForms
