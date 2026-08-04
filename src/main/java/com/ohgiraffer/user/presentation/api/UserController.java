@@ -1,0 +1,44 @@
+package com.ohgiraffer.user.presentation.api;
+
+import com.ohgiraffer.security.user.CustomUserPrincipal;
+import com.ohgiraffer.user.application.usecase.UserCommandUsecase;
+import com.ohgiraffer.user.presentation.api.request.SetPasswordRequest;
+import com.ohgiraffer.user.presentation.api.response.SetPasswordResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/user")
+@Tag(name="User - 사용자 정보 관리", description = "user 정보와 설정을 다루기 위한 User api 관련 컨트롤러")
+public class UserController {
+
+    private final UserCommandUsecase userCommandUsecase;
+
+    @Operation(summary = "최초 비밀번호 재설정", description = "최초 로그인 시 임시 비밀번호를 새 비밀번호로 변경합니다. 변경 후에는 재로그인이 필요합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "비밀번호 변경 성공"),
+            @ApiResponse(responseCode = "400", description = "비밀번호 형식이 올바르지 않음 (영문+특수기호 포함 8~16자)"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "비밀번호 재설정이 필요한 계정이 아님"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PatchMapping("/pw-reset")
+    public ResponseEntity<SetPasswordResponse> changePassword(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @RequestHeader("Authorization") String bearerToken,
+            @Valid @RequestBody SetPasswordRequest request
+    ) {
+        userCommandUsecase.changePassword(principal.getId(), bearerToken, request.newPassword());
+        return ResponseEntity.ok(SetPasswordResponse.of(false));
+    }
+
+}

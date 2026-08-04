@@ -9,7 +9,7 @@ public class LogoutPolicy {
 
     private static final String BEARER_PREFIX = "Bearer ";
 
-    public String resolveAccessToken(String bearerToken) {
+    public static String resolveAccessToken(String bearerToken) {
         if (bearerToken == null) {
             throw new BusinessException(ErrorCode.MISSING_ACCESS_TOKEN);
         }

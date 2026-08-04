@@ -23,4 +23,10 @@ public class UserRepositoryAdapter implements UserRepository {
         return springDataUserRepository.findById(userId)
                 .map(UserJpaEntity::toDomain);
     }
+
+    @Override
+    public void save(User user) {
+        UserJpaEntity entity = UserJpaEntity.fromDomain(user);
+        springDataUserRepository.save(entity);
+    }
 }

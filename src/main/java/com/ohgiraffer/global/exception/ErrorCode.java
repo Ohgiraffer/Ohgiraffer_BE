@@ -24,6 +24,9 @@ public enum ErrorCode {
     MISSING_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_010", "RefreshToken이 필요합니다."),
     ALREADY_LOGGED_OUT(HttpStatus.UNAUTHORIZED, "AUTH_011", "이미 로그아웃 되었습니다."),
 
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_001", "사용자를 찾을 수 없습니다."),
+    PASSWORD_RESET_NOT_REQUIRED(HttpStatus.FORBIDDEN, "USER_002", "이미 비밀번호를 변경하였습니다."),
+
     GOOGLE_SHEET_INVALID_URL(HttpStatus.BAD_REQUEST, "SHEET_001", "올바른 Google 스프레드시트 URL이 아닙니다."),
     GOOGLE_SHEET_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SHEET_002", "Google 스프레드시트에 접근할 권한이 없습니다."),
     GOOGLE_SHEET_NOT_FOUND(HttpStatus.NOT_FOUND, "SHEET_003", "Google 스프레드시트를 찾을 수 없습니다."),

@@ -71,4 +71,10 @@ public class User {
         );
     }
 
+    // 비밀번호 변경
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+        this.needResetPw = false;
+    }
+
 }
