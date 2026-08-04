@@ -55,4 +55,16 @@ public class UserCommandService implements UserCommandUsecase {
         }
         refreshTokenService.delete(userId);
     }
+
+    @Override
+    public boolean setAlarm(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        user.setAlarm();
+        userRepository.save(user);
+
+        log.info("[setAlarm] 알림 설정 변경 완료 | userId={}, notificationOn={}", userId, user.isNotificationOn());
+        return user.isNotificationOn();
+    }
 }

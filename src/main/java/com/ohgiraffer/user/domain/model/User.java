@@ -77,4 +77,9 @@ public class User {
         this.needResetPw = false;
     }
 
+    // 알림 수신 여부 변경
+    public void setAlarm() {
+        this.notificationOn = !this.notificationOn;
+    }
+
 }

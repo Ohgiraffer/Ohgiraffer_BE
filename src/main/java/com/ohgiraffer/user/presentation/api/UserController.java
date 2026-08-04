@@ -3,6 +3,7 @@ package com.ohgiraffer.user.presentation.api;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import com.ohgiraffer.user.application.usecase.UserCommandUsecase;
 import com.ohgiraffer.user.presentation.api.request.SetPasswordRequest;
+import com.ohgiraffer.user.presentation.api.response.SetAlarmResponse;
 import com.ohgiraffer.user.presentation.api.response.SetPasswordResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -39,6 +40,21 @@ public class UserController {
     ) {
         userCommandUsecase.changePassword(principal.getId(), bearerToken, request.newPassword());
         return ResponseEntity.ok(SetPasswordResponse.of(false));
+    }
+
+    @Operation(summary = "알림 설정 토글", description = "호출할 때마다 개인 알림 수신 여부를 on/off로 전환합니다. 기본값은 on입니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "알림 설정 변경 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PatchMapping("/alarm-setting")
+    public ResponseEntity<SetAlarmResponse> toggleNotification(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        boolean result = userCommandUsecase.setAlarm(principal.getId());
+        return ResponseEntity.ok(new SetAlarmResponse(result));
     }
 
 }
