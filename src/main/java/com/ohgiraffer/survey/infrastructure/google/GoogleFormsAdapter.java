@@ -9,11 +9,17 @@ import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.survey.application.port.CreatedGoogleForm;
 import com.ohgiraffer.survey.application.port.GoogleFormPort;
+import com.google.api.services.forms.v1.model.BatchUpdateFormRequest;
+import com.google.api.services.forms.v1.model.PublishSettings;
+import com.google.api.services.forms.v1.model.PublishState;
+import com.google.api.services.forms.v1.model.Request;
+import com.google.api.services.forms.v1.model.SetPublishSettingsRequest;
+import com.google.api.services.forms.v1.model.UpdateFormInfoRequest;
 
+import java.util.List;
 import java.io.IOException;
 
-public class GoogleFormsAdapter
-        implements GoogleFormPort {
+public class GoogleFormsAdapter implements GoogleFormPort {
 
     private final Forms forms;
     private final Drive drive;
@@ -74,6 +80,101 @@ public class GoogleFormsAdapter
             throw convertGoogleException(
                     exception
             );
+
+        } catch (IOException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR
+            );
+        }
+    }
+
+    @Override
+    public void updateTitle(
+            String googleFormId,
+            String title
+    ) {
+        validateGoogleFormId(googleFormId);
+        validateTitle(title);
+
+        Info updatedInfo =
+                new Info()
+                        .setTitle(title.trim());
+
+        UpdateFormInfoRequest updateFormInfoRequest =
+                new UpdateFormInfoRequest()
+                        .setInfo(updatedInfo)
+                        .setUpdateMask("title");
+
+        Request request =
+                new Request()
+                        .setUpdateFormInfo(
+                                updateFormInfoRequest
+                        );
+
+        BatchUpdateFormRequest batchUpdateRequest =
+                new BatchUpdateFormRequest()
+                        .setRequests(
+                                List.of(request)
+                        );
+
+        try {
+            forms
+                    .forms()
+                    .batchUpdate(
+                            googleFormId.trim(),
+                            batchUpdateRequest
+                    )
+                    .execute();
+
+        } catch (GoogleJsonResponseException exception) {
+            throw convertGoogleException(exception);
+
+        } catch (IOException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR
+            );
+        }
+    }
+
+    @Override
+    public void updatePublishState(
+            String googleFormId,
+            boolean published,
+            boolean acceptingResponses
+    ) {
+        validateGoogleFormId(googleFormId);
+
+        PublishState publishState =
+                new PublishState()
+                        .setIsPublished(published)
+                        .setIsAcceptingResponses(
+                                acceptingResponses
+                        );
+
+        PublishSettings publishSettings =
+                new PublishSettings()
+                        .setPublishState(
+                                publishState
+                        );
+
+        SetPublishSettingsRequest request =
+                new SetPublishSettingsRequest()
+                        .setPublishSettings(
+                                publishSettings
+                        )
+                        .setUpdateMask("publishState");
+
+        try {
+            forms
+                    .forms()
+                    .setPublishSettings(
+                            googleFormId.trim(),
+                            request
+                    )
+                    .execute();
+
+        } catch (GoogleJsonResponseException exception) {
+            throw convertGoogleException(exception);
 
         } catch (IOException exception) {
             throw new BusinessException(

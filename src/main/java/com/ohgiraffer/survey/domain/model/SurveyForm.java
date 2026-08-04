@@ -177,6 +177,82 @@ public final class SurveyForm {
         }
     }
 
+    public SurveyForm update(String title, LocalDateTime dueAt, SurveyFormStatus newStatus, LocalDateTime now
+    ) {
+        validateTitle(title);
+        validateDueAt(dueAt);
+        validateStatus(newStatus);
+
+        if (now == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "현재 시간은 필수입니다."
+            );
+        }
+
+        validateStatusTransition(newStatus);
+        validateUpdatedDueAt(dueAt, newStatus, now);
+
+        return new SurveyForm(
+                id,
+                title.trim(),
+                dueAt,
+                newStatus,
+                googleFormId,
+                createdBy,
+                createdAt,
+                updatedAt
+        );
+    }
+
+    private void validateStatusTransition(
+            SurveyFormStatus newStatus
+    ) {
+        if (status == newStatus) {
+            return;
+        }
+
+        boolean validTransition =
+                switch (status) {
+                    case DRAFT ->
+                            newStatus == SurveyFormStatus.PUBLISHED;
+
+                    case PUBLISHED ->
+                            newStatus == SurveyFormStatus.CLOSED;
+
+                    case CLOSED ->
+                            false;
+                };
+
+        if (!validTransition) {
+            throw new BusinessException(
+                    ErrorCode.SURVEY_FORM_INVALID_STATUS_TRANSITION,
+                    "설문 상태는 DRAFT → PUBLISHED → CLOSED 순서로만 변경할 수 있습니다."
+            );
+        }
+    }
+
+    private void validateUpdatedDueAt(
+            LocalDateTime dueAt,
+            SurveyFormStatus newStatus,
+            LocalDateTime now
+    ) {
+        /*
+         * 종료 상태는 이미 마감일이 지난 설문도 처리할 수 있어야 하므로
+         * 미래 시간 검증을 적용하지 않습니다.
+         */
+        if (newStatus == SurveyFormStatus.CLOSED) {
+            return;
+        }
+
+        if (!dueAt.isAfter(now)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "응답 마감 일시는 현재 시간 이후여야 합니다."
+            );
+        }
+    }
+
     public Long getId() {
         return id;
     }

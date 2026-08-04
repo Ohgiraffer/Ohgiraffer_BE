@@ -12,6 +12,11 @@ import com.ohgiraffer.survey.presentation.api.request.CreateSurveyFormRequest;
 import com.ohgiraffer.survey.presentation.api.response.CreateSurveyFormResponse;
 import com.ohgiraffer.survey.presentation.api.response.SurveyFormDetailResponse;
 import com.ohgiraffer.survey.presentation.api.response.SurveyFormListResponse;
+import com.ohgiraffer.survey.application.command.UpdateSurveyFormCommand;
+import com.ohgiraffer.survey.application.usecase.UpdateSurveyFormResult;
+import com.ohgiraffer.survey.application.usecase.UpdateSurveyFormUseCase;
+import com.ohgiraffer.survey.presentation.api.request.UpdateSurveyFormRequest;
+import com.ohgiraffer.survey.presentation.api.response.UpdateSurveyFormResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,6 +28,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -35,6 +41,7 @@ public class SurveyFormController {
     private final CreateSurveyFormUseCase createSurveyFormUseCase;
     private final GetSurveyFormListUseCase getSurveyFormListUseCase;
     private final GetSurveyFormDetailUseCase getSurveyFormDetailUseCase;
+    private final UpdateSurveyFormUseCase updateSurveyFormUseCase;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
@@ -86,4 +93,29 @@ public class SurveyFormController {
                 SurveyFormDetailResponse.from(result)
         );
     }
+
+    @PatchMapping("/{surveyFormId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
+    public ResponseEntity<UpdateSurveyFormResponse> updateSurveyForm(
+            @PathVariable Long surveyFormId,
+            @Valid @RequestBody UpdateSurveyFormRequest request
+    ) {
+        UpdateSurveyFormCommand command =
+                new UpdateSurveyFormCommand(
+                        surveyFormId,
+                        request.title(),
+                        request.dueAt(),
+                        request.status()
+                );
+
+        UpdateSurveyFormResult result =
+                updateSurveyFormUseCase.update(
+                        command
+                );
+
+        return ResponseEntity.ok(
+                UpdateSurveyFormResponse.from(result)
+        );
+    }
+    
 }

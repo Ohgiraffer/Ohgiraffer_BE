@@ -14,17 +14,35 @@ public class DisabledGoogleFormAdapter
     public CreatedGoogleForm createDraft(
             String title
     ) {
-        throw new BusinessException(
-                ErrorCode.GOOGLE_FORM_API_ERROR,
-                "Google Forms 연동이 비활성화되어 있습니다."
-        );
+        throw disabledException();
+    }
+
+    @Override
+    public void updateTitle(
+            String googleFormId,
+            String title
+    ) {
+        throw disabledException();
+    }
+
+    @Override
+    public void updatePublishState(
+            String googleFormId,
+            boolean published,
+            boolean acceptingResponses
+    ) {
+        throw disabledException();
     }
 
     @Override
     public void delete(
             String googleFormId
     ) {
-        throw new BusinessException(
+        throw disabledException();
+    }
+
+    private BusinessException disabledException() {
+        return new BusinessException(
                 ErrorCode.GOOGLE_FORM_API_ERROR,
                 "Google Forms 연동이 비활성화되어 있습니다."
         );
