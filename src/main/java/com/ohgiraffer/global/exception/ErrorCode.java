@@ -18,6 +18,11 @@ public enum ErrorCode {
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_004", "유효하지 않은 refresh token입니다."),
     EXPIRED_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_005", "만료된 refresh token입니다."),
     LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "AUTH_006", "아이디 또는 비밀번호가 올바르지 않습니다."),
+    WITHDRAWN_MEMBER(HttpStatus.FORBIDDEN, "AUTH_007", "부트캠프 과정을 중도 종료하신 계정으로, 서비스 접근 권한이 만료되었습니다."),
+    EXPELLED_MEMBER(HttpStatus.FORBIDDEN, "AUTH_008", "현재 이 계정은 부트캠프 운영 정책에 따라 서비스 이용이 제한되었습니다. "),
+    MISSING_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_009", "AccessToken이 필요합니다."),
+    MISSING_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_010", "RefreshToken이 필요합니다."),
+    ALREADY_LOGGED_OUT(HttpStatus.UNAUTHORIZED, "AUTH_011", "이미 로그아웃 되었습니다."),
 
     GOOGLE_SHEET_INVALID_URL(HttpStatus.BAD_REQUEST, "SHEET_001", "올바른 Google 스프레드시트 URL이 아닙니다."),
     GOOGLE_SHEET_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SHEET_002", "Google 스프레드시트에 접근할 권한이 없습니다."),

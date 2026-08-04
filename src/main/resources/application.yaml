@@ -35,6 +35,12 @@ spring:
       - classpath:db/migration/be5
       - classpath:db/seed
 
+  # ===== Redis (채팅 / 캐시 / 인증코드) =====
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
   servlet:
     multipart:
       max-file-size: 1MB
