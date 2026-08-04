@@ -7,3 +7,8 @@ google:
     enabled: ${GOOGLE_SHEETS_ENABLED:false}
     application-name: ${GOOGLE_SHEETS_APPLICATION_NAME:ohgiraffer}
     credentials-location: ${GOOGLE_SHEETS_CREDENTIALS_LOCATION:}
+
+jwt:
+  secret: ${JWT_SECRET:this-is-ohgiraffer-campflow-jwt-secret-key-for-hs256-authentication}
+  access-token-validity: ${JWT_ACCESS_VALIDITY:3600000}
+  refresh-token-validity: ${JWT_REFRESH_VALIDITY:1209600000}
