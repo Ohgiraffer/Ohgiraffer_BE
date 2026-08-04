@@ -8,7 +8,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.*;
 
 /*
@@ -69,7 +68,7 @@ public class SseEmitterManager implements SseEventPublisher{
 
     /**
      * 클라이언트의 SSE 구독 요청 처리
-     * 새 emitter 생성 → 해당 유저의 리스트에 추가 → 완료/타임아웃/에러 콜백에 정리 로직 등록.
+     * 새 emitter 생성 → 해당 유저의 리스트에 추가 → 완료/타임아웃/에러 콜백에 정리 로직 등록
      *
      * @param userId 구독하는 유저 ID (인증 붙으면 여기로 실제 값 들어옴)
      * @return 컨트롤러가 그대로 응답으로 반환할 emitter
@@ -77,9 +76,14 @@ public class SseEmitterManager implements SseEventPublisher{
     public SseEmitter connect(Long userId) {
         SseEmitter emitter = new SseEmitter(TIMEOUT);
 
-        // 유저의 emitter 리스트가 없으면 새로 생성, 있으면 거기 추가
+        // compute로 리스트 조회+추가를 원자적으로 처리
+        // removeEmitter와 동시에 실행돼도새로 추가되는 emitter가 유실되지 않도록 함
         // CopyOnWriteArrayList: 읽기(순회)가 훨씬 잦고 쓰기(추가/삭제)가 적은 상황에 적합
-        emitters.computeIfAbsent(userId, id -> new CopyOnWriteArrayList<>()).add(emitter);
+        emitters.compute(userId, (id, list) -> {
+            List<SseEmitter> target = (list != null) ? list : new CopyOnWriteArrayList<>();
+            target.add(emitter);
+            return target;
+        });
 
         // 연결 정상 종료/타임아웃/에러 시 리스트에서 해당 emitter 제거
         emitter.onCompletion(() -> removeEmitter(userId, emitter));
@@ -105,30 +109,29 @@ public class SseEmitterManager implements SseEventPublisher{
 
     /**
      * 실제 이벤트 전송 로직
-     * 전송 실패(끊긴 연결)면 completeWithError로 Spring에게 명확히 종료를 알리고 리스트에서 제거
+     * 전송 실패 시(끊긴 연결 IOException, 이미 종료된 emitter에 대한 IllegalStateException)
+     * 모두 리스트에서 제거만 하고 completeWithError는 호출하지 않음
+     * 하트비트 스케줄러 도중 예외가 재발생하면 scheduleAtFixedRate 자체가 멈춰버리기 때문
      */
     private void sendEvent(Long userId, SseEmitter emitter, String eventName, Object data) {
         try {
             emitter.send(SseEmitter.event().name(eventName).data(data));
-        } catch (IOException e) {
-            // Spring 쪽 리소스 정리를 위해 completeWithError 명시적으로 호출
-            emitter.completeWithError(e);
+        } catch (IOException | IllegalStateException e) {
             removeEmitter(userId, emitter);
         }
     }
 
     /**
      * 특정 유저의 특정 emitter를 리스트에서 제거
+     * computeIfPresent로 조회+삭제를 원자적으로 처리
+     * connect의 compute와 동시에 실행돼도 서로 경합하지 않음
      * 리스트가 비면(마지막 연결까지 끊기면) 맵 엔트리 자체도 삭제
      */
     private void removeEmitter(Long userId, SseEmitter emitter) {
-        List<SseEmitter> userEmitters = emitters.get(userId);
-        if (userEmitters == null) return;
-
-        userEmitters.remove(emitter);
-        if (userEmitters.isEmpty()) {
-            emitters.remove(userId);
-        }
+        emitters.computeIfPresent(userId, (id, list) -> {
+            list.remove(emitter);
+            return list.isEmpty() ? null : list;
+        });
     }
 
 }
