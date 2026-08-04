@@ -1,6 +1,7 @@
 package com.ohgiraffer.security.jwt;
 
 import com.ohgiraffer.security.user.CustomUserDetailsService;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,22 +32,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String accessToken = jwtTokenProvider.resolveToken(request);
 
-        if (accessToken != null
-                && jwtTokenProvider.validateToken(accessToken)
-                && jwtTokenProvider.isAccessToken(accessToken)) {
-            try {
-                Long userId = jwtTokenProvider.extractUserId(accessToken);
-                UserDetails userDetails = userDetailsService.loadUserByUserId(userId);
+        if (accessToken != null) {
+            Claims claims = jwtTokenProvider.resolveAccessClaims(accessToken);
 
-                if (userDetails.isEnabled()) {
-                    var authentication = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities()
-                    );
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+            if (claims != null) {
+                try {
+                    Long userId = jwtTokenProvider.extractUserId(claims);
+                    UserDetails userDetails = userDetailsService.loadUserByUserId(userId);
+
+                    if (userDetails.isEnabled()) {
+                        var authentication = new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities()
+                        );
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
+                } catch (UsernameNotFoundException | NumberFormatException e) {
+                    SecurityContextHolder.clearContext();
                 }
-            } catch (UsernameNotFoundException | NumberFormatException e) {
-                SecurityContextHolder.clearContext();
             }
         }
 

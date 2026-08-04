@@ -60,22 +60,23 @@ public class JwtTokenProvider {
     }
 
     //  토큰 검증/파싱
-    public boolean validateToken(String token) {
+    /*comment
+     * 토큰을 파싱해서 유효한 access token인 Claims만 반환.
+     * 유효하지 않거나(서명 불일치, 만료 등), access 타입이 아니면 null 반환.
+     */
+    public Claims resolveAccessClaims(String token) {
         try {
-            parseClaims(token);
-            return true;
+            Claims claims = parseClaims(token);
+            if (!ACCESS_TOKEN_TYPE.equals(claims.get(TOKEN_TYPE_KEY, String.class))) {
+                return null;
+            }
+            return claims;
         } catch (JwtException | IllegalArgumentException e) {
-            return false;
+            return null;
         }
     }
 
-    public boolean isAccessToken(String token) {
-        Claims claims = parseClaims(token);
-        return ACCESS_TOKEN_TYPE.equals(claims.get(TOKEN_TYPE_KEY, String.class));
-    }
-
-    public Long extractUserId(String token) {
-        Claims claims = parseClaims(token);
+    public Long extractUserId(Claims claims) {
         return Long.parseLong(claims.getSubject());
     }
 
