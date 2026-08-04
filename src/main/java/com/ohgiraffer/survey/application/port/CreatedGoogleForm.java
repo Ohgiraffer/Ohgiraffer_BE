@@ -12,7 +12,7 @@ public record CreatedGoogleForm(
         if (googleFormId == null
                 || googleFormId.isBlank()) {
             throw new BusinessException(
-                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    ErrorCode.GOOGLE_FORM_API_ERROR,
                     "Google Forms API가 Form ID를 반환하지 않았습니다."
             );
         }
