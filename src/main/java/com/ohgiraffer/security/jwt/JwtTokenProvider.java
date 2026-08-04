@@ -13,6 +13,7 @@ import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
@@ -51,6 +52,7 @@ public class JwtTokenProvider {
         Date expiration = new Date(now + validityMs);
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(userId))
                 .claim(TOKEN_TYPE_KEY, tokenType)
                 .issuedAt(issuedAt)
@@ -78,6 +80,14 @@ public class JwtTokenProvider {
 
     public Long extractUserId(Claims claims) {
         return Long.parseLong(claims.getSubject());
+    }
+
+    public String extractJti(Claims claims) {
+        return claims.getId();
+    }
+
+    public long getRemainingValidityMs(Claims claims) {
+        return claims.getExpiration().getTime() - System.currentTimeMillis();
     }
 
     private Claims parseClaims(String token) {
