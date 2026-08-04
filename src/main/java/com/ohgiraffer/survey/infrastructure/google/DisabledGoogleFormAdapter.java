@@ -18,14 +18,6 @@ public class DisabledGoogleFormAdapter
     }
 
     @Override
-    public void updateTitle(
-            String googleFormId,
-            String title
-    ) {
-        throw disabledException();
-    }
-
-    @Override
     public void updatePublishState(
             String googleFormId,
             boolean published,

@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.Objects;
 
 @Service
 public class UpdateSurveyFormService
@@ -59,29 +58,13 @@ public class UpdateSurveyFormService
                         LocalDateTime.now(clock)
                 );
 
-        boolean titleChanged =
-                !Objects.equals(
-                        originalSurveyForm.getTitle(),
-                        updatedSurveyForm.getTitle()
-                );
-
         boolean statusChanged =
                 originalSurveyForm.getStatus()
                         != updatedSurveyForm.getStatus();
 
-        boolean googleTitleUpdated = false;
         boolean googlePublishStateUpdated = false;
 
         try {
-            if (titleChanged) {
-                googleFormPort.updateTitle(
-                        originalSurveyForm.getGoogleFormId(),
-                        updatedSurveyForm.getTitle()
-                );
-
-                googleTitleUpdated = true;
-            }
-
             if (statusChanged) {
                 applyGooglePublishState(
                         originalSurveyForm.getGoogleFormId(),
@@ -101,9 +84,8 @@ public class UpdateSurveyFormService
             );
 
         } catch (RuntimeException exception) {
-            compensateGoogleFormUpdate(
+            compensateGooglePublishState(
                     originalSurveyForm,
-                    googleTitleUpdated,
                     googlePublishStateUpdated,
                     exception
             );
@@ -159,41 +141,25 @@ public class UpdateSurveyFormService
         }
     }
 
-    private void compensateGoogleFormUpdate(
+    private void compensateGooglePublishState(
             SurveyForm originalSurveyForm,
-            boolean titleUpdated,
             boolean publishStateUpdated,
             RuntimeException originalException
     ) {
-        /*
-         * 상태를 먼저 되돌리고 제목을 되돌립니다.
-         * 보상 처리 중 발생한 오류는 원래 오류를 덮지 않고
-         * suppressed exception으로 보관합니다.
-         */
-        if (publishStateUpdated) {
-            try {
-                applyGooglePublishState(
-                        originalSurveyForm.getGoogleFormId(),
-                        originalSurveyForm.getStatus()
-                );
-            } catch (RuntimeException compensationException) {
-                originalException.addSuppressed(
-                        compensationException
-                );
-            }
+        if (!publishStateUpdated) {
+            return;
         }
 
-        if (titleUpdated) {
-            try {
-                googleFormPort.updateTitle(
-                        originalSurveyForm.getGoogleFormId(),
-                        originalSurveyForm.getTitle()
-                );
-            } catch (RuntimeException compensationException) {
-                originalException.addSuppressed(
-                        compensationException
-                );
-            }
+        try {
+            applyGooglePublishState(
+                    originalSurveyForm.getGoogleFormId(),
+                    originalSurveyForm.getStatus()
+            );
+
+        } catch (RuntimeException compensationException) {
+            originalException.addSuppressed(
+                    compensationException
+            );
         }
     }
 }
