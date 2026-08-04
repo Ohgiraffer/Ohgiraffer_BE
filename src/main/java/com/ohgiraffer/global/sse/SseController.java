@@ -1,6 +1,7 @@
 package com.ohgiraffer.global.sse;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,12 +22,19 @@ public class SseController {
 
     /**
      * SSE 구독 시작
+     * 인증 미구현 상태 — userId를 못 얻으면 401로 거부
+     * TODO : 인증 구조 확정되면 @AuthenticationPrincipal 등으로 교체
      * X-Accel-Buffering: no 헤더는 Nginx 등 프록시가 응답을 버퍼링하지 않고 즉시 스트리밍하도록 강제하기 위함
      * — 없으면 로컬에선 멀쩡한데 배포 환경(프록시 있음)에서만 이벤트가 지연/누락될 수 있음
      */
     @GetMapping(value = "/notifications/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<SseEmitter> subscribe(/* @AuthenticationPrincipal 등 인증 정보로 userId 추출 */) {
         Long userId = null; // TODO: 실제 인증 붙으면 여기서 꺼내기
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         SseEmitter emitter = sseEmitterManager.connect(userId);
 
         return ResponseEntity.ok()
