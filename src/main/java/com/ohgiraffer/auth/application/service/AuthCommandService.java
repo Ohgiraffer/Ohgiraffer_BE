@@ -89,6 +89,10 @@ public class AuthCommandService implements AuthCommandUsecase {
         String accessToken = logoutPolicy.resolveAccessToken(bearerToken);
         logoutPolicy.validateRefreshToken(refreshToken);
 
+        if (!refreshTokenService.isValid(id, refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
         Claims claims = jwtTokenProvider.resolveAccessClaims(accessToken);
         if (claims != null) {
             String jti = jwtTokenProvider.extractJti(claims);
