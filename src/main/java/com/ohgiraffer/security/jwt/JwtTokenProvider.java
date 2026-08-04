@@ -60,7 +60,7 @@ public class JwtTokenProvider {
     }
 
     //  토큰 검증/파싱
-    /*comment
+    /**
      * 토큰을 파싱해서 유효한 access token인 Claims만 반환.
      * 유효하지 않거나(서명 불일치, 만료 등), access 타입이 아니면 null 반환.
      */

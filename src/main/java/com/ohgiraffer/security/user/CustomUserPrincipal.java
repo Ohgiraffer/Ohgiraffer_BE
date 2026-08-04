@@ -38,10 +38,11 @@ public class CustomUserPrincipal implements UserDetails {
                 user.getPassword(),
                 List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())),
                 user.getStatus() == UserStatus.ACTIVE
+                        || user.getStatus() == UserStatus.COMPLETED
         );
     }
 
-    public Long id() {return id;}
+    public Long getId() {return id;}
 
     @Override
     public String getUsername() {return email; // 로그인 할 때 쓰는 값 = 이메일
