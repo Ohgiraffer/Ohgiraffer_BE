@@ -2,13 +2,48 @@ spring:
   application:
     name: ohgiraffer
 
+  # ===== Database (MySQL) =====
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/campflow?characterEncoding=UTF-8&useUnicode=true&serverTimezone=Asia/Seoul
+    username: ${MYSQL_USERNAME:campflow}
+    password: ${MYSQL_PASSWORD:1234}   # 본인 로컬 비밀번호로 교체
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # ===== JPA / Hibernate =====
+  jpa:
+    hibernate:
+      ddl-auto: validate          # 마이그레이션이 스키마를 관리하니까 validate 유지
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+    show-sql: true
+
+  # ===== Flyway =====
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    baseline-description: "baseline from existing schema"
+    out-of-order: true
+    locations:
+      - classpath:db/migration/common
+      - classpath:db/migration/be1
+      - classpath:db/migration/be2
+      - classpath:db/migration/be3
+      - classpath:db/migration/be4
+      - classpath:db/migration/be5
+      - classpath:db/seed
+
 google:
   sheets:
     enabled: ${GOOGLE_SHEETS_ENABLED:false}
     application-name: ${GOOGLE_SHEETS_APPLICATION_NAME:ohgiraffer}
     credentials-location: ${GOOGLE_SHEETS_CREDENTIALS_LOCATION:}
 
+
 jwt:
   secret: ${JWT_SECRET:this-is-ohgiraffer-campflow-jwt-secret-key-for-hs256-authentication}
   access-token-validity: ${JWT_ACCESS_VALIDITY:3600000}
   refresh-token-validity: ${JWT_REFRESH_VALIDITY:1209600000}
+
