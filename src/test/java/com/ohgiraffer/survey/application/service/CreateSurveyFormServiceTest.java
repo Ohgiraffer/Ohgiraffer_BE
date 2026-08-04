@@ -7,7 +7,6 @@ import com.ohgiraffer.survey.application.port.GoogleFormPort;
 import com.ohgiraffer.survey.application.usecase.CreateSurveyFormResult;
 import com.ohgiraffer.survey.domain.model.SurveyForm;
 import com.ohgiraffer.survey.domain.model.SurveyFormStatus;
-import com.ohgiraffer.survey.domain.repository.SurveyFormRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +40,7 @@ class CreateSurveyFormServiceTest {
     private GoogleFormPort googleFormPort;
 
     @Mock
-    private SurveyFormRepository surveyFormRepository;
+    private SurveyFormPersistenceService persistenceService;
 
     private CreateSurveyFormService createSurveyFormService;
 
@@ -51,7 +50,7 @@ class CreateSurveyFormServiceTest {
 
         createSurveyFormService = new CreateSurveyFormService(
                 googleFormPort,
-                surveyFormRepository,
+                persistenceService,
                 fixedClock
         );
     }
@@ -86,7 +85,7 @@ class CreateSurveyFormServiceTest {
         when(googleFormPort.createDraft(title))
                 .thenReturn(createdGoogleForm);
 
-        when(surveyFormRepository.save(any(SurveyForm.class)))
+        when(persistenceService.save(any(SurveyForm.class)))
                 .thenReturn(savedSurveyForm);
 
         // when
@@ -105,7 +104,7 @@ class CreateSurveyFormServiceTest {
         );
 
         verify(googleFormPort).createDraft(title);
-        verify(surveyFormRepository).save(any(SurveyForm.class));
+        verify(persistenceService).save(any(SurveyForm.class));
         verify(googleFormPort, never()).delete(any());
     }
 
@@ -133,7 +132,7 @@ class CreateSurveyFormServiceTest {
         assertTrue(exception.getMessage().contains("마감"));
 
         verifyNoInteractions(googleFormPort);
-        verifyNoInteractions(surveyFormRepository);
+        verifyNoInteractions(persistenceService);
     }
 
     @Test
@@ -156,7 +155,7 @@ class CreateSurveyFormServiceTest {
         when(googleFormPort.createDraft(title))
                 .thenReturn(new CreatedGoogleForm(googleFormId));
 
-        when(surveyFormRepository.save(any(SurveyForm.class)))
+        when(persistenceService.save(any(SurveyForm.class)))
                 .thenThrow(databaseException);
 
         // when
@@ -169,7 +168,7 @@ class CreateSurveyFormServiceTest {
         assertEquals(databaseException, thrown);
 
         verify(googleFormPort).createDraft(title);
-        verify(surveyFormRepository).save(any(SurveyForm.class));
+        verify(persistenceService).save(any(SurveyForm.class));
         verify(googleFormPort).delete(googleFormId);
     }
 
@@ -196,7 +195,7 @@ class CreateSurveyFormServiceTest {
         when(googleFormPort.createDraft(title))
                 .thenReturn(new CreatedGoogleForm(googleFormId));
 
-        when(surveyFormRepository.save(any(SurveyForm.class)))
+        when(persistenceService.save(any(SurveyForm.class)))
                 .thenThrow(databaseException);
 
         doThrow(cleanupException)
@@ -250,6 +249,6 @@ class CreateSurveyFormServiceTest {
 
         verify(googleFormPort).createDraft(title);
         verify(googleFormPort, never()).delete(any());
-        verifyNoInteractions(surveyFormRepository);
+        verifyNoInteractions(persistenceService);
     }
 }
