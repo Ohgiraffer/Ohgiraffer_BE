@@ -24,7 +24,9 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
             HttpServletResponse response,
             AuthenticationException authException
     ) throws IOException {
-        ErrorCode errorCode = ErrorCode.UNAUTHORIZED;
+        ErrorCode errorCode = Boolean.TRUE.equals(request.getAttribute("ALREADY_LOGGED_OUT"))
+                ? ErrorCode.ALREADY_LOGGED_OUT
+                : ErrorCode.UNAUTHORIZED;
 
         ErrorResponse errorResponse = ErrorResponse.of(
                 errorCode,

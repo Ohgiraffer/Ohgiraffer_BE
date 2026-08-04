@@ -10,6 +10,12 @@ public interface GoogleFormPort {
             String title
     );
 
+    void updatePublishState(
+            String googleFormId,
+            boolean published,
+            boolean acceptingResponses
+    );
+
     /*
      * Google Form을 삭제합니다.
      *

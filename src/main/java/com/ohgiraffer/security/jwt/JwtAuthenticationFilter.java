@@ -1,5 +1,6 @@
 package com.ohgiraffer.security.jwt;
 
+import com.ohgiraffer.security.token.TokenBlacklistService;
 import com.ohgiraffer.security.user.CustomUserDetailsService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
@@ -22,6 +23,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(
@@ -34,21 +36,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (accessToken != null) {
             Claims claims = jwtTokenProvider.resolveAccessClaims(accessToken);
-
             if (claims != null) {
-                try {
-                    Long userId = jwtTokenProvider.extractUserId(claims);
-                    UserDetails userDetails = userDetailsService.loadUserByUserId(userId);
-
-                    if (userDetails.isEnabled()) {
-                        var authentication = new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities()
-                        );
-                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                String jti = jwtTokenProvider.extractJti(claims);
+                if (tokenBlacklistService.isBlacklisted(jti)) {
+                    request.setAttribute("ALREADY_LOGGED_OUT", true);
+                } else {
+                    try {
+                        Long userId = jwtTokenProvider.extractUserId(claims);
+                        UserDetails userDetails = userDetailsService.loadUserByUserId(userId);
+                        if (userDetails.isEnabled()) {
+                            var authentication = new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities()
+                            );
+                            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                            SecurityContextHolder.getContext().setAuthentication(authentication);
+                        }
+                    } catch (UsernameNotFoundException | NumberFormatException e) {
+                        SecurityContextHolder.clearContext();
                     }
-                } catch (UsernameNotFoundException | NumberFormatException e) {
-                    SecurityContextHolder.clearContext();
                 }
             }
         }
