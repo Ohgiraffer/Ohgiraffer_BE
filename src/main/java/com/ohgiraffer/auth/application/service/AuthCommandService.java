@@ -2,6 +2,7 @@ package com.ohgiraffer.auth.application.service;
 
 import com.ohgiraffer.auth.application.policy.LogoutPolicy;
 import com.ohgiraffer.auth.application.usecase.AuthCommandUsecase;
+import com.ohgiraffer.auth.domain.model.LoginResult;
 import com.ohgiraffer.auth.presentation.api.request.LoginRequest;
 import com.ohgiraffer.auth.presentation.api.response.LoginResponse;
 import com.ohgiraffer.global.exception.BusinessException;
@@ -22,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
 @Slf4j
@@ -37,7 +40,7 @@ public class AuthCommandService implements AuthCommandUsecase {
     private final TokenBlacklistService tokenBlacklistService;
 
     @Override
-    public LoginResponse login(LoginRequest request, String clientIp) {
+    public LoginResult login(LoginRequest request, String clientIp) {
 
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(()->new BusinessException(ErrorCode.LOGIN_FAILED));
@@ -71,9 +74,13 @@ public class AuthCommandService implements AuthCommandUsecase {
         refreshTokenService.save(
                 principal.getId(),
                 refreshToken,
-                Duration.ofMillis(jwtTokenProvider.getRefreshTokenValidityMs())
+                Duration.between(LocalDateTime.now(), LocalDate.now().plusDays(1).atStartOfDay())
         );
-        return LoginResponse.of(accessToken, refreshToken, user.getRole(), user.getStatus());
+
+        return new LoginResult(
+                LoginResponse.of(accessToken, user.getRole(), user.getStatus()),
+                refreshToken
+        );
     }
 
 
@@ -92,5 +99,25 @@ public class AuthCommandService implements AuthCommandUsecase {
 
         refreshTokenService.delete(id);
         log.info("[logout] 로그아웃 처리 완료 | userId={}", id);
+    }
+
+    @Override
+    public String reissueAccessToken(String refreshToken) {
+        if (refreshToken == null) {
+            throw new BusinessException(ErrorCode.MISSING_REFRESH_TOKEN);
+        }
+
+        Claims claims = jwtTokenProvider.resolveRefreshClaims(refreshToken);
+        if (claims == null) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        Long userId = jwtTokenProvider.extractUserId(claims);
+
+        if (!refreshTokenService.isValid(userId, refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        return jwtTokenProvider.createAccessToken(userId);
     }
 }
