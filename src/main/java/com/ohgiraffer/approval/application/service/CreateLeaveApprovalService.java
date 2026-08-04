@@ -53,9 +53,15 @@ public class CreateLeaveApprovalService
     public CreateApprovalResult create(
             CreateLeaveApprovalCommand command
     ) {
+        LocalDateTime now =
+                LocalDateTime.now(
+                        clock
+                );
+
         validateDates(
                 command.startDate(),
-                command.endDate()
+                command.endDate(),
+                now.toLocalDate()
         );
 
         validateApproverExists(
@@ -73,16 +79,13 @@ public class CreateLeaveApprovalService
                                 )
                         );
 
-        LocalDateTime now =
-                LocalDateTime.now(
-                        clock
-                );
-
         ApprovalRequest approvalRequest =
                 ApprovalRequest.createLeave(
                         command.requesterId(),
                         command.approverId(),
                         userSignature.getId(),
+                        userSignature.getSignatureImage(),
+                        userSignature.getFileType(),
                         now
                 );
 
@@ -121,7 +124,8 @@ public class CreateLeaveApprovalService
 
     private void validateDates(
             LocalDate startDate,
-            LocalDate endDate
+            LocalDate endDate,
+            LocalDate today
     ) {
         if (startDate == null || endDate == null) {
             throw new BusinessException(
@@ -136,11 +140,6 @@ public class CreateLeaveApprovalService
                     "휴가 시작일은 종료일보다 이후일 수 없습니다."
             );
         }
-
-        LocalDate today =
-                LocalDate.now(
-                        clock
-                );
 
         if (startDate.isBefore(today)) {
             throw new BusinessException(

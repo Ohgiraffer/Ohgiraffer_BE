@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 
 @Getter
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
@@ -22,11 +23,15 @@ public class ApprovalRequest {
     private LocalDateTime confirmedAt;
     private LocalDateTime processedAt;
     private final Long signatureId;
+    private final byte[] signatureImageSnapshot;
+    private final String signatureFileTypeSnapshot;
 
     public static ApprovalRequest createLeave(
             Long requesterId,
             Long approverId,
             Long signatureId,
+            byte[] signatureImageSnapshot,
+            String signatureFileTypeSnapshot,
             LocalDateTime requestedAt
     ) {
         ApprovalRequest approvalRequest =
@@ -38,7 +43,9 @@ public class ApprovalRequest {
                         "휴가 신청",
                         null,
                         requestedAt,
-                        signatureId
+                        signatureId,
+                        copyBytes(signatureImageSnapshot),
+                        signatureFileTypeSnapshot
                 );
 
         approvalRequest.status = ApprovalStatus.PENDING;
@@ -58,7 +65,9 @@ public class ApprovalRequest {
             LocalDateTime requestedAt,
             LocalDateTime confirmedAt,
             LocalDateTime processedAt,
-            Long signatureId
+            Long signatureId,
+            byte[] signatureImageSnapshot,
+            String signatureFileTypeSnapshot
     ) {
         ApprovalRequest approvalRequest =
                 new ApprovalRequest(
@@ -69,7 +78,9 @@ public class ApprovalRequest {
                         title,
                         reason,
                         requestedAt,
-                        signatureId
+                        signatureId,
+                        copyBytes(signatureImageSnapshot),
+                        signatureFileTypeSnapshot
                 );
 
         approvalRequest.status = status;
@@ -80,64 +91,20 @@ public class ApprovalRequest {
         return approvalRequest;
     }
 
-    public void check(
-            LocalDateTime checkedAt
-    ) {
-        validateStatus(
-                ApprovalStatus.PENDING,
-                "대기 상태의 결재만 확인할 수 있습니다."
-        );
-
-        this.status = ApprovalStatus.CHECKED;
-        this.confirmedAt = checkedAt;
+    public byte[] getSignatureImageSnapshot() {
+        return copyBytes(signatureImageSnapshot);
     }
 
-    public void approve(
-            LocalDateTime processedAt
+    private static byte[] copyBytes(
+            byte[] source
     ) {
-        validateStatus(
-                ApprovalStatus.CHECKED,
-                "확인된 결재만 승인할 수 있습니다."
-        );
-
-        this.status = ApprovalStatus.APPROVED;
-        this.processedAt = processedAt;
-    }
-
-    public void reject(
-            String rejectionReason,
-            LocalDateTime processedAt
-    ) {
-        validateStatus(
-                ApprovalStatus.CHECKED,
-                "확인된 결재만 반려할 수 있습니다."
-        );
-
-        this.status = ApprovalStatus.REJECTED;
-        this.rejectionReason = rejectionReason;
-        this.processedAt = processedAt;
-    }
-
-    public void complete(
-            LocalDateTime processedAt
-    ) {
-        validateStatus(
-                ApprovalStatus.APPROVED,
-                "승인된 결재만 완료 처리할 수 있습니다."
-        );
-
-        this.status = ApprovalStatus.COMPLETED;
-        this.processedAt = processedAt;
-    }
-
-    private void validateStatus(
-            ApprovalStatus expectedStatus,
-            String message
-    ) {
-        if (this.status != expectedStatus) {
-            throw new IllegalStateException(
-                    message
-            );
+        if (source == null) {
+            return null;
         }
+
+        return Arrays.copyOf(
+                source,
+                source.length
+        );
     }
 }

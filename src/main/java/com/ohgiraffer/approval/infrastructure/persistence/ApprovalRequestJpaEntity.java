@@ -10,12 +10,14 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 
 @Entity
 @Table(name = "approval_request")
@@ -83,6 +85,19 @@ public class ApprovalRequestJpaEntity {
     @Column(name = "signature_id")
     private Long signatureId;
 
+    @Lob
+    @Column(
+            name = "signature_image_snapshot",
+            columnDefinition = "LONGBLOB"
+    )
+    private byte[] signatureImageSnapshot;
+
+    @Column(
+            name = "signature_file_type_snapshot",
+            length = 50
+    )
+    private String signatureFileTypeSnapshot;
+
     private ApprovalRequestJpaEntity(
             Long id,
             Long requesterId,
@@ -95,7 +110,9 @@ public class ApprovalRequestJpaEntity {
             LocalDateTime requestedAt,
             LocalDateTime confirmedAt,
             LocalDateTime processedAt,
-            Long signatureId
+            Long signatureId,
+            byte[] signatureImageSnapshot,
+            String signatureFileTypeSnapshot
     ) {
         this.id = id;
         this.requesterId = requesterId;
@@ -109,6 +126,10 @@ public class ApprovalRequestJpaEntity {
         this.confirmedAt = confirmedAt;
         this.processedAt = processedAt;
         this.signatureId = signatureId;
+        this.signatureImageSnapshot = copyBytes(
+                signatureImageSnapshot
+        );
+        this.signatureFileTypeSnapshot = signatureFileTypeSnapshot;
     }
 
     public static ApprovalRequestJpaEntity from(
@@ -126,7 +147,9 @@ public class ApprovalRequestJpaEntity {
                 approvalRequest.getRequestedAt(),
                 approvalRequest.getConfirmedAt(),
                 approvalRequest.getProcessedAt(),
-                approvalRequest.getSignatureId()
+                approvalRequest.getSignatureId(),
+                approvalRequest.getSignatureImageSnapshot(),
+                approvalRequest.getSignatureFileTypeSnapshot()
         );
     }
 
@@ -143,7 +166,22 @@ public class ApprovalRequestJpaEntity {
                 requestedAt,
                 confirmedAt,
                 processedAt,
-                signatureId
+                signatureId,
+                signatureImageSnapshot,
+                signatureFileTypeSnapshot
+        );
+    }
+
+    private static byte[] copyBytes(
+            byte[] source
+    ) {
+        if (source == null) {
+            return null;
+        }
+
+        return Arrays.copyOf(
+                source,
+                source.length
         );
     }
 }
