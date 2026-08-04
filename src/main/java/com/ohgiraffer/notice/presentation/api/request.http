@@ -1,0 +1,51 @@
+### 카테고리 목록 조회 (공지 작성 화면 드롭다운)
+GET http://localhost:8080/notice-categories
+
+### 공지 등록 - 일반 공지
+POST http://localhost:8080/notices
+Content-Type: application/json
+
+{
+  "categoryId": 1,
+  "title": "8월 특강 안내",
+  "content": "8월 12일 14시 623호에서 특강이 진행됩니다.",
+  "mandatory": false
+}
+
+### 공지 등록 - 필수 공지 (mandatory=true 인 공지에만 확인 체크박스 노출)
+POST http://localhost:8080/notices
+Content-Type: application/json
+
+{
+  "categoryId": 1,
+  "title": "[필수] 출결 기준 변경 안내 🎉",
+  "content": "지각 3회가 결석 1일로 환산됩니다.",
+  "mandatory": true,
+  "visibleToTrainee": true
+}
+
+### 공지 상세 조회
+GET http://localhost:8080/notices/7
+
+### 실패 - 없는 공지 (404 COMMON_006)
+GET http://localhost:8080/notices/99999
+
+### 실패 - 제목 누락 (400 COMMON_001)
+POST http://localhost:8080/notices
+Content-Type: application/json
+
+{
+  "categoryId": 1,
+  "title": "",
+  "content": "본문만 있습니다."
+}
+
+### 실패 - 없는 카테고리 (404 COMMON_006)
+POST http://localhost:8080/notices
+Content-Type: application/json
+
+{
+  "categoryId": 99999,
+  "title": "카테고리 검증 확인",
+  "content": "존재하지 않는 카테고리입니다."
+}
