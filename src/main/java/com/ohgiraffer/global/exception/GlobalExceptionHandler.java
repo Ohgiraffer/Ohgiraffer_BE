@@ -4,6 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import com.ohgiraffer.global.trace.TraceIdFilter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -268,7 +270,9 @@ public ResponseEntity<ErrorResponse> handleMethodValidation(
         ErrorResponse response = ErrorResponse.of(
                 errorCode,
                 message,
-                request.getRequestURI()
+                request.getRequestURI(),
+                MDC.get(TraceIdFilter.TRACE_ID),
+                Map.of()
         );
 
         return ResponseEntity
@@ -286,6 +290,7 @@ public ResponseEntity<ErrorResponse> handleMethodValidation(
                 errorCode,
                 message,
                 request.getRequestURI(),
+                MDC.get(TraceIdFilter.TRACE_ID),
                 errors
         );
 
