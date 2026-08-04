@@ -107,7 +107,8 @@ CREATE TABLE `attendance_policy` (
 	`warning_threshold_pct`	DECIMAL(5, 2)	NULL	COMMENT '경고기준퍼센트',
 	`period_expulsion_pct`	DECIMAL(5, 2)	NOT NULL	DEFAULT 50.00	COMMENT '단위기간제적기준퍼센트',
 	`total_expulsion_pct`	DECIMAL(5, 2)	NOT NULL	DEFAULT 20.00	COMMENT '전체제적기준퍼센트',
-	`bootcamp_id`	BIGINT	NOT NULL	COMMENT 'UNIQUE'
+    `bootcamp_id`	BIGINT	NOT NULL,
+     UNIQUE KEY `UQ_ATTENDANCE_POLICY_BOOTCAMP` (`bootcamp_id`)
 );
 
 CREATE TABLE `attendance_period` (
@@ -115,7 +116,7 @@ CREATE TABLE `attendance_period` (
 	`period_no`	INT	NULL,
 	`period_start`	DATE	NULL,
 	`period_end`	DATE	NULL,
-	`scheduled_class_days`	INT	NULL,
+	`scheduled_class_days`	INT	NOT NULL,
 	`bootcamp_id`	BIGINT	NOT NULL
 );
 
@@ -141,7 +142,8 @@ CREATE TABLE `attendance_period_summary` (
 	`sick_days`	INT	NULL,
 	`attendance_rate`	DECIMAL(5, 2)	NULL,
 	`risk_level`	ENUM('CAUTION','WARNING','RISK')	NULL	COMMENT '위험 수준',
-	`period_id`	BIGINT	NOT NULL
+    `period_id`	BIGINT	NOT NULL,
+    UNIQUE KEY `UQ_PERIOD_SUMMARY_USER_PERIOD` (`user_id`, `period_id`)
 );
 
 CREATE TABLE `leave_balance` (
@@ -152,6 +154,17 @@ CREATE TABLE `leave_balance` (
 	`total_days`	DECIMAL(4, 1)	NOT NULL	DEFAULT 0	COMMENT '총일수',
 	`used_days`	DECIMAL(4, 1)	NOT NULL	DEFAULT 0	COMMENT '사용일수',
 	`carried_over_days`	DECIMAL(4, 1)	NOT NULL	DEFAULT 0	COMMENT '이월일수'
+);
+
+CREATE TABLE `sick_balance` (
+	`sick_balance_id`   BIGINT          NOT NULL,
+	`user_id`           BIGINT          NOT NULL,
+	`period_start`      DATE            NOT NULL,
+	`period_end`        DATE            NOT NULL,
+	`total_days`        DECIMAL(4, 1)   NOT NULL DEFAULT 0,
+	`used_days`         DECIMAL(4, 1)   NOT NULL DEFAULT 0,
+	`carried_over_days` DECIMAL(4, 1)   NOT NULL DEFAULT 0,
+    UNIQUE KEY `UQ_SICK_BALANCE_USER_PERIOD` (`user_id`, `period_start`, `period_end`)
 );
 
 -- ============================================================
@@ -381,7 +394,9 @@ CREATE TABLE `consultation` (
 CREATE TABLE `counselor_calendar` (
 	`id`	BIGINT	NOT NULL	COMMENT '상담가능시간아이디',
 	`counselor_id`	BIGINT	NOT NULL	COMMENT '상담자아이디',
-	`calendar_code`	VARCHAR(255)	NOT NULL	COMMENT '가능일자 unique'
+    `calendar_code`	VARCHAR(255)	NOT NULL,
+    UNIQUE KEY `UQ_COUNSELOR_CALENDAR_COUNSELOR` (`counselor_id`),
+    UNIQUE KEY `UQ_COUNSELOR_CALENDAR_CODE` (`calendar_code`)
 );
 
 -- ============================================================
@@ -473,6 +488,7 @@ ALTER TABLE `approval_leave_detail` ADD CONSTRAINT `PK_APPROVAL_LEAVE_DETAIL` PR
 ALTER TABLE `approval_purchase_detail` ADD CONSTRAINT `PK_APPROVAL_PURCHASE_DETAIL` PRIMARY KEY (`purchase_detail_id`);
 ALTER TABLE `attendance` ADD CONSTRAINT `PK_ATTENDANCE` PRIMARY KEY (`attendance_id`);
 ALTER TABLE `leave_balance` ADD CONSTRAINT `PK_LEAVE_BALANCE` PRIMARY KEY (`leave_balance_id`);
+ALTER TABLE `sick_balance` ADD CONSTRAINT `PK_SICK_BALANCE` PRIMARY KEY (`sick_balance_id`);
 ALTER TABLE `budget_allocation` ADD CONSTRAINT `PK_BUDGET_ALLOCATION` PRIMARY KEY (`budget_allocation_id`);
 ALTER TABLE `chat_message_mirror` ADD CONSTRAINT `PK_CHAT_MESSAGE_MIRROR` PRIMARY KEY (`chat_message_id`);
 ALTER TABLE `team_member` ADD CONSTRAINT `PK_TEAM_MEMBER` PRIMARY KEY (`team_member_id`);
@@ -513,6 +529,7 @@ ALTER TABLE `attendance_period` ADD CONSTRAINT `FK_bootcamp_info_TO_attendance_p
 ALTER TABLE `attendance` ADD CONSTRAINT `FK_users_TO_attendance_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
 ALTER TABLE `attendance_period_summary` ADD CONSTRAINT `FK_attendance_period_TO_attendance_period_summary_1` FOREIGN KEY (`period_id`) REFERENCES `attendance_period` (`id`) ON DELETE CASCADE;
 ALTER TABLE `leave_balance` ADD CONSTRAINT `FK_users_TO_leave_balance_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
+ALTER TABLE `sick_balance` ADD CONSTRAINT `FK_users_TO_sick_balance_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
 
 ALTER TABLE `budget_allocation` ADD CONSTRAINT `FK_budget_category_TO_budget_allocation_1` FOREIGN KEY (`budget_category_id`) REFERENCES `budget_category` (`budget_category_id`);
 ALTER TABLE `approval_request` ADD CONSTRAINT `FK_users_TO_approval_request_1` FOREIGN KEY (`requester_id`) REFERENCES `users` (`user_id`);
