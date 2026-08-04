@@ -41,3 +41,7 @@ out/
 **/*service-account*.json
 **/*sheets-key*.json
 secrets/
+
+# Google OAuth credentials and local tokens
+**/*oauth-client*.json
+**/forms-tokens/
