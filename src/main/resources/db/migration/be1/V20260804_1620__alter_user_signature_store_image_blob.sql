@@ -6,6 +6,10 @@
 -- - 사용자당 전자서명 1개 관리
 -- ============================================================
 
+-- 0. signature_id를 참조하는 FK 먼저 해제
+ALTER TABLE `approval_request`
+DROP FOREIGN KEY `FK_user_signature_TO_approval_request_1`;
+
 ALTER TABLE `user_signature`
 DROP COLUMN `signature_image_url`;
 
@@ -22,3 +26,9 @@ ALTER TABLE `user_signature`
 
 ALTER TABLE `user_signature`
     ADD CONSTRAINT `UQ_USER_SIGNATURE_USER_ID` UNIQUE (`user_id`);
+
+-- 6. FK 다시 생성
+ALTER TABLE `approval_request`
+    ADD CONSTRAINT `FK_user_signature_TO_approval_request_1`
+        FOREIGN KEY (`signature_id`)
+            REFERENCES `user_signature` (`signature_id`);
