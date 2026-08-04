@@ -163,7 +163,8 @@ CREATE TABLE `sick_balance` (
 	`period_end`        DATE            NOT NULL,
 	`total_days`        DECIMAL(4, 1)   NOT NULL DEFAULT 0,
 	`used_days`         DECIMAL(4, 1)   NOT NULL DEFAULT 0,
-	`carried_over_days` DECIMAL(4, 1)   NOT NULL DEFAULT 0
+	`carried_over_days` DECIMAL(4, 1)   NOT NULL DEFAULT 0,
+    UNIQUE KEY `UQ_SICK_BALANCE_USER_PERIOD` (`user_id`, `period_start`, `period_end`)
 );
 
 -- ============================================================

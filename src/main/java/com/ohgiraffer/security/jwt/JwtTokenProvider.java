@@ -16,7 +16,9 @@ import java.util.Date;
 
 @Component
 public class JwtTokenProvider {
-    private static final String USER_ID_KEY = "uid";
+    private static final String TOKEN_TYPE_KEY = "type";
+    private static final String ACCESS_TOKEN_TYPE = "ACCESS";
+    private static final String REFRESH_TOKEN_TYPE = "REFRESH";
 
     @Value("${jwt.secret}")
     private String secretKey;
@@ -36,21 +38,21 @@ public class JwtTokenProvider {
 
     //  토큰 발급
     public String createAccessToken(Long userId) {
-        return createToken(userId, accessTokenValidityMs);
+        return createToken(userId, accessTokenValidityMs, ACCESS_TOKEN_TYPE);
     }
 
     public String createRefreshToken(Long userId) {
-        return createToken(userId, refreshTokenValidityMs);
+        return createToken(userId, refreshTokenValidityMs, REFRESH_TOKEN_TYPE);
     }
 
-    private String createToken(Long userId, long validityMs) {
+    private String createToken(Long userId, long validityMs, String tokenType) {
         long now = System.currentTimeMillis();
         Date issuedAt = new Date(now);
         Date expiration = new Date(now + validityMs);
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
-                .claim(USER_ID_KEY, userId)
+                .claim(TOKEN_TYPE_KEY, tokenType)
                 .issuedAt(issuedAt)
                 .expiration(expiration)
                 .signWith(key)
@@ -65,6 +67,11 @@ public class JwtTokenProvider {
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
+    }
+
+    public boolean isAccessToken(String token) {
+        Claims claims = parseClaims(token);
+        return ACCESS_TOKEN_TYPE.equals(claims.get(TOKEN_TYPE_KEY, String.class));
     }
 
     public Long extractUserId(String token) {
@@ -97,4 +104,3 @@ public class JwtTokenProvider {
         return refreshTokenValidityMs;
     }
 }
-

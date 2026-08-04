@@ -7,7 +7,7 @@ import java.util.Map;
 
 public record ErrorResponse(
         Instant timestamp,
-        HttpStatus status,
+        int status,
         String code,
         String message,
         String path,
@@ -23,7 +23,7 @@ public record ErrorResponse(
     ) {
         return new ErrorResponse(
                 Instant.now(),
-                errorCode.getStatus(),
+                errorCode.getStatus().value(),
                 errorCode.getCode(),
                 message,
                 path,
@@ -58,7 +58,7 @@ public record ErrorResponse(
     ) {
         return new ErrorResponse(
                 Instant.now(),
-                errorCode.getStatus(),
+                errorCode.getStatus().value(),
                 errorCode.getCode(),
                 message,
                 path,
