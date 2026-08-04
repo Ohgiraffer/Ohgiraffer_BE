@@ -35,6 +35,11 @@ spring:
       - classpath:db/migration/be5
       - classpath:db/seed
 
+  servlet:
+    multipart:
+      max-file-size: 1MB
+      max-request-size: 1MB
+
 google:
   sheets:
     enabled: ${GOOGLE_SHEETS_ENABLED:false}
