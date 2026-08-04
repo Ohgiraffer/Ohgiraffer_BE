@@ -55,8 +55,7 @@ public class ChatMessageMirrorQuerydslRepositoryImpl implements ChatMessageMirro
         List<ChatMessageMirrorJpaEntity> content = queryFactory
                 .selectFrom(chatMessageMirrorJpaEntity)
                 .where(builder)
-                .orderBy(chatMessageMirrorJpaEntity.sentAt.desc())
-                .offset(pageable.getOffset())
+                .orderBy(chatMessageMirrorJpaEntity.sentAt.desc(), chatMessageMirrorJpaEntity.id.desc())                .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
 

@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /*
@@ -48,7 +49,7 @@ public class ChatMessageMirrorJpaEntity extends BaseTimeEntity {
     private String attachmentType;
 
     @Column(name = "sent_at", nullable = false)
-    private LocalDateTime sentAt;
+    private Instant sentAt;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;

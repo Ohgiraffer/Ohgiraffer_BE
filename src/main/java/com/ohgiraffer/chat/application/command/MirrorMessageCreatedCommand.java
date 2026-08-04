@@ -1,6 +1,6 @@
 package com.ohgiraffer.chat.application.command;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /*
  * comment.
@@ -16,6 +16,6 @@ public record MirrorMessageCreatedCommand(
         String content,
         String attachmentUrl,
         String attachmentType,
-        LocalDateTime sentAt
+        Instant sentAt
 ) {
 }

@@ -53,6 +53,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
         message.edit(command.content());
+        repository.save(message);
     }
 
     @Override
@@ -62,6 +63,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
         message.delete();
+        repository.save(message);
     }
 
 }

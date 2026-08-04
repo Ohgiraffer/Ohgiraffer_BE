@@ -16,11 +16,12 @@ import org.springframework.web.client.RestClientException;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Base64;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 
@@ -155,24 +156,18 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     public void updateChannelMembers(String channelId, List<Long> addUserIds, List<Long> removeUserIds) {
         try {
             if (addUserIds != null && !addUserIds.isEmpty()) {
-                Map<String, Object> inviteBody = Map.of(
-                        "user_ids", addUserIds.stream().map(String::valueOf).toList()
-                );
                 restClient.post()
                         .uri("/group_channels/{channel_url}/invite", channelId)
-                        .body(inviteBody)
+                        .body(Map.of("user_ids", addUserIds.stream().map(String::valueOf).toList()))
                         .retrieve()
                         .toBodilessEntity();
             }
-
-            if (removeUserIds != null) {
-                for (Long userId : removeUserIds) {
-                    restClient.delete()
-                            .uri("/group_channels/{channel_url}/leave", channelId)
-                            .header("leaving_user_ids", String.valueOf(userId))
-                            .retrieve()
-                            .toBodilessEntity();
-                }
+            if (removeUserIds != null && !removeUserIds.isEmpty()) {
+                restClient.put()
+                        .uri("/group_channels/{channel_url}/leave", channelId)
+                        .body(Map.of("user_ids", removeUserIds.stream().map(String::valueOf).toList()))
+                        .retrieve()
+                        .toBodilessEntity();
             }
         } catch (RestClientException e) {
             throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 채널 멤버 갱신 실패");
@@ -180,11 +175,24 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     }
 
     @Override
-    public SendbirdMessageResult sendMessage(String channelId, Long senderId, String content, String attachmentUrl) {
+    public SendbirdMessageResult sendMessage(String channelId, Long senderId, String content,
+                                             String attachmentUrl, List<Long> mentionedUserIds) {
         Map<String, Object> body = new HashMap<>();
-        body.put("message_type", attachmentUrl != null ? "FILE" : "MESG");
         body.put("user_id", String.valueOf(senderId));
-        body.put("message", content);
+
+        if (attachmentUrl != null) {
+            body.put("message_type", "FILE");
+            body.put("file", Map.of("url", attachmentUrl));
+            body.put("message", content == null ? "" : content);
+        } else {
+            body.put("message_type", "MESG");
+            body.put("message", content);
+        }
+
+        if (mentionedUserIds != null && !mentionedUserIds.isEmpty()) {
+            body.put("mentioned_user_ids", mentionedUserIds.stream().map(String::valueOf).toList());
+            body.put("mention_type", "users");
+        }
 
         try {
             Map<String, Object> response = restClient.post()
@@ -227,7 +235,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     }
 
     @Override
-    public SendbirdMessageResult sendReply(String channelId, String parentMessageId, Long senderId, String content) {
+    public SendbirdMessageResult sendReply(String channelId, Long parentMessageId, Long senderId, String content) {
         Map<String, Object> body = new HashMap<>();
         body.put("message_type", "MESG");
         body.put("user_id", String.valueOf(senderId));
@@ -257,14 +265,12 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
 
             boolean isOnline = Boolean.TRUE.equals(response.get("is_online"));
             Object lastSeenAtRaw = response.get("last_seen_at");
-            LocalDateTime lastSeenAt = null;
+            Instant lastSeenAt = null;
 
             if (!isOnline && lastSeenAtRaw != null) {
                 long epochMillis = ((Number) lastSeenAtRaw).longValue();
                 if (epochMillis > 0) {
-                    lastSeenAt = Instant.ofEpochMilli(epochMillis)
-                            .atZone(ZoneId.systemDefault())
-                            .toLocalDateTime();
+                    lastSeenAt = Instant.ofEpochMilli(epochMillis);
                 }
             }
 
@@ -276,15 +282,16 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
 
     @Override
     public boolean verifyWebhookSignature(String payload, String signature) {
-        // Sendbird 웹훅 서명 검증: HMAC-SHA256(payload, master api token) -> base64 인코딩값과 비교
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(
-                    properties.apiToken().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            mac.init(new SecretKeySpec(properties.apiToken().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             byte[] hash = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-            String expected = Base64.getEncoder().encodeToString(hash);
+            String expected = HexFormat.of().formatHex(hash);
 
-            return expected.equals(signature);
+            return MessageDigest.isEqual(
+                    expected.getBytes(StandardCharsets.UTF_8),
+                    signature.getBytes(StandardCharsets.UTF_8)
+            );
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.CHAT_WEBHOOK_SIGNATURE_INVALID, "웹훅 서명 검증 중 오류 발생");
         }
@@ -305,13 +312,17 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
                 : null;
 
         long createdAtMillis = ((Number) raw.get("created_at")).longValue();
+        Map<String, Object> file = (Map<String, Object>) raw.get("file");
+        String attachmentUrl = file != null ? (String) file.get("url") : null;
 
         return new SendbirdMessageResult(
                 String.valueOf(raw.get("message_id")),
                 channelId,
                 senderIdRaw != null ? Long.parseLong(senderIdRaw) : null,
                 (String) raw.get("message"),
-                Instant.ofEpochMilli(createdAtMillis).atZone(ZoneId.systemDefault()).toLocalDateTime()
+                attachmentUrl,
+                (String) raw.get("type"),
+                Instant.ofEpochMilli(createdAtMillis)
         );
     }
 

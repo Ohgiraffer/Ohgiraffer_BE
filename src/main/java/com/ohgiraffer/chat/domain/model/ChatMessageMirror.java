@@ -20,7 +20,7 @@ public class ChatMessageMirror {
     private String content;
     private final String attachmentUrl;
     private final String attachmentType;
-    private final LocalDateTime sentAt;
+    private final Instant sentAt;
     private LocalDateTime deletedAt;
     private boolean isEdited;
     private final Instant createdAt;
@@ -28,7 +28,7 @@ public class ChatMessageMirror {
 
     private ChatMessageMirror(Long id, String channelId, String sendbirdMessageId, Long parentMessageId,
                               Long senderId, String content, String attachmentUrl, String attachmentType,
-                              LocalDateTime sentAt, LocalDateTime deletedAt, boolean isEdited,
+                              Instant sentAt, LocalDateTime deletedAt, boolean isEdited,
                               Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.channelId = channelId;
@@ -48,7 +48,7 @@ public class ChatMessageMirror {
     // 신규 메시지 생성 (웹훅 미러링, id/deletedAt/isEdited는 아직 없음)
     public static ChatMessageMirror create(String channelId, String sendbirdMessageId, Long parentMessageId,
                                            Long senderId, String content, String attachmentUrl,
-                                           String attachmentType, LocalDateTime sentAt) {
+                                           String attachmentType, Instant sentAt) {
         return new ChatMessageMirror(
                 null, channelId, sendbirdMessageId, parentMessageId, senderId,
                 content, attachmentUrl, attachmentType, sentAt, null, false, null, null
@@ -59,7 +59,7 @@ public class ChatMessageMirror {
     public static ChatMessageMirror reconstitute(Long id, String channelId, String sendbirdMessageId,
                                                  Long parentMessageId, Long senderId, String content,
                                                  String attachmentUrl, String attachmentType,
-                                                 LocalDateTime sentAt, LocalDateTime deletedAt, boolean isEdited,
+                                                 Instant sentAt, LocalDateTime deletedAt, boolean isEdited,
                                                  Instant createdAt, Instant updatedAt) {
         return new ChatMessageMirror(
                 id, channelId, sendbirdMessageId, parentMessageId, senderId,
@@ -90,7 +90,7 @@ public class ChatMessageMirror {
     public String getContent() { return content; }
     public String getAttachmentUrl() { return attachmentUrl; }
     public String getAttachmentType() { return attachmentType; }
-    public LocalDateTime getSentAt() { return sentAt; }
+    public Instant getSentAt() { return sentAt; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public boolean isEdited() { return isEdited; }
     public Instant getCreatedAt() { return createdAt; }

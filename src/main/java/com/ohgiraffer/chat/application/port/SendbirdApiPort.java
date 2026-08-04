@@ -25,7 +25,7 @@ public interface SendbirdApiPort {
     void updateChannelMembers(String channelId, List<Long> addUserIds, List<Long> removeUserIds);
 
     // 메시지 전송 - 텍스트/파일/멘션 포함
-    SendbirdMessageResult sendMessage(String channelId, Long senderId, String content, String attachmentUrl);
+    SendbirdMessageResult sendMessage(String channelId, Long senderId, String content, String attachmentUrl, List<Long> mentionedUserIds);
 
     // 메시지 수정
     void updateMessage(String channelId, String sendbirdMessageId, String newContent);
@@ -34,7 +34,7 @@ public interface SendbirdApiPort {
     void deleteMessage(String channelId, String sendbirdMessageId);
 
     // 스레드 답글 작성
-    SendbirdMessageResult sendReply(String channelId, String parentMessageId, Long senderId, String content);
+    SendbirdMessageResult sendReply(String channelId, Long parentMessageId, Long senderId, String content);
 
     // 온라인 상태 조회
     SendbirdUserStatus getUserStatus(Long userId);

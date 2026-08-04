@@ -1,6 +1,6 @@
 package com.ohgiraffer.chat.application.result;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /*
  * comment.
@@ -14,6 +14,8 @@ public record SendbirdMessageResult(
         String channelId,
         Long senderId,
         String content,
-        LocalDateTime sentAt
+        String attachmentUrl,
+        String messageType,
+        Instant sentAt
 ) {
 }

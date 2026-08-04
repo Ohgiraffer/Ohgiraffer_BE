@@ -1,6 +1,6 @@
 package com.ohgiraffer.chat.application.result;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /*
  * comment.
@@ -11,6 +11,6 @@ import java.time.LocalDateTime;
 public record SendbirdUserStatus(
         Long userId,
         boolean isOnline,
-        LocalDateTime lastSeenAt
+        Instant lastSeenAt
 ) {
 }

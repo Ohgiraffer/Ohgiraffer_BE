@@ -4,7 +4,11 @@ import com.ohgiraffer.chat.infrastructure.adapter.SendbirdProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+
+import java.time.Duration;
 
 /*
  * comment.
@@ -20,8 +24,13 @@ public class SendbirdConfig {
     public RestClient sendbirdRestClient(SendbirdProperties properties) {
         String baseUrl = "https://api-" + properties.appId() + ".sendbird.com/v3";
 
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(3000); // 3초
+        requestFactory.setReadTimeout(5000);    // 5초
+
         return RestClient.builder()
                 .baseUrl(baseUrl)
+                .requestFactory(requestFactory)
                 .defaultHeader("Api-Token", properties.apiToken())
                 .defaultHeader("Content-Type", "application/json")
                 .build();
