@@ -41,6 +41,12 @@ google:
     application-name: ${GOOGLE_SHEETS_APPLICATION_NAME:ohgiraffer}
     credentials-location: ${GOOGLE_SHEETS_CREDENTIALS_LOCATION:}
 
+  forms:
+    enabled: ${GOOGLE_FORMS_ENABLED:false}
+    application-name: ${GOOGLE_FORMS_APPLICATION_NAME:ohgiraffer}
+    oauth-credentials-location: ${GOOGLE_FORMS_OAUTH_CREDENTIALS_LOCATION:}
+    token-directory: ${GOOGLE_FORMS_TOKEN_DIRECTORY:}
+    credential-user-key: ${GOOGLE_FORMS_CREDENTIAL_USER_KEY:ohgiraffer-forms-owner}
 
 jwt:
   secret: ${JWT_SECRET:this-is-ohgiraffer-campflow-jwt-secret-key-for-hs256-authentication}
