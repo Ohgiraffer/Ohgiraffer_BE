@@ -39,20 +39,16 @@ public class CreateSurveyFormService
                 command.dueAt()
         );
 
-        /*
-         * 1. Google Forms API를 호출하여
-         * 아직 게시되지 않은 빈 Form을 생성합니다.
-         */
         CreatedGoogleForm createdGoogleForm =
                 googleFormPort.createDraft(
                         command.title()
                 );
 
         try {
-            /*
-             * 2. Google에서 반환받은 Form ID를 이용하여
-             * 설문 도메인 객체를 생성합니다.
-             */
+            googleFormPort.enableVerifiedEmailCollection(
+                    createdGoogleForm.googleFormId()
+            );
+
             SurveyForm surveyForm =
                     SurveyForm.create(
                             command.title(),
