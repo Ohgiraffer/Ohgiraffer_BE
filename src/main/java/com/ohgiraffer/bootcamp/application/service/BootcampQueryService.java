@@ -1,0 +1,49 @@
+package com.ohgiraffer.bootcamp.application.service;
+
+import com.ohgiraffer.bootcamp.application.port.GetUserBootcampIdPort;
+import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
+import com.ohgiraffer.bootcamp.domain.model.AttendancePeriod;
+import com.ohgiraffer.bootcamp.domain.model.Bootcamp;
+import com.ohgiraffer.bootcamp.domain.repository.AttendancePeriodRepository;
+import com.ohgiraffer.bootcamp.domain.repository.BootcampRepository;
+import com.ohgiraffer.bootcamp.presentation.api.response.BootcampSettingsResponse;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class BootcampQueryService implements BootcampQueryUsecase {
+
+    private final BootcampRepository bootcampRepository;
+    private final AttendancePeriodRepository attendancePeriodRepository;
+    private final GetUserBootcampIdPort getUserBootcampIdPort ;
+
+    @Override
+    public BootcampSettingsResponse getSettings(Long userId) {
+        Long bootcampId = getUserBootcampIdPort.findBootcampIdByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+
+        Bootcamp bootcamp = bootcampRepository.findById(bootcampId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+
+        List<AttendancePeriod> periods = attendancePeriodRepository.findAllByBootcampId(bootcampId);
+
+        List<BootcampSettingsResponse.PeriodItem> periodItems = periods.stream()
+                .map(p -> new BootcampSettingsResponse.PeriodItem(
+                        p.getId(), p.getPeriodNo(), p.getPeriodStart(), p.getPeriodEnd()))
+                .toList();
+
+        return new BootcampSettingsResponse(
+                bootcamp.getId(), bootcamp.getOrgName(), bootcamp.getProName(),
+                bootcamp.getStartDate(), bootcamp.getEndDate(), periodItems
+        );
+    }
+}

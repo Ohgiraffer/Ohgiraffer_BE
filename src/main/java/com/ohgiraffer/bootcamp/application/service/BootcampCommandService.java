@@ -1,6 +1,8 @@
 package com.ohgiraffer.bootcamp.application.service;
 
+import com.ohgiraffer.bootcamp.application.command.PeriodCommand;
 import com.ohgiraffer.bootcamp.application.policy.AttendancePeriodPolicy;
+import com.ohgiraffer.bootcamp.application.port.GetUserBootcampIdPort;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampCommandUsecase;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePeriod;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePolicy;
@@ -29,6 +31,7 @@ public class BootcampCommandService implements BootcampCommandUsecase {
     private final BootcampRepository bootcampRepository;
     private final AttendancePeriodRepository attendancePeriodRepository;
     private final AttendancePolicyRepository attendancePolicyRepository;
+    private final GetUserBootcampIdPort getUserBootcampIdPort ;
 
 
     @Override
@@ -71,5 +74,29 @@ public class BootcampCommandService implements BootcampCommandUsecase {
         ));
 
         log.info("[savePolicy] 출결 정책 저장 완료 | bootcampId={}", request.bootcampId());
+    }
+
+    @Override
+    public void updateSettings(Long userId, String orgName, String proName,
+                               LocalDate startDate, LocalDate endDate,
+                               List<PeriodCommand> periods) {
+        Long bootcampId = getUserBootcampIdPort.findBootcampIdByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+
+        Bootcamp bootcamp = bootcampRepository.findById(bootcampId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+
+        bootcamp.changeInfo(orgName, proName, startDate, endDate);
+        bootcampRepository.save(bootcamp);
+
+        List<AttendancePeriod> newPeriods = periods.stream()
+                .map(p -> AttendancePeriod.create(p.periodNo(), p.periodStart(), p.periodEnd(), bootcampId))
+                .toList();
+        AttendancePeriodPolicy.validate(newPeriods);
+
+        attendancePeriodRepository.deleteAllByBootcampId(bootcampId);
+        attendancePeriodRepository.saveAll(newPeriods);
+
+        log.info("[updateSettings] 부트캠프 설정 일괄 수정 완료 | userId={}, bootcampId={}", userId, bootcampId);
     }
 }
