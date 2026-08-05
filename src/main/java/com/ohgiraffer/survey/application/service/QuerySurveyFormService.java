@@ -19,7 +19,6 @@ import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.model.UserStatus;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Comparator;
@@ -31,7 +30,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional(readOnly = true)
 public class QuerySurveyFormService
         implements GetSurveyFormListUseCase,
         GetSurveyFormDetailUseCase,
@@ -323,7 +321,9 @@ public class QuerySurveyFormService
                 );
 
         GoogleFormResponseInfo response =
-                responseByEmail.get(
+                normalizedEmail.isBlank()
+                        ? null
+                        : responseByEmail.get(
                         normalizedEmail
                 );
 
@@ -416,6 +416,10 @@ public class QuerySurveyFormService
     private String normalizeEmail(
             String email
     ) {
+        if (email == null || email.isBlank()) {
+            return "";
+        }
+
         return email
                 .trim()
                 .toLowerCase(Locale.ROOT);

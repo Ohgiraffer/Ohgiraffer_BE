@@ -22,8 +22,10 @@ public interface GoogleFormPort {
             boolean acceptingResponses
     );
 
-    List<GoogleFormResponseInfo> getResponses(
-            String googleFormId
+    List<GoogleFormResponseInfo> getResponses(String googleFormId
+    );
+
+    boolean hasResponses(String googleFormId
     );
 
     boolean moveToTrash(

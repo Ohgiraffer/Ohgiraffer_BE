@@ -411,4 +411,38 @@ public class GoogleFormsAdapter implements GoogleFormPort {
             );
         }
     }
+
+    @Override
+    public boolean hasResponses(
+            String googleFormId
+    ) {
+        validateGoogleFormId(
+                googleFormId
+        );
+
+        try {
+            ListFormResponsesResponse response =
+                    forms
+                            .forms()
+                            .responses()
+                            .list(googleFormId.trim())
+                            .setPageSize(1)
+                            .execute();
+
+            return response.getResponses() != null
+                    && !response
+                    .getResponses()
+                    .isEmpty();
+
+        } catch (GoogleJsonResponseException exception) {
+            throw convertGoogleException(
+                    exception
+            );
+
+        } catch (IOException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR
+            );
+        }
+    }
 }

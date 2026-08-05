@@ -53,4 +53,9 @@ public class DisabledGoogleFormAdapter implements GoogleFormPort {
     public List<GoogleFormResponseInfo> getResponses(String googleFormId) {
         throw disabledException();
     }
+
+    @Override
+    public boolean hasResponses(String googleFormId) {
+        throw disabledException();
+    }
 }

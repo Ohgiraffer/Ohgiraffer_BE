@@ -13,27 +13,44 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class DeleteSurveyFormService implements DeleteSurveyFormUseCase {
+public class DeleteSurveyFormService
+        implements DeleteSurveyFormUseCase {
 
     private final SurveyFormRepository surveyFormRepository;
     private final SurveyFormPersistenceService persistenceService;
     private final GoogleFormPort googleFormPort;
 
     @Override
-    public void delete(Long surveyFormId) {
-        validateSurveyFormId(surveyFormId);
-
-        SurveyForm surveyForm = surveyFormRepository.findById(surveyFormId)
-                .orElseThrow(() ->
-                        new BusinessException(ErrorCode.SURVEY_FORM_NOT_FOUND)
-                );
-
-        boolean movedToTrash = googleFormPort.moveToTrash(
-                surveyForm.getGoogleFormId()
+    public void delete(
+            Long surveyFormId
+    ) {
+        validateSurveyFormId(
+                surveyFormId
         );
 
+        SurveyForm surveyForm =
+                surveyFormRepository
+                        .findById(surveyFormId)
+                        .orElseThrow(
+                                () -> new BusinessException(
+                                        ErrorCode.SURVEY_FORM_NOT_FOUND
+                                )
+                        );
+
+        validateNoResponses(
+                surveyForm
+        );
+
+        boolean movedToTrash =
+                googleFormPort.moveToTrash(
+                        surveyForm.getGoogleFormId()
+                );
+
         try {
-            persistenceService.delete(surveyForm);
+            persistenceService.delete(
+                    surveyForm
+            );
+
         } catch (RuntimeException deleteException) {
             restoreGoogleForm(
                     surveyForm,
@@ -45,9 +62,29 @@ public class DeleteSurveyFormService implements DeleteSurveyFormUseCase {
         }
     }
 
-    private void validateSurveyFormId(Long surveyFormId) {
-        if (surveyFormId == null || surveyFormId <= 0) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+    private void validateNoResponses(
+            SurveyForm surveyForm
+    ) {
+        boolean hasResponses =
+                googleFormPort.hasResponses(
+                        surveyForm.getGoogleFormId()
+                );
+
+        if (hasResponses) {
+            throw new BusinessException(
+                    ErrorCode.SURVEY_FORM_HAS_RESPONSES
+            );
+        }
+    }
+
+    private void validateSurveyFormId(
+            Long surveyFormId
+    ) {
+        if (surveyFormId == null
+                || surveyFormId <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
         }
     }
 
@@ -64,6 +101,7 @@ public class DeleteSurveyFormService implements DeleteSurveyFormUseCase {
             googleFormPort.restoreFromTrash(
                     surveyForm.getGoogleFormId()
             );
+
         } catch (RuntimeException restoreException) {
             log.error(
                     "설문 DB 삭제 실패 후 Google Form 복구에도 실패했습니다. "
@@ -73,7 +111,9 @@ public class DeleteSurveyFormService implements DeleteSurveyFormUseCase {
                     restoreException
             );
 
-            deleteException.addSuppressed(restoreException);
+            deleteException.addSuppressed(
+                    restoreException
+            );
         }
     }
 }
