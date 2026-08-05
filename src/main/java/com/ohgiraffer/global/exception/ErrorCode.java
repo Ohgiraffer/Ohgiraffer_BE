@@ -52,7 +52,10 @@ public enum ErrorCode {
     GOOGLE_FORM_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "FORM_003", "Google Forms API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요."),
     GOOGLE_FORM_API_ERROR(HttpStatus.BAD_GATEWAY, "FORM_004", "Google Forms API 호출 중 오류가 발생했습니다."),
     SURVEY_FORM_NOT_FOUND(HttpStatus.NOT_FOUND, "SURVEY_001", "설문 폼을 찾을 수 없습니다."),
-    SURVEY_FORM_INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "SURVEY_002", "변경할 수 없는 설문 상태입니다.");
+    SURVEY_FORM_INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "SURVEY_002", "변경할 수 없는 설문 상태입니다."),
+
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_001", "존재하지 않는 공지입니다."),
+    NOTICE_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_002", "존재하지 않는 공지 카테고리입니다.");
 
     private final HttpStatus status;
     private final String code;
