@@ -10,6 +10,10 @@ public interface GoogleFormPort {
             String title
     );
 
+    void enableVerifiedEmailCollection(
+            String googleFormId
+    );
+
     void updatePublishState(
             String googleFormId,
             boolean published,

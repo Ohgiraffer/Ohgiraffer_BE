@@ -15,6 +15,11 @@ public class DisabledGoogleFormAdapter implements GoogleFormPort {
     }
 
     @Override
+    public void enableVerifiedEmailCollection(String googleFormId) {
+        throw disabledException();
+    }
+
+    @Override
     public void updatePublishState(String googleFormId, boolean published, boolean acceptingResponses) {
         throw disabledException();
     }
