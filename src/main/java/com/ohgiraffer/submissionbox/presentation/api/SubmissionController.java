@@ -12,8 +12,15 @@ import com.ohgiraffer.submissionbox.presentation.api.request.CreateSubmissionBox
 import com.ohgiraffer.submissionbox.presentation.api.response.CreateSubmissionBoxResponse;
 import com.ohgiraffer.submissionbox.presentation.api.response.SubmissionBoxDetailResponse;
 import com.ohgiraffer.submissionbox.presentation.api.response.SubmissionBoxListResponse;
+import com.ohgiraffer.submissionbox.application.command.UpdateSubmissionBoxCommand;
+import com.ohgiraffer.submissionbox.application.usecase.UpdateSubmissionBoxUseCase;
+import com.ohgiraffer.submissionbox.presentation.api.request.UpdateSubmissionBoxRequest;
+import com.ohgiraffer.submissionbox.application.usecase.DeleteSubmissionBoxUseCase;
+import org.springframework.web.bind.annotation.DeleteMapping;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,6 +31,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 import java.util.List;
 
@@ -35,6 +43,8 @@ public class SubmissionController {
     private final CreateSubmissionBoxUseCase createSubmissionBoxUseCase;
     private final GetSubmissionBoxListUseCase getSubmissionBoxListUseCase;
     private final GetSubmissionBoxDetailUseCase getSubmissionBoxDetailUseCase;
+    private final UpdateSubmissionBoxUseCase updateSubmissionBoxUseCase;
+    private final DeleteSubmissionBoxUseCase deleteSubmissionBoxUseCase;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
@@ -83,5 +93,35 @@ public class SubmissionController {
         return ResponseEntity.ok(
                 SubmissionBoxDetailResponse.from(result)
         );
+    }
+
+    @PatchMapping("/{submissionBoxId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
+    public ResponseEntity<SubmissionBoxDetailResponse>
+    updateSubmissionBox(
+            @PathVariable Long submissionBoxId,
+            @Valid @RequestBody UpdateSubmissionBoxRequest request
+    ) {
+        UpdateSubmissionBoxCommand command =
+                request.toCommand(submissionBoxId);
+
+        SubmissionBoxDetailResult result =
+                updateSubmissionBoxUseCase.update(command);
+
+        return ResponseEntity.ok(
+                SubmissionBoxDetailResponse.from(result)
+        );
+    }
+
+    @DeleteMapping("/{submissionBoxId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
+    public ResponseEntity<Void> deleteSubmissionBox(
+            @PathVariable Long submissionBoxId
+    ) {
+        deleteSubmissionBoxUseCase.delete(
+                submissionBoxId
+        );
+
+        return ResponseEntity.noContent().build();
     }
 }

@@ -1,8 +1,11 @@
 package com.ohgiraffer.submissionbox.infrastructure.persistence;
 
 import com.ohgiraffer.global.entity.BaseTimeEntity;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.submissionbox.domain.model.LatePolicy;
 import com.ohgiraffer.submissionbox.domain.model.SubmissionBox;
+import com.ohgiraffer.submissionbox.domain.model.SubmissionBoxItem;
 import com.ohgiraffer.submissionbox.domain.model.SubmissionTargetScope;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -18,8 +21,7 @@ import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Entity
 @Table(name = "submission_box")
@@ -121,6 +123,64 @@ public class SubmissionBoxJpaEntity extends BaseTimeEntity {
                 .forEach(entity::addItem);
 
         return entity;
+    }
+
+    public void updateFrom(
+            SubmissionBox submissionBox
+    ) {
+        this.projectName = submissionBox.getProjectName();
+        this.targetScope = submissionBox.getTargetScope();
+        this.startAt = submissionBox.getStartAt();
+        this.dueAt = submissionBox.getDueAt();
+        this.latePolicy = submissionBox.getLatePolicy();
+
+        synchronizeItems(submissionBox.getItems());
+    }
+
+    private void synchronizeItems(
+            List<SubmissionBoxItem> updatedItems
+    ) {
+        Map<Long, SubmissionBoxItemJpaEntity> existingItemMap =
+                new HashMap<>();
+
+        for (SubmissionBoxItemJpaEntity existingItem : items) {
+            existingItemMap.put(
+                    existingItem.getId(),
+                    existingItem
+            );
+        }
+
+        Set<Long> retainedItemIds = new HashSet<>();
+
+        for (SubmissionBoxItem updatedItem : updatedItems) {
+            Long updatedItemId = updatedItem.getId();
+
+            if (updatedItemId == null) {
+                SubmissionBoxItemJpaEntity newItem =
+                        SubmissionBoxItemJpaEntity.from(updatedItem);
+
+                addItem(newItem);
+                continue;
+            }
+
+            SubmissionBoxItemJpaEntity existingItem =
+                    existingItemMap.get(updatedItemId);
+
+            if (existingItem == null) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT_VALUE,
+                        "해당 제출함에 존재하지 않는 제출 항목입니다."
+                );
+            }
+
+            existingItem.updateFrom(updatedItem);
+            retainedItemIds.add(updatedItemId);
+        }
+
+        items.removeIf(item ->
+                item.getId() != null
+                        && !retainedItemIds.contains(item.getId())
+        );
     }
 
     private void addItem(
