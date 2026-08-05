@@ -45,6 +45,7 @@ public class GoogleFormsConfig {
     private static final List<String> SCOPES =
             List.of(
                     FormsScopes.FORMS_BODY,
+                    FormsScopes.FORMS_RESPONSES_READONLY,
                     DriveScopes.DRIVE_FILE
             );
 

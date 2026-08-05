@@ -71,4 +71,24 @@ public class User {
         );
     }
 
+    // 비밀번호 변경
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+        this.needResetPw = false;
+    }
+
+    // 알림 수신 여부 변경
+    public void setAlarm() {
+        this.notificationOn = !this.notificationOn;
+    }
+
+    // 프로필 이미지 등록/수정
+    public void updateProfileImg(String profileImgKey) {
+        this.profileImg = profileImgKey;
+    }
+
+    // 프로필 이미지 삭제
+    public void deleteProfileImg() {
+        this.profileImg = null;
+    }
 }

@@ -47,10 +47,7 @@ public class NoticeCommandService implements NoticeCommandUseCase {
         }
 
         if (!noticeCategoryRepository.existsById(categoryId)) {
-            throw new BusinessException(
-                    ErrorCode.RESOURCE_NOT_FOUND,
-                    "존재하지 않는 공지 카테고리입니다."
-            );
+            throw new BusinessException(ErrorCode.NOTICE_CATEGORY_NOT_FOUND);
         }
     }
 }

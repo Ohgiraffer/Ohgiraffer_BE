@@ -100,6 +100,12 @@ public class AuthController {
                 .build();
     }
 
+    @Operation(summary = "Access Token 재발급", description = "쿠키에 담긴 refresh token으로 새로운 access token을 발급받습니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "재발급 성공"),
+            @ApiResponse(responseCode = "401", description = "refresh token이 없거나 유효하지 않거나 만료됨"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
     @PostMapping("/refresh")
     public ResponseEntity<TokenResponse> refresh(
             @CookieValue(value = "refreshToken", required = false) String refreshToken

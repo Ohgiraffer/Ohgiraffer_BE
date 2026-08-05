@@ -1,5 +1,7 @@
 package com.ohgiraffer.survey.application.port;
 
+import java.util.List;
+
 public interface GoogleFormPort {
 
     /*
@@ -10,10 +12,28 @@ public interface GoogleFormPort {
             String title
     );
 
+    void enableVerifiedEmailCollection(
+            String googleFormId
+    );
+
     void updatePublishState(
             String googleFormId,
             boolean published,
             boolean acceptingResponses
+    );
+
+    List<GoogleFormResponseInfo> getResponses(String googleFormId
+    );
+
+    boolean hasResponses(String googleFormId
+    );
+
+    boolean moveToTrash(
+            String googleFormId
+    );
+
+    void restoreFromTrash(
+            String googleFormId
     );
 
     /*

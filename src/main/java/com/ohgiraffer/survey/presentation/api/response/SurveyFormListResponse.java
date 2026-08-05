@@ -11,6 +11,8 @@ public record SurveyFormListResponse(
         String title,
         LocalDateTime dueAt,
         SurveyFormStatus status,
+        int respondedCount,
+        int targetCount,
         Instant createdAt
 ) {
 
@@ -22,6 +24,8 @@ public record SurveyFormListResponse(
                 result.title(),
                 result.dueAt(),
                 result.status(),
+                result.respondedCount(),
+                result.targetCount(),
                 result.createdAt()
         );
     }
