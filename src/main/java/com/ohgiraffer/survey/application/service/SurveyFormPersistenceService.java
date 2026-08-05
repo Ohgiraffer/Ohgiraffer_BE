@@ -20,4 +20,11 @@ public class SurveyFormPersistenceService {
     public SurveyForm save(SurveyForm surveyForm) {
         return surveyFormRepository.save(surveyForm);
     }
+
+    @Transactional
+    public void delete(SurveyForm surveyForm) {
+        surveyFormRepository.delete(surveyForm);
+    }
+
+
 }

@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.LocalDateTime;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class UpdateSurveyFormService
         implements UpdateSurveyFormUseCase {
@@ -157,6 +160,15 @@ public class UpdateSurveyFormService
             );
 
         } catch (RuntimeException compensationException) {
+            log.error(
+                    "Google Form 게시 상태 복구에 실패했습니다. "
+                            + "surveyFormId={}, googleFormId={}, originalStatus={}",
+                    originalSurveyForm.getId(),
+                    originalSurveyForm.getGoogleFormId(),
+                    originalSurveyForm.getStatus(),
+                    compensationException
+            );
+
             originalException.addSuppressed(
                     compensationException
             );

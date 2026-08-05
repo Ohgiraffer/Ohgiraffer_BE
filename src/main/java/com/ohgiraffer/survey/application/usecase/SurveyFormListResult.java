@@ -11,17 +11,23 @@ public record SurveyFormListResult(
         String title,
         LocalDateTime dueAt,
         SurveyFormStatus status,
+        int respondedCount,
+        int targetCount,
         Instant createdAt
 ) {
 
     public static SurveyFormListResult from(
-            SurveyForm surveyForm
+            SurveyForm surveyForm,
+            int respondedCount,
+            int targetCount
     ) {
         return new SurveyFormListResult(
                 surveyForm.getId(),
                 surveyForm.getTitle(),
                 surveyForm.getDueAt(),
                 surveyForm.getStatus(),
+                respondedCount,
+                targetCount,
                 surveyForm.getCreatedAt()
         );
     }
