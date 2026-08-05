@@ -52,7 +52,7 @@ public class SignatureController {
     ) {
         RegisterSignatureCommand command =
                 new RegisterSignatureCommand(
-                        principal.id(),
+                        principal.getId(),
                         getBytes(
                                 file
                         ),
@@ -84,7 +84,7 @@ public class SignatureController {
     ) {
         SignatureResult result =
                 getMySignatureUseCase.getMySignature(
-                        principal.id()
+                        principal.getId()
                 );
 
         return ResponseEntity
@@ -101,7 +101,7 @@ public class SignatureController {
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         deleteMySignatureUseCase.deleteMySignature(
-                principal.id()
+                principal.getId()
         );
 
         return ResponseEntity
