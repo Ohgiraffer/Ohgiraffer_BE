@@ -45,3 +45,4 @@ secrets/
 # Google OAuth credentials and local tokens
 **/*oauth-client*.json
 **/forms-tokens/
+.env
