@@ -1,6 +1,6 @@
 package com.ohgiraffer.approval.domain.repository;
 
-import com.ohgiraffer.approval.domain.model.UserSignature;
+import com.ohgiraffer.approval.domain.model.signature.UserSignature;
 
 import java.util.Optional;
 

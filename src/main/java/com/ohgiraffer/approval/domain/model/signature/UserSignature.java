@@ -1,4 +1,4 @@
-package com.ohgiraffer.approval.domain.model;
+package com.ohgiraffer.approval.domain.model.signature;
 
 import lombok.AccessLevel;
 import lombok.Getter;

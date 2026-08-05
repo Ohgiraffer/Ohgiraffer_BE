@@ -112,6 +112,19 @@ public class Notice {
         return mandatory;
     }
 
+    /**
+     * 해당 조회자에게 이 공지를 보여줄 수 있는지 여부.
+     *
+     * <p>훈련생 비공개 공지는 훈련생에게 노출하지 않는다. 운영진은 제한이 없다.
+     */
+    public boolean isVisibleTo(ViewerRole viewer) {
+        if (viewer != ViewerRole.TRAINEE) {
+            return true;
+        }
+
+        return visibleToTrainee;
+    }
+
     private static void validateAuthorId(Long authorId) {
         if (authorId == null) {
             throw new BusinessException(

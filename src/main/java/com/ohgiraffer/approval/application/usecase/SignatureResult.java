@@ -1,6 +1,6 @@
 package com.ohgiraffer.approval.application.usecase;
 
-import com.ohgiraffer.approval.domain.model.UserSignature;
+import com.ohgiraffer.approval.domain.model.signature.UserSignature;
 
 import java.time.LocalDateTime;
 import java.util.Base64;
