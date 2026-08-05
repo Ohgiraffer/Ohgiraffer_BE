@@ -4,10 +4,6 @@ import com.ohgiraffer.approval.application.command.BudgetColumnMapping;
 import com.ohgiraffer.approval.application.port.BudgetSheetPort;
 import com.ohgiraffer.approval.application.port.BudgetSheetRow;
 import com.ohgiraffer.approval.application.usecase.BudgetSyncResult;
-import com.ohgiraffer.approval.domain.model.budget.BudgetAllocation;
-import com.ohgiraffer.approval.domain.model.budget.BudgetCategory;
-import com.ohgiraffer.approval.domain.repository.BudgetAllocationRepository;
-import com.ohgiraffer.approval.domain.repository.BudgetCategoryRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.global.google.sheets.SpreadsheetIdExtractor;
@@ -26,10 +22,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class BudgetSheetSyncService {
 
+    private static final int REQUIRED_MAPPING_COUNT = 4;
+
     private final BudgetSheetPort budgetSheetPort;
-    private final BudgetCategoryRepository budgetCategoryRepository;
-    private final BudgetAllocationRepository budgetAllocationRepository;
     private final SpreadsheetIdExtractor spreadsheetIdExtractor;
+    private final BudgetSheetSyncPersistenceService budgetSheetSyncPersistenceService;
     private final Clock clock;
 
     public BudgetSyncResult sync(
@@ -47,8 +44,11 @@ public class BudgetSheetSyncService {
                 clock
         );
 
+        String normalizedSheetUrl = sheetUrl.strip();
+        String normalizedTabName = tabName.strip();
+
         String spreadsheetId = spreadsheetIdExtractor.extract(
-                sheetUrl
+                normalizedSheetUrl
         );
 
         BudgetColumnMapping normalizedColumnMapping = normalizeColumnMapping(
@@ -57,7 +57,7 @@ public class BudgetSheetSyncService {
 
         List<BudgetSheetRow> rows = budgetSheetPort.readBudgetRows(
                 spreadsheetId,
-                tabName.strip(),
+                normalizedTabName,
                 normalizedColumnMapping
         );
 
@@ -71,19 +71,13 @@ public class BudgetSheetSyncService {
             );
         }
 
-        for (BudgetSheetRow row : aggregatedRows) {
-            BudgetCategory category = saveOrUpdateCategory(
-                    row.categoryName()
-            );
-
-            saveOrUpdateAllocation(
-                    category.getId(),
-                    row.totalAmount(),
-                    row.usedAmount(),
-                    row.remainingAmount(),
-                    now
-            );
-        }
+        budgetSheetSyncPersistenceService.persist(
+                normalizedSheetUrl,
+                normalizedTabName,
+                normalizedColumnMapping,
+                aggregatedRows,
+                now
+        );
 
         return new BudgetSyncResult(
                 aggregatedRows.size(),
@@ -151,7 +145,7 @@ public class BudgetSheetSyncService {
                 .distinct()
                 .count();
 
-        if (uniqueColumnCount != 4) {
+        if (uniqueColumnCount != REQUIRED_MAPPING_COUNT) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE
             );
@@ -280,55 +274,6 @@ public class BudgetSheetSyncService {
                     ErrorCode.INVALID_INPUT_VALUE
             );
         }
-    }
-
-    private BudgetCategory saveOrUpdateCategory(
-            String categoryName
-    ) {
-        String normalizedCategoryName = normalizeCategoryName(
-                categoryName
-        );
-
-        BudgetCategory category = budgetCategoryRepository.findByName(
-                        normalizedCategoryName
-                )
-                .orElseGet(() -> BudgetCategory.createFromSheet(
-                        normalizedCategoryName
-                ));
-
-        return budgetCategoryRepository.save(
-                category
-        );
-    }
-
-    private void saveOrUpdateAllocation(
-            Long budgetCategoryId,
-            BigDecimal totalAmount,
-            BigDecimal usedAmount,
-            BigDecimal remainingAmount,
-            LocalDateTime syncedAt
-    ) {
-        BudgetAllocation budgetAllocation = budgetAllocationRepository.findByBudgetCategoryId(
-                        budgetCategoryId
-                )
-                .orElseGet(() -> BudgetAllocation.create(
-                        budgetCategoryId,
-                        totalAmount,
-                        usedAmount,
-                        remainingAmount,
-                        syncedAt
-                ));
-
-        budgetAllocation.updateAmounts(
-                totalAmount,
-                usedAmount,
-                remainingAmount,
-                syncedAt
-        );
-
-        budgetAllocationRepository.save(
-                budgetAllocation
-        );
     }
 
     private boolean isBlank(

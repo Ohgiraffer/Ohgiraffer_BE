@@ -16,7 +16,6 @@ import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -28,7 +27,6 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class GetBudgetSummaryService implements GetBudgetSummaryUseCase {
 
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(
@@ -61,6 +59,7 @@ public class GetBudgetSummaryService implements GetBudgetSummaryUseCase {
         );
 
         List<BudgetAllocation> allocations = budgetAllocationRepository.findAll();
+
         Map<Long, BudgetCategory> categoryById = budgetCategoryRepository.findAll()
                 .stream()
                 .collect(
@@ -71,9 +70,11 @@ public class GetBudgetSummaryService implements GetBudgetSummaryUseCase {
                 );
 
         List<BudgetCategorySummaryResult> categories = allocations.stream()
-                .filter(allocation -> categoryById.containsKey(
-                        allocation.getBudgetCategoryId()
-                ))
+                .filter(
+                        allocation -> categoryById.containsKey(
+                                allocation.getBudgetCategoryId()
+                        )
+                )
                 .sorted(
                         Comparator.comparing(
                                 allocation -> categoryById.get(
@@ -81,12 +82,14 @@ public class GetBudgetSummaryService implements GetBudgetSummaryUseCase {
                                 ).getName()
                         )
                 )
-                .map(allocation -> toCategorySummary(
-                        allocation,
-                        categoryById.get(
-                                allocation.getBudgetCategoryId()
+                .map(
+                        allocation -> toCategorySummary(
+                                allocation,
+                                categoryById.get(
+                                        allocation.getBudgetCategoryId()
+                                )
                         )
-                ))
+                )
                 .toList();
 
         BigDecimal totalBudgetAmount = categories.stream()
@@ -179,7 +182,8 @@ public class GetBudgetSummaryService implements GetBudgetSummaryUseCase {
             BigDecimal usedAmount,
             BigDecimal totalAmount
     ) {
-        if (totalAmount == null
+        if (usedAmount == null
+                || totalAmount == null
                 || totalAmount.compareTo(
                 BigDecimal.ZERO
         ) == 0) {
