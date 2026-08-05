@@ -3,6 +3,7 @@ package com.ohgiraffer.notice.presentation.api;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.notice.application.command.CreateNoticeCommand;
+import com.ohgiraffer.notice.application.query.NoticeConfirmationView;
 import com.ohgiraffer.notice.application.query.NoticeDetailView;
 import com.ohgiraffer.notice.application.query.NoticeSummaryView;
 import com.ohgiraffer.notice.application.usecase.NoticeCommandUseCase;
@@ -10,6 +11,7 @@ import com.ohgiraffer.notice.application.usecase.NoticeQueryUseCase;
 import com.ohgiraffer.notice.domain.model.Notice;
 import com.ohgiraffer.notice.domain.model.ViewerRole;
 import com.ohgiraffer.notice.presentation.api.request.CreateNoticeRequest;
+import com.ohgiraffer.notice.presentation.api.response.NoticeConfirmationResponse;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.domain.model.User;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -28,6 +31,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -97,56 +101,71 @@ class NoticeControllerTest {
     @Test
     @DisplayName("훈련생이 조회하면 훈련생 조회자로 유스케이스에 전달한다")
     void findDetailPassesTraineeViewer() {
-        when(noticeQueryUseCase.findDetail(any(), any()))
+        when(noticeQueryUseCase.findDetail(any(), any(), any()))
                 .thenReturn(detailView());
 
         noticeController.findDetail(principal(Role.STUDENT), NOTICE_ID);
 
-        verify(noticeQueryUseCase).findDetail(NOTICE_ID, ViewerRole.TRAINEE);
+        verify(noticeQueryUseCase).findDetail(NOTICE_ID, ViewerRole.TRAINEE, LOGIN_USER_ID);
     }
 
     @Test
     @DisplayName("강사가 조회하면 운영진 조회자로 유스케이스에 전달한다")
     void findDetailPassesStaffViewerForInstructor() {
-        when(noticeQueryUseCase.findDetail(any(), any()))
+        when(noticeQueryUseCase.findDetail(any(), any(), any()))
                 .thenReturn(detailView());
 
         noticeController.findDetail(principal(Role.INSTRUCTOR), NOTICE_ID);
 
-        verify(noticeQueryUseCase).findDetail(NOTICE_ID, ViewerRole.STAFF);
+        verify(noticeQueryUseCase).findDetail(NOTICE_ID, ViewerRole.STAFF, LOGIN_USER_ID);
     }
 
     @Test
     @DisplayName("매니저가 조회하면 운영진 조회자로 유스케이스에 전달한다")
     void findDetailPassesStaffViewerForManager() {
-        when(noticeQueryUseCase.findDetail(any(), any()))
+        when(noticeQueryUseCase.findDetail(any(), any(), any()))
                 .thenReturn(detailView());
 
         noticeController.findDetail(principal(Role.MANAGER), NOTICE_ID);
 
-        verify(noticeQueryUseCase).findDetail(NOTICE_ID, ViewerRole.STAFF);
+        verify(noticeQueryUseCase).findDetail(NOTICE_ID, ViewerRole.STAFF, LOGIN_USER_ID);
     }
 
     @Test
     @DisplayName("목록 조회는 조회자 구분과 카테고리 필터를 함께 넘긴다")
     void findAllPassesViewerAndCategory() {
-        when(noticeQueryUseCase.findAll(any(), any()))
+        when(noticeQueryUseCase.findAll(any(), any(), any()))
                 .thenReturn(List.of(summaryView()));
 
         noticeController.findAll(principal(Role.STUDENT), 3L);
 
-        verify(noticeQueryUseCase).findAll(ViewerRole.TRAINEE, 3L);
+        verify(noticeQueryUseCase).findAll(ViewerRole.TRAINEE, 3L, LOGIN_USER_ID);
     }
 
     @Test
     @DisplayName("카테고리를 지정하지 않으면 필터 없이 조회한다")
     void findAllWithoutCategory() {
-        when(noticeQueryUseCase.findAll(any(), any()))
+        when(noticeQueryUseCase.findAll(any(), any(), any()))
                 .thenReturn(List.of());
 
         noticeController.findAll(principal(Role.MANAGER), null);
 
-        verify(noticeQueryUseCase).findAll(ViewerRole.STAFF, null);
+        verify(noticeQueryUseCase).findAll(ViewerRole.STAFF, null, LOGIN_USER_ID);
+    }
+
+    @Test
+    @DisplayName("확인 처리는 로그인 사용자로 호출하고 갱신된 인원수를 응답한다")
+    void confirmReturnsUpdatedCount() {
+        when(noticeCommandUseCase.confirm(NOTICE_ID, LOGIN_USER_ID))
+                .thenReturn(new NoticeConfirmationView(NOTICE_ID, 12L, true));
+
+        ResponseEntity<NoticeConfirmationResponse> response =
+                noticeController.confirm(principal(Role.STUDENT), NOTICE_ID);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(12L, response.getBody().confirmationCount());
+        assertTrue(response.getBody().confirmedByMe());
+        verify(noticeCommandUseCase).confirm(NOTICE_ID, LOGIN_USER_ID);
     }
 
     private NoticeSummaryView summaryView() {
@@ -156,6 +175,8 @@ class NoticeControllerTest {
                 "수업",
                 TITLE,
                 LOGIN_USER_ID,
+                "이강사",
+                false,
                 false,
                 Instant.parse("2026-08-04T03:00:00Z")
         );
@@ -202,8 +223,11 @@ class NoticeControllerTest {
                 TITLE,
                 CONTENT,
                 LOGIN_USER_ID,
+                "이강사",
                 false,
                 true,
+                0L,
+                false,
                 now,
                 now
         );

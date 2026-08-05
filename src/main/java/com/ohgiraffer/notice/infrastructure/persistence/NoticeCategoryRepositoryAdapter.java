@@ -39,4 +39,21 @@ public class NoticeCategoryRepositoryAdapter implements NoticeCategoryRepository
                 .map(NoticeCategoryJpaEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    public NoticeCategory save(NoticeCategory category) {
+        return springDataNoticeCategoryRepository
+                .save(NoticeCategoryJpaEntity.from(category))
+                .toDomain();
+    }
+
+    @Override
+    public void deleteById(Long categoryId) {
+        springDataNoticeCategoryRepository.deleteById(categoryId);
+    }
+
+    @Override
+    public boolean existsByName(String name) {
+        return springDataNoticeCategoryRepository.existsByName(name);
+    }
 }
