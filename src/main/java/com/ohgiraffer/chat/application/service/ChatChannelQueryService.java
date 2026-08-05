@@ -37,13 +37,19 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
 
     // 그룹 채팅방 상세 조회 - 참여자 목록 + 최신메시지 기준 읽음 인원 계산
     @Override
-    public ChatChannelDetailResult getChannelDetail(String channelId) {
+    public ChatChannelDetailResult getChannelDetail(String channelId, Long principalId) {
         ChatChannel channel = chatChannelRepository.findBySendbirdChannelUrl(channelId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_CHANNEL_NOT_FOUND));
 
+        // IDOR 방지 - 채널 멤버가 아니면 존재 자체를 숨기고 404(CHAT_CHANNEL_NOT_FOUND)로 응답
+        if (!chatChannelMemberRepository.existsActiveMembership(channel.getId(), principalId)) {
+            throw new BusinessException(ErrorCode.CHAT_CHANNEL_NOT_FOUND);
+        }
+
         // 최신 메시지 id 조회 - findByChannelIdOrderBySentAtDesc가 최신순 정렬이므로 첫 건이 최신 메시지
-        List<ChatMessageMirror> messages = chatMessageMirrorRepository.findByChannelIdOrderBySentAtDesc(channelId);
-        Long latestMessageId = messages.isEmpty() ? null : messages.get(0).getId();
+        Long latestMessageId = chatMessageMirrorRepository.findTopByChannelIdOrderBySentAtDesc(channelId)
+                .map(ChatMessageMirror::getId)
+                .orElse(null);
 
         List<ChatChannelMember> chatChannelMembers =
                 chatChannelMemberRepository.findAllByChatChannelIdAndLeftAtIsNull(channel.getId());
@@ -94,6 +100,11 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
         List<String> sendbirdUrls = channels.stream().map(ChatChannel::getSendbirdChannelUrl).toList();
 
         // 3) 최신메시지(윈도우함수) + 안읽음수(조인집계) - 각각 쿼리 1번씩, DB에서 계산 끝냄
+
+        if (sendbirdUrls.isEmpty()) {
+            return List.of();
+        }
+
         Map<String, ChannelLastMessage> lastMessages = chatMessageMirrorRepository.findLatestMessagesByChannelIds(sendbirdUrls);
         Map<Long, Long> unreadCounts = chatChannelMemberRepository.findUnreadCountsByUserId(userId);
 

@@ -15,13 +15,13 @@ import java.util.List;
 public interface ChatMessageMirrorQueryUseCase {
 
     // 채널 메시지 이력 조회
-    List<ChatMessageResult> getChannelMessages(String channelId);
+    Page<ChatMessageResult> getChannelMessages(String channelId, Long principalId, Pageable pageable);
 
     // 스레드 답글 조회
-    List<ChatMessageResult> getThreadReplies(Long parentMessageId);
+    Page<ChatMessageResult> getThreadReplies(Long parentMessageId, Long principalId, Pageable pageable);
 
     // 메시지 통합 검색
-    Page<ChatMessageResult> searchMessages(ChatMessageSearchCondition condition, Pageable pageable);
+    Page<ChatMessageResult> searchMessages(ChatMessageSearchCondition condition, Long principalId, Pageable pageable);
 
 
 }

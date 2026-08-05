@@ -48,6 +48,11 @@ public class ChatChannelMember {
         }
     }
 
+    // 탈퇴했던 멤버가 재입장 - leftAt을 초기화하고 joinedAt은 그대로 이력 유지 (최초 입장일이 아니라 최근 재입장이 필요하면 별도 필드 고려)
+    public void rejoin() {
+        this.leftAt = null;
+    }
+
     // 메시지 읽음 처리 - 마지막으로 읽은 메시지 id/시각 갱신 (안읽음 수 계산 기준점)
     public void markRead(Long messageId) {
         this.lastReadMessageId = messageId;

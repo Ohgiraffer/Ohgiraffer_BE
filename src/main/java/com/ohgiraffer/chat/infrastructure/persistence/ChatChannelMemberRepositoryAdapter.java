@@ -74,4 +74,10 @@ public class ChatChannelMemberRepositoryAdapter implements ChatChannelMemberRepo
                 .stream().map(ChatChannelMemberJpaEntity::toDomain).toList();
     }
 
+    // IDOR 방지 - 채널 데이터 노출 전 호출자가 실제 활성 멤버인지 확인
+    @Override
+    public boolean existsActiveMembership(Long chatChannelId, Long userId) {
+        return jpaRepository.existsByChatChannelIdAndUserIdAndLeftAtIsNull(chatChannelId, userId);
+    }
+
 }

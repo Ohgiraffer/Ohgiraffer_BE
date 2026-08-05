@@ -28,10 +28,10 @@ public interface ChatMessageMirrorRepository {
     boolean existsBySendbirdMessageId(String sendbirdMessageId);
 
     // 채널 메시지 이력 조회, 삭제된 메시지는 제외
-    List<ChatMessageMirror> findByChannelIdOrderBySentAtDesc(String channelId);
+    Page<ChatMessageMirror> findByChannelIdOrderBySentAtDesc(String channelId, Pageable pageable);
 
     // 스레드 답글 목록 조회 - 삭제된 답글 제외
-    List<ChatMessageMirror> findByParentMessageId(Long parentMessageId);
+    Page<ChatMessageMirror> findByParentMessageId(Long parentMessageId, Pageable pageable);
 
     // 원본 메시지의 답글 수 카운트 - 삭제된 답글 제외
     long countByParentMessageId(Long parentMessageId);
@@ -41,5 +41,8 @@ public interface ChatMessageMirrorRepository {
 
     // 채널별 최신메시지 1건 일괄 조회 - 윈도우함수 네이티브쿼리로 DB에서 Greatest-N-per-Group 처리
     Map<String, ChannelLastMessage> findLatestMessagesByChannelIds(List<String> channelIds);
+
+    // 채널의 최신 메시지 1건만 조회 (상세조회 최적화용) - 전체 이력 대신 단건만 가져옴
+    Optional<ChatMessageMirror> findTopByChannelIdOrderBySentAtDesc(String channelId);
 
 }

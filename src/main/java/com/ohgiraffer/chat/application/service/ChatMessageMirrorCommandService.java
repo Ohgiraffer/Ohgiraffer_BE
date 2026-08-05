@@ -5,11 +5,13 @@ import com.ohgiraffer.chat.application.command.MirrorMessageDeletedCommand;
 import com.ohgiraffer.chat.application.command.MirrorMessageUpdatedCommand;
 import com.ohgiraffer.chat.application.usecase.ChatMessageMirrorCommandUseCase;
 import com.ohgiraffer.chat.domain.model.ChatMessageMirror;
+import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
 import com.ohgiraffer.chat.domain.repository.ChatMessageMirrorRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,26 +28,39 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChatMessageMirrorCommandService implements ChatMessageMirrorCommandUseCase {
 
     private final ChatMessageMirrorRepository chatMessageMirrorRepository;
+    private final ChatChannelRepository chatChannelRepository;
 
     // 웹훅으로 수신한 메시지/답글 생성 이벤트 저장 - 중복 이벤트는 existsBySendbirdMessageId로 걸러냄
+    // exists 체크 후 save 사이 경쟁상태 대비 - 유니크 제약 위반이면 이미 다른 요청이 저장한 것으로 보고 멱등 처리
     @Override
     @Transactional
     public void mirrorCreated(MirrorMessageCreatedCommand command) {
-        // 웹훅 재전송으로 인한 중복 저장 방지
+        // 채널이 우리 DB에 없으면(비정상 데이터거나 채널 생성 미러링이 아직 안 된 시점) 저장 안 함 - 존재하지 않는 채널 참조하는 orphan 메시지 방지
+        if (chatChannelRepository.findBySendbirdChannelUrl(command.channelId()).isEmpty()) {
+            log.warn("[Chat] 존재하지 않는 채널의 메시지 이벤트 - 스킵 | channelId={}, sendbirdMessageId={}",
+                    command.channelId(), command.sendbirdMessageId());
+            throw new BusinessException(ErrorCode.CHAT_CHANNEL_NOT_FOUND);
+        }
+
         if (chatMessageMirrorRepository.existsBySendbirdMessageId(command.sendbirdMessageId())) {
             log.info("[Chat] 이미 처리된 메시지 이벤트 - 스킵 | sendbirdMessageId={}", command.sendbirdMessageId());
             return;
         }
 
-        ChatMessageMirror message = ChatMessageMirror.create(
-                command.channelId(), command.sendbirdMessageId(), command.parentMessageId(),
-                command.senderId(), command.content(), command.attachmentUrl(),
-                command.attachmentType(), command.sentAt()
-        );
-        chatMessageMirrorRepository.save(message);
+        try {
+            ChatMessageMirror message = ChatMessageMirror.create(
+                    command.channelId(), command.sendbirdMessageId(), command.parentMessageId(),
+                    command.senderId(), command.content(), command.attachmentUrl(),
+                    command.attachmentType(), command.sentAt()
+            );
+            chatMessageMirrorRepository.save(message);
 
-        log.info("[Chat] 메시지 미러링 완료 | channelId={}, sendbirdMessageId={}, parentMessageId={}",
-                command.channelId(), command.sendbirdMessageId(), command.parentMessageId());
+            log.info("[Chat] 메시지 미러링 완료 | channelId={}, sendbirdMessageId={}, parentMessageId={}",
+                    command.channelId(), command.sendbirdMessageId(), command.parentMessageId());
+        } catch (DataIntegrityViolationException e) {
+            // 즉시반영(ChatReplyCommandService/ChatMessageCommandService)과 웹훅이 동시에 들어온 경우 - 먼저 저장된 쪽을 인정하고 성공 처리
+            log.info("[Chat] 동시 저장 경쟁상태 감지 - 멱등 처리로 스킵 | sendbirdMessageId={}", command.sendbirdMessageId());
+        }
     }
 
     // 웹훅으로 수신한 메시지/답글 수정 이벤트 반영 - sendbird_message_id로 기존 레코드 찾아서 content 갱신

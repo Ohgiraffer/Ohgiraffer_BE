@@ -56,16 +56,16 @@ public class ChatMessageMirrorRepositoryAdapter implements ChatMessageMirrorRepo
 
     // 채널 메시지 이력 조회 - 최신순, 삭제 제외
     @Override
-    public List<ChatMessageMirror> findByChannelIdOrderBySentAtDesc(String channelId) {
-        return jpaRepository.findByChannelIdAndDeletedAtIsNullOrderBySentAtDesc(channelId)
-                .stream().map(ChatMessageMirrorJpaEntity::toDomain).toList();
+    public Page<ChatMessageMirror> findByChannelIdOrderBySentAtDesc(String channelId, Pageable pageable) {
+        return jpaRepository.findByChannelIdAndDeletedAtIsNullOrderBySentAtDesc(channelId, pageable)
+                .map(ChatMessageMirrorJpaEntity::toDomain);
     }
 
     // 스레드 답글 목록 조회 - 삭제 제외
     @Override
-    public List<ChatMessageMirror> findByParentMessageId(Long parentMessageId) {
-        return jpaRepository.findByParentMessageIdAndDeletedAtIsNull(parentMessageId)
-                .stream().map(ChatMessageMirrorJpaEntity::toDomain).toList();
+    public Page<ChatMessageMirror> findByParentMessageId(Long parentMessageId, Pageable pageable) {
+        return jpaRepository.findByParentMessageIdAndDeletedAtIsNull(parentMessageId, pageable)
+                .map(ChatMessageMirrorJpaEntity::toDomain);
     }
 
     // 원본 메시지의 답글 수 카운트 - 삭제 제외
@@ -88,6 +88,13 @@ public class ChatMessageMirrorRepositoryAdapter implements ChatMessageMirrorRepo
                         ChannelLastMessageProjection::getChannelId,
                         p -> new ChannelLastMessage(p.getContent(), p.getSentAt())
                 ));
+    }
+
+    // 채널 최신 메시지 단건 조회 - 상세조회에서 최신메시지 id만 필요할 때 전체 이력 대신 이걸 씀
+    @Override
+    public Optional<ChatMessageMirror> findTopByChannelIdOrderBySentAtDesc(String channelId) {
+        return jpaRepository.findTopByChannelIdAndDeletedAtIsNullOrderBySentAtDesc(channelId)
+                .map(ChatMessageMirrorJpaEntity::toDomain);
     }
 
 }

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /*
  * comment.
@@ -72,10 +73,18 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_CHANNEL_NOT_FOUND));
 
         if (command.addUserIds() != null && !command.addUserIds().isEmpty()) {
-            List<ChatChannelMember> newMembers = command.addUserIds().stream()
-                    .map(userId -> ChatChannelMember.join(channel.getId(), userId))
-                    .toList();
-            chatChannelMemberRepository.saveAll(newMembers);
+            for (Long userId : command.addUserIds()) {
+                // 이미 탈퇴 이력이 있는 멤버면 새 row 대신 기존 row를 재활성화 (leftAt=null로 리셋)
+                Optional<ChatChannelMember> existing = chatChannelMemberRepository
+                        .findByChatChannelIdAndUserId(channel.getId(), userId);
+
+                if (existing.isPresent()) {
+                    existing.get().rejoin(); // 아래 도메인 모델에 메서드 추가 필요
+                    chatChannelMemberRepository.save(existing.get());
+                } else {
+                    chatChannelMemberRepository.save(ChatChannelMember.join(channel.getId(), userId));
+                }
+            }
         }
 
         if (command.removeUserIds() != null && !command.removeUserIds().isEmpty()) {

@@ -29,6 +29,11 @@ public class ChatMessageMirrorQuerydslRepositoryImpl implements ChatMessageMirro
     public Page<ChatMessageMirrorJpaEntity> search(ChatMessageSearchCondition condition, Pageable pageable) {
         BooleanBuilder builder = new BooleanBuilder();
 
+        // IDOR 방지 - allowedChannelIds가 지정되면 그 채널들로만 검색 결과 제한
+        if (condition.allowedChannelIds() != null) {
+            builder.and(chatMessageMirrorJpaEntity.channelId.in(condition.allowedChannelIds()));
+        }
+
         // 채널 필터
         if (condition.channelId() != null) {
             builder.and(chatMessageMirrorJpaEntity.channelId.eq(condition.channelId()));

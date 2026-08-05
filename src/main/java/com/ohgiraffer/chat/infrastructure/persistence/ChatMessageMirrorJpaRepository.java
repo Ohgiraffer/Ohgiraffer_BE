@@ -1,6 +1,8 @@
 package com.ohgiraffer.chat.infrastructure.persistence;
 
 import com.ohgiraffer.chat.domain.model.ChatMessageMirror;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -20,10 +22,10 @@ public interface ChatMessageMirrorJpaRepository
     boolean existsBySendbirdMessageId(String sendbirdMessageId);
 
     // 채널 메시지 이력 조회, 삭제된 건 제외
-    List<ChatMessageMirrorJpaEntity> findByChannelIdAndDeletedAtIsNullOrderBySentAtDesc(String channelId);
+    Page<ChatMessageMirrorJpaEntity> findByChannelIdAndDeletedAtIsNullOrderBySentAtDesc(String channelId, Pageable pageable);
 
     // 스레드 답글 조회, 삭제된 건 제외
-    List<ChatMessageMirrorJpaEntity> findByParentMessageIdAndDeletedAtIsNull(Long parentMessageId);
+    Page<ChatMessageMirrorJpaEntity> findByParentMessageIdAndDeletedAtIsNull(Long parentMessageId, Pageable pageable);
 
     // 원본 메시지 답글 수 카운트, 삭제된 건 제외
     long countByParentMessageIdAndDeletedAtIsNull(Long parentMessageId);
@@ -40,5 +42,8 @@ public interface ChatMessageMirrorJpaRepository
             WHERE ranked.rn = 1
             """, nativeQuery = true)
     List<ChannelLastMessageProjection> findLatestMessagesByChannelIds(@org.springframework.data.repository.query.Param("channelIds") List<String> channelIds);
+
+    // 채널 최신 메시지 1건 - Spring Data 'Top' 키워드로 LIMIT 1 자동 적용
+    Optional<ChatMessageMirrorJpaEntity> findTopByChannelIdAndDeletedAtIsNullOrderBySentAtDesc(String channelId);
 
 }

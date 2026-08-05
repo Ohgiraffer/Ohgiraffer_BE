@@ -119,8 +119,11 @@ public class ChatController {
 
     // 그룹 채팅방 상세 조회
     @GetMapping("/channels/{channelId}")
-    public ResponseEntity<ChatChannelDetailResponse> getChannelDetail(@PathVariable String channelId) {
-        ChatChannelDetailResult result = chatChannelQueryUseCase.getChannelDetail(channelId);
+    public ResponseEntity<ChatChannelDetailResponse> getChannelDetail(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable String channelId
+    ) {
+        ChatChannelDetailResult result = chatChannelQueryUseCase.getChannelDetail(channelId, principal.getId());
         return ResponseEntity.ok(ChatChannelDetailResponse.from(result));
     }
 
@@ -135,8 +138,13 @@ public class ChatController {
 
     // 채널 메시지 이력 조회
     @GetMapping("/channels/{channelId}/messages")
-    public ResponseEntity<List<ChatMessageResponse>> getChannelMessages(@PathVariable String channelId) {
-        List<ChatMessageResponse> result = chatMessageMirrorQueryUseCase.getChannelMessages(channelId).stream()
+    public ResponseEntity<List<ChatMessageResponse>> getChannelMessages(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable String channelId,
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        List<ChatMessageResponse> result = chatMessageMirrorQueryUseCase
+                .getChannelMessages(channelId, principal.getId(), pageable)
                 .map(ChatMessageResponse::from)
                 .toList();
         return ResponseEntity.ok(result);
@@ -144,8 +152,13 @@ public class ChatController {
 
     // 스레드 답글 조회
     @GetMapping("/messages/{messageId}/replies")
-    public ResponseEntity<List<ChatMessageResponse>> getThreadReplies(@PathVariable Long messageId) {
-        List<ChatMessageResponse> result = chatMessageMirrorQueryUseCase.getThreadReplies(messageId).stream()
+    public ResponseEntity<List<ChatMessageResponse>> getThreadReplies(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable Long messageId,
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        List<ChatMessageResponse> result = chatMessageMirrorQueryUseCase
+                .getThreadReplies(messageId, principal.getId(), pageable)
                 .map(ChatMessageResponse::from)
                 .toList();
         return ResponseEntity.ok(result);
@@ -154,6 +167,7 @@ public class ChatController {
     // 메시지 통합 검색
     @GetMapping("/search")
     public ResponseEntity<Page<ChatMessageResponse>> searchMessages(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
             @RequestParam(required = false) String channelId,
             @RequestParam(required = false) Long senderId,
             @RequestParam(required = false) String keyword,
@@ -165,7 +179,7 @@ public class ChatController {
                 new ChatMessageSearchCondition(channelId, senderId, keyword, startDate, endDate);
 
         Page<ChatMessageResponse> result = chatMessageMirrorQueryUseCase
-                .searchMessages(condition, pageable)
+                .searchMessages(condition, principal.getId(), pageable)
                 .map(ChatMessageResponse::from);
 
         return ResponseEntity.ok(result);

@@ -44,4 +44,7 @@ public interface ChatChannelMemberJpaRepository extends JpaRepository<ChatChanne
             """, nativeQuery = true)
     List<ChannelUnreadCountProjection> findUnreadCountsByUserId(@org.springframework.data.repository.query.Param("userId") Long userId);
 
+    // 활성 멤버십 존재 여부 - Spring Data 이름 기반 자동구현
+    boolean existsByChatChannelIdAndUserIdAndLeftAtIsNull(Long chatChannelId, Long userId);
+
 }
