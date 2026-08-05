@@ -28,4 +28,17 @@ public interface ChatMessageMirrorJpaRepository
     // 원본 메시지 답글 수 카운트, 삭제된 건 제외
     long countByParentMessageIdAndDeletedAtIsNull(Long parentMessageId);
 
+    // 채널별 최신메시지 1건 - Greatest-N-per-Group을 윈도우 함수로 처리
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT ranked.channel_id AS channelId, ranked.content AS content, ranked.sent_at AS sentAt
+            FROM (
+                SELECT channel_id, content, sent_at,
+                       ROW_NUMBER() OVER (PARTITION BY channel_id ORDER BY chat_message_id DESC) AS rn
+                FROM chat_message_mirror
+                WHERE channel_id IN (:channelIds) AND parent_message_id IS NULL AND deleted_at IS NULL
+            ) ranked
+            WHERE ranked.rn = 1
+            """, nativeQuery = true)
+    List<ChannelLastMessageProjection> findLatestMessagesByChannelIds(@org.springframework.data.repository.query.Param("channelIds") List<String> channelIds);
+
 }

@@ -18,12 +18,17 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+
+/*
+ * comment.
+ *  SendbirdApiPort 구현체 - Sendbird Platform API를 RestClient로 직접 호출함
+ *  RestClient(sendbirdRestClient)는 base-url/인증헤더가 설정 클래스에서 미리 구성되어 주입됨
+ *  4xx는 대부분 그대로 CHAT_SENDBIRD_API_ERROR로 전파, 유저 중복 생성(400202)만 별도 분기 처리
+ */
 
 @Component
 public class SendbirdApiAdapter implements SendbirdApiPort {
@@ -37,6 +42,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         this.properties = properties;
     }
 
+    // 로그인 성공 시 Sendbird 유저 생성 또는 재사용 - 이미 존재하면 토큰만 재발급
     @Override
     public SendbirdUserProvisionResult provisionUser(Long userId, String nickname, String profileUrl) {
         Map<String, Object> body = new HashMap<>();
@@ -82,6 +88,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
+    // 이미 존재하는 유저의 access token만 재발급받음 - 유저 신규 생성 없이 토큰만 갱신
     private SendbirdUserProvisionResult reissueAccessToken(Long userId, String nickname) {
         try {
             Map<String, Object> response = restClient.post()
@@ -97,6 +104,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
+    // Sendbird 유저 생성 응답(raw Map)을 SendbirdUserProvisionResult로 변환
     private SendbirdUserProvisionResult toProvisionResult(Map<String, Object> raw) {
         return new SendbirdUserProvisionResult(
                 Long.parseLong((String) raw.get("user_id")),
@@ -105,6 +113,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         );
     }
 
+    // 닉네임 접두어(startswith) 기준 채팅 상대 검색
     @Override
     public List<SendbirdUserResult> searchUsers(String query) {
         try {
@@ -126,6 +135,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
+    // 채팅방 생성 - userIds 1명이면 1:1(is_distinct=true), 2명 이상이면 그룹
     @Override
     public String createChannel(List<Long> userIds, String name) {
         Map<String, Object> body = new HashMap<>();
@@ -146,12 +156,14 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
+    // 팀 채팅방 자동 생성 - 이름 규칙("team-{teamId}")만 다르고 나머지는 일반 채널 생성과 동일해서 재사용
     @Override
     public String createTeamChannel(Long teamId, List<Long> memberUserIds) {
         // 팀 채팅방은 이름 규칙만 다르고 나머지는 일반 채널 생성과 동일
         return createChannel(memberUserIds, "team-" + teamId);
     }
 
+    // 팀변경 시 채널 멤버 초대/제외 반영 - 초대(invite)와 제외(leave)를 각각 별도 API 호출로 처리
     @Override
     public void updateChannelMembers(String channelId, List<Long> addUserIds, List<Long> removeUserIds) {
         try {
@@ -174,6 +186,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
+    // 메시지 전송 - 첨부파일 유무로 FILE/MESG 타입 분기, 멘션 있으면 mentioned_user_ids 추가
     @Override
     public SendbirdMessageResult sendMessage(String channelId, Long senderId, String content,
                                              String attachmentUrl, List<Long> mentionedUserIds) {
@@ -207,6 +220,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
+    // 메시지 수정 - 본문 텍스트만 갱신
     @Override
     public void updateMessage(String channelId, String sendbirdMessageId, String newContent) {
         Map<String, Object> body = Map.of("message", newContent);
@@ -222,6 +236,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
+    // 메시지 삭제
     @Override
     public void deleteMessage(String channelId, String sendbirdMessageId) {
         try {
@@ -234,13 +249,23 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
+    // 스레드 답글 작성 - parent_message_id로 원본 메시지 참조, 첨부파일 유무로 FILE/MESG 분기(sendMessage와 동일 로직)
     @Override
-    public SendbirdMessageResult sendReply(String channelId, Long parentMessageId, Long senderId, String content) {
+    public SendbirdMessageResult sendReply(String channelId, Long parentMessageId, Long senderId,
+                                           String content, String attachmentUrl) {
         Map<String, Object> body = new HashMap<>();
-        body.put("message_type", "MESG");
         body.put("user_id", String.valueOf(senderId));
-        body.put("message", content);
         body.put("parent_message_id", parentMessageId);
+
+        // sendMessage와 동일하게 첨부파일 유무로 message_type 분기
+        if (attachmentUrl != null) {
+            body.put("message_type", "FILE");
+            body.put("file", Map.of("url", attachmentUrl));
+            body.put("message", content == null ? "" : content);
+        } else {
+            body.put("message_type", "MESG");
+            body.put("message", content);
+        }
 
         try {
             Map<String, Object> response = restClient.post()
@@ -255,6 +280,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
+    // 온라인 상태 조회 - 오프라인이면 마지막 접속시각(last_seen_at, epoch millis)까지 변환해서 반환
     @Override
     public SendbirdUserStatus getUserStatus(Long userId) {
         try {
@@ -280,6 +306,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
+    // 웹훅 서명 검증 - HMAC-SHA256으로 payload를 해싱해서 헤더의 signature와 상수시간 비교
     @Override
     public boolean verifyWebhookSignature(String payload, String signature) {
         try {
@@ -297,6 +324,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
+    // Sendbird 유저 검색 응답(raw Map)을 SendbirdUserResult로 변환
     private SendbirdUserResult toUserResult(Map<String, Object> raw) {
         return new SendbirdUserResult(
                 Long.parseLong((String) raw.get("user_id")),
@@ -306,6 +334,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         );
     }
 
+    // Sendbird 메시지 전송/답글 응답(raw Map)을 SendbirdMessageResult로 변환 - created_at(epoch millis)을 Instant로 변환
     private SendbirdMessageResult toMessageResult(Map<String, Object> raw, String channelId) {
         String senderIdRaw = raw.get("user") != null
                 ? String.valueOf(((Map<String, Object>) raw.get("user")).get("user_id"))
