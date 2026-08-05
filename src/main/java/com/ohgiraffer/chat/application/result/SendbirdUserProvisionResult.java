@@ -9,7 +9,7 @@ package com.ohgiraffer.chat.application.result;
 
 public record SendbirdUserProvisionResult(
         Long userId,
-        String nickname,
+        String name,
         String accessToken
 ) {
 }

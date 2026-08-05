@@ -16,7 +16,7 @@ import java.util.List;
 public interface SendbirdApiPort {
 
     // 로그인 성공 시 샌드버드 유저 생성 또는 재사용 (채팅 유저 프로비저닝)
-    SendbirdUserProvisionResult provisionUser(Long userId, String nickname, String profileUrl);
+    SendbirdUserProvisionResult provisionUser(Long userId, String name, String profileUrl);
 
     // 채팅 상대 검색
     List<SendbirdUserResult> searchUsers(String query);

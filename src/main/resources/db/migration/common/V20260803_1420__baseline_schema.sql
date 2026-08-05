@@ -507,6 +507,35 @@ ALTER TABLE `user_signature` ADD CONSTRAINT `PK_USER_SIGNATURE` PRIMARY KEY (`si
 ALTER TABLE `attendance_period` ADD CONSTRAINT `PK_ATTENDANCE_PERIOD` PRIMARY KEY (`id`);
 
 -- ============================================================
+-- AUTO_INCREMENT 보강 (PK 지정 이후 / FK 걸리기 이전에 적용)
+-- 원본 baseline에서 누락된 surrogate PK auto_increment 22건
+-- notice_confirmation(복합키), trainee_location(users와 PK 공유)은 제외
+-- ============================================================
+
+ALTER TABLE `users` MODIFY COLUMN `user_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `bootcamp_info` MODIFY COLUMN `id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `setting_change_log` MODIFY COLUMN `setting_log_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `team` MODIFY COLUMN `team_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `team_member` MODIFY COLUMN `team_member_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `space_reservation` MODIFY COLUMN `space_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `attendance_policy` MODIFY COLUMN `attendance_policy_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `attendance_period` MODIFY COLUMN `id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `attendance` MODIFY COLUMN `attendance_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `attendance_period_summary` MODIFY COLUMN `id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `leave_balance` MODIFY COLUMN `leave_balance_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `sick_balance` MODIFY COLUMN `sick_balance_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `chat_channel` MODIFY COLUMN `chat_channel_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `chat_channel_member` MODIFY COLUMN `chat_channel_member_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `chat_message_mirror` MODIFY COLUMN `chat_message_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `chat_mention` MODIFY COLUMN `mention_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `notification` MODIFY COLUMN `notification_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `ai_agent_log` MODIFY COLUMN `agent_log_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `consultation` MODIFY COLUMN `consultation_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `counselor_calendar` MODIFY COLUMN `id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `submission_box` MODIFY COLUMN `submission_box_id` BIGINT NOT NULL AUTO_INCREMENT;
+ALTER TABLE `submission` MODIFY COLUMN `submission_id` BIGINT NOT NULL AUTO_INCREMENT;
+
+-- ============================================================
 -- FK 제약조건 (원본 4개 + 신규 보강분)
 -- ============================================================
 

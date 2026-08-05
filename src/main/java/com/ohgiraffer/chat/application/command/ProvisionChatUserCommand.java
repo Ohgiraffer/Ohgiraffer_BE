@@ -8,7 +8,7 @@ package com.ohgiraffer.chat.application.command;
 
 public record ProvisionChatUserCommand(
         Long userId,
-        String nickname,
+        String name,
         String profileUrl
 ) {
 }

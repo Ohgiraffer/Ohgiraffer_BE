@@ -27,12 +27,12 @@ public class ChatUserCommandService implements ChatUserCommandUseCase {
     public SendbirdUserProvisionResult provisionUser(ProvisionChatUserCommand command) {
         SendbirdUserProvisionResult result = sendbirdApiPort.provisionUser(
                 command.userId(),
-                command.nickname(),
+                command.name(),
                 command.profileUrl()
         );
 
-        log.info("[Chat] Sendbird 유저 프로비저닝 완료 | userId={}, nickname={}",
-                result.userId(), result.nickname());
+        log.info("[Chat] Sendbird 유저 프로비저닝 완료 | userId={}, name={}",
+                result.userId(), result.name());
 
         return result;
     }

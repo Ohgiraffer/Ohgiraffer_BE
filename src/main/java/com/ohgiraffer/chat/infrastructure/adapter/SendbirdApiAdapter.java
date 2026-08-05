@@ -8,6 +8,7 @@ import com.ohgiraffer.chat.application.result.SendbirdUserResult;
 import com.ohgiraffer.chat.application.result.SendbirdUserStatus;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -30,6 +31,7 @@ import java.util.Map;
  *  4xx는 대부분 그대로 CHAT_SENDBIRD_API_ERROR로 전파, 유저 중복 생성(400202)만 별도 분기 처리
  */
 
+@Slf4j
 @Component
 public class SendbirdApiAdapter implements SendbirdApiPort {
 
@@ -44,12 +46,14 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
 
     // 로그인 성공 시 Sendbird 유저 생성 또는 재사용 - 이미 존재하면 토큰만 재발급
     @Override
-    public SendbirdUserProvisionResult provisionUser(Long userId, String nickname, String profileUrl) {
+    public SendbirdUserProvisionResult provisionUser(Long userId, String name, String profileUrl) {
         Map<String, Object> body = new HashMap<>();
         body.put("user_id", String.valueOf(userId));
-        body.put("nickname", nickname);
+        body.put("nickname", name);
         body.put("profile_url", profileUrl == null ? "" : profileUrl);
         body.put("issue_access_token", true); // 유저 생성과 동시에 access token 발급
+
+        log.info("[provisionUser] Sendbird 요청 body={}", body);
 
         try {
             Map<String, Object> response = restClient.post()
@@ -63,11 +67,11 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         } catch (HttpClientErrorException e) {
             if (isUserAlreadyExists(e)) {
                 // 이미 등록된 유저 - 신규 생성 대신 토큰만 재발급
-                return reissueAccessToken(userId, nickname);
+                return reissueAccessToken(userId, name);
             }
             // 그 외 4xx는 진짜 오류이므로 그대로 전파
             throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR,
-                    "Sendbird 유저 생성 실패 (status=" + e.getStatusCode() + ")");
+                    "Sendbird 유저 생성 실패 (status=" + e.getStatusCode() + ", body=" + e.getResponseBodyAsString() + ")");
 
         } catch (RestClientException e) {
             // 네트워크 오류, 5xx 등 - 재시도 유도가 필요한 진짜 시스템 오류
@@ -89,7 +93,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     }
 
     // 이미 존재하는 유저의 access token만 재발급받음 - 유저 신규 생성 없이 토큰만 갱신
-    private SendbirdUserProvisionResult reissueAccessToken(Long userId, String nickname) {
+    private SendbirdUserProvisionResult reissueAccessToken(Long userId, String name) {
         try {
             Map<String, Object> response = restClient.post()
                     .uri("/users/{user_id}/token", userId)
@@ -98,7 +102,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
                     .body(Map.class);
 
             String accessToken = (String) response.get("token");
-            return new SendbirdUserProvisionResult(userId, nickname, accessToken);
+            return new SendbirdUserProvisionResult(userId, name, accessToken);
         } catch (RestClientException e) {
             throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 유저 토큰 재발급 실패");
         }
@@ -140,7 +144,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     public String createChannel(List<Long> userIds, String name) {
         Map<String, Object> body = new HashMap<>();
         body.put("user_ids", userIds.stream().map(String::valueOf).toList());
-        body.put("name", name == null ? "" : name);
+        body.put("nickname", name == null ? "" : name);
         body.put("is_distinct", userIds.size() <= 1);
 
         try {
@@ -190,14 +194,17 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     @Override
     public SendbirdMessageResult sendMessage(String channelId, Long senderId, String content,
                                              String attachmentUrl, List<Long> mentionedUserIds) {
+        // Sendbird 메시지 전송 요청 바디
         Map<String, Object> body = new HashMap<>();
+        // 발신자 ID - Sendbird에 provision된 유저여야 함
         body.put("user_id", String.valueOf(senderId));
 
         if (attachmentUrl != null) {
             body.put("message_type", "FILE");
-            body.put("file", Map.of("url", attachmentUrl));
+            body.put("url", attachmentUrl);
             body.put("message", content == null ? "" : content);
         } else {
+            // 첨부파일 없으면 일반 텍스트 타입
             body.put("message_type", "MESG");
             body.put("message", content);
         }
@@ -215,8 +222,17 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
                     .body(Map.class);
 
             return toMessageResult(response, channelId);
+        } catch (HttpClientErrorException e) {
+            // 4xx - Sendbird가 실제로 응답한 status/body를 그대로 로그에 남겨서 원인 특정 가능하게 함
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR,
+                    "Sendbird 메시지 전송 실패 (status=" + e.getStatusCode()
+                            + ", body=" + e.getResponseBodyAsString() + ")");
+
         } catch (RestClientException e) {
-            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 메시지 전송 실패");
+            // 5xx, 타임아웃, 네트워크 오류 등 - 진짜 통신 장애
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR,
+                    "Sendbird 메시지 전송 중 통신 오류 발생 (channelId=" + channelId
+                            + ", senderId=" + senderId + "): " + e.getMessage());
         }
     }
 
@@ -260,7 +276,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         // sendMessage와 동일하게 첨부파일 유무로 message_type 분기
         if (attachmentUrl != null) {
             body.put("message_type", "FILE");
-            body.put("file", Map.of("url", attachmentUrl));
+            body.put("url", attachmentUrl);
             body.put("message", content == null ? "" : content);
         } else {
             body.put("message_type", "MESG");
@@ -328,7 +344,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     private SendbirdUserResult toUserResult(Map<String, Object> raw) {
         return new SendbirdUserResult(
                 Long.parseLong((String) raw.get("user_id")),
-                (String) raw.get("nickname"),
+                (String) raw.get("name"),
                 (String) raw.get("profile_url"),
                 Boolean.TRUE.equals(raw.get("is_online"))
         );

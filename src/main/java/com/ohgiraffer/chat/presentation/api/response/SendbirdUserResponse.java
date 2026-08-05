@@ -9,13 +9,13 @@ import com.ohgiraffer.chat.application.result.SendbirdUserResult;
 
 public record SendbirdUserResponse(
         Long userId,
-        String nickname,
+        String name,
         String profileUrl,
         boolean isOnline
 ) {
 
     public static SendbirdUserResponse from(SendbirdUserResult result) {
-        return new SendbirdUserResponse(result.userId(), result.nickname(), result.profileUrl(), result.isOnline());
+        return new SendbirdUserResponse(result.userId(), result.name(), result.profileUrl(), result.isOnline());
     }
 
 }
