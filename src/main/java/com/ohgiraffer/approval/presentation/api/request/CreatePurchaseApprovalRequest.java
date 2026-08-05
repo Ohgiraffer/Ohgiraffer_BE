@@ -21,7 +21,7 @@ public record CreatePurchaseApprovalRequest(
         String itemName,
 
         @NotNull
-        @DecimalMin("1")
+        @DecimalMin(value = "0", inclusive = false)
         @Digits(integer = 12, fraction = 2)
         BigDecimal amount,
 
