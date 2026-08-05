@@ -28,6 +28,10 @@ public class UserRepositoryAdapter implements UserRepository {
                 .map(UserJpaEntity::toDomain);
     }
 
+    @Override
+    public void save(User user) {
+        UserJpaEntity entity = UserJpaEntity.fromDomain(user);
+        springDataUserRepository.save(entity);
 
     @Override
     public List<User> findAllByRoleAndStatus(Role role, UserStatus status) {

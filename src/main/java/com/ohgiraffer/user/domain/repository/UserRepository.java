@@ -12,5 +12,6 @@ public interface UserRepository {
 
     Optional<User> findById(Long userId);
 
+    void save(User user);
     List<User> findAllByRoleAndStatus(Role role, UserStatus status);
 }
