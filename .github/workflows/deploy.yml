@@ -1,9 +1,7 @@
 name: Deploy CampFlow Backend
-
 on:
   push:
     branches: [deploy]
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -28,7 +26,6 @@ jobs:
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-
   check-monitoring-changes:
     runs-on: ubuntu-latest
     outputs:
@@ -42,7 +39,6 @@ jobs:
             monitoring:
               - 'docker-compose.monitor.yml'
               - 'docker/**'
-
   deploy-backend:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -59,14 +55,27 @@ jobs:
             git checkout deploy
             git reset --hard origin/deploy
             aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+
+            # docker-compose.backend.yml이 참조하는 이미지 위치
+            export ECR_REGISTRY=${{ secrets.ECR_REGISTRY }}
+            export ECR_REPOSITORY=${{ secrets.ECR_REPOSITORY }}
+
+            # RDS 접속 정보
             export DB_HOST=${{ secrets.DB_HOST }}
             export DB_NAME=${{ secrets.DB_NAME }}
             export DB_USER=${{ secrets.DB_USER }}
             export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+
+            # 앱 필수 값 (없으면 secrets에 추가 등록 필요)
+            export JWT_SECRET=${{ secrets.JWT_SECRET }}
+            export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            export SENDBIRD_APP_ID=${{ secrets.SENDBIRD_APP_ID }}
+            export SENDBIRD_API_TOKEN=${{ secrets.SENDBIRD_API_TOKEN }}
+
             docker compose -f docker-compose.backend.yml down
             docker compose -f docker-compose.backend.yml pull
             docker compose -f docker-compose.backend.yml up -d
-
   deploy-monitoring:
     needs: check-monitoring-changes
     if: needs.check-monitoring-changes.outputs.changed == 'true'
@@ -80,7 +89,6 @@ jobs:
           key: ${{ secrets.MONITOR_SSH_PRIVATE_KEY }}
           source: "docker-compose.monitor.yml,docker/"
           target: "~/campflow-monitoring"
-
       - name: Run docker compose on monitoring server
         uses: appleboy/ssh-action@v1.0.3
         with:
