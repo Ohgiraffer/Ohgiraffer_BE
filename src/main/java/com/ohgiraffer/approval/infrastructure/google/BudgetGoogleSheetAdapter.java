@@ -17,11 +17,9 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class BudgetGoogleSheetAdapter
-        implements BudgetSheetPort {
+public class BudgetGoogleSheetAdapter implements BudgetSheetPort {
 
-    private static final String DEFAULT_COLUMN_RANGE = "A:Z";
-    private static final int MIN_HEADER_COLUMN_COUNT = 3;
+    private static final int MIN_HEADER_COLUMN_COUNT = 4;
 
     private final GoogleSheetsClient googleSheetsClient;
     private final SpreadsheetIdExtractor spreadsheetIdExtractor;
@@ -56,23 +54,19 @@ public class BudgetGoogleSheetAdapter
     public List<BudgetSheetColumn> getSheetColumns(
             String spreadsheetId
     ) {
-        List<String> sheetNames =
-                googleSheetsClient.getSheetNames(
-                        spreadsheetId
-                );
+        List<String> sheetNames = googleSheetsClient.getSheetNames(
+                spreadsheetId
+        );
 
-        List<BudgetSheetColumn> result =
-                new ArrayList<>();
+        List<BudgetSheetColumn> result = new ArrayList<>();
 
         for (String sheetName : sheetNames) {
-            List<List<Object>> rows =
-                    googleSheetsClient.readRange(
-                            spreadsheetId,
-                            toRange(
-                                    sheetName,
-                                    DEFAULT_COLUMN_RANGE
-                            )
-                    );
+            List<List<Object>> rows = googleSheetsClient.readRange(
+                    spreadsheetId,
+                    toRange(
+                            sheetName
+                    )
+            );
 
             result.add(
                     new BudgetSheetColumn(
@@ -97,94 +91,125 @@ public class BudgetGoogleSheetAdapter
                 columnMapping
         );
 
-        List<List<Object>> rows =
-                googleSheetsClient.readRange(
-                        spreadsheetId,
-                        toRange(
-                                sheetName,
-                                DEFAULT_COLUMN_RANGE
-                        )
-                );
+        BudgetColumnMapping normalizedColumnMapping = normalizeColumnMapping(
+                columnMapping
+        );
 
-        if (rows.isEmpty()) {
+        List<List<Object>> rows = googleSheetsClient.readRange(
+                spreadsheetId,
+                toRange(
+                        sheetName
+                )
+        );
+
+        if (rows == null || rows.isEmpty()) {
             return List.of();
         }
 
-        int headerRowIndex =
-                findMappedHeaderRowIndex(
-                        rows,
-                        columnMapping
-                );
+        int headerRowIndex = findMappedHeaderRowIndex(
+                rows,
+                normalizedColumnMapping
+        );
 
-        Map<String, Integer> headerIndex =
-                createHeaderIndex(
-                        rows.get(
-                                headerRowIndex
-                        )
-                );
+        Map<String, Integer> headerIndex = createHeaderIndex(
+                rows.get(
+                        headerRowIndex
+                )
+        );
 
-        int categoryIndex =
-                getRequiredColumnIndex(
-                        headerIndex,
-                        columnMapping.category()
-                );
-        int totalAmountIndex =
-                getRequiredColumnIndex(
-                        headerIndex,
-                        columnMapping.totalAmount()
-                );
-        int usedAmountIndex =
-                getRequiredColumnIndex(
-                        headerIndex,
-                        columnMapping.usedAmount()
-                );
-        int remainingAmountIndex =
-                getRequiredColumnIndex(
-                        headerIndex,
-                        columnMapping.remainingAmount()
-                );
+        int categoryIndex = getRequiredColumnIndex(
+                headerIndex,
+                normalizedColumnMapping.category()
+        );
+        int totalAmountIndex = getRequiredColumnIndex(
+                headerIndex,
+                normalizedColumnMapping.totalAmount()
+        );
+        int usedAmountIndex = getRequiredColumnIndex(
+                headerIndex,
+                normalizedColumnMapping.usedAmount()
+        );
+        int remainingAmountIndex = getRequiredColumnIndex(
+                headerIndex,
+                normalizedColumnMapping.remainingAmount()
+        );
 
-        List<BudgetSheetRow> result =
-                new ArrayList<>();
+        Map<String, BudgetSheetRow> budgetRows = new LinkedHashMap<>();
 
         for (int rowIndex = headerRowIndex + 1;
              rowIndex < rows.size();
              rowIndex++) {
-            List<Object> row =
-                    rows.get(
-                            rowIndex
-                    );
+            List<Object> row = rows.get(
+                    rowIndex
+            );
 
-            String categoryName =
-                    getCellAsString(
-                            row,
-                            categoryIndex
-                    );
+            String categoryName = getCellAsString(
+                    row,
+                    categoryIndex
+            ).strip();
 
             if (categoryName.isBlank()) {
                 continue;
             }
 
-            result.add(
-                    new BudgetSheetRow(
-                            categoryName,
-                            getCellAsAmount(
-                                    row,
-                                    totalAmountIndex
-                            ),
-                            getCellAsAmount(
-                                    row,
-                                    usedAmountIndex
-                            ),
-                            getCellAsAmount(
-                                    row,
-                                    remainingAmountIndex
-                            )
+            BudgetSheetRow budgetSheetRow = new BudgetSheetRow(
+                    categoryName,
+                    getCellAsAmount(
+                            row,
+                            totalAmountIndex
+                    ),
+                    getCellAsAmount(
+                            row,
+                            usedAmountIndex
+                    ),
+                    getCellAsAmount(
+                            row,
+                            remainingAmountIndex
                     )
+            );
+
+            mergeBudgetRow(
+                    budgetRows,
+                    budgetSheetRow
             );
         }
 
-        return result;
+        return new ArrayList<>(
+                budgetRows.values()
+        );
+    }
+
+    private void mergeBudgetRow(
+            Map<String, BudgetSheetRow> budgetRows,
+            BudgetSheetRow budgetSheetRow
+    ) {
+        BudgetSheetRow existingRow = budgetRows.get(
+                budgetSheetRow.categoryName()
+        );
+
+        if (existingRow == null) {
+            budgetRows.put(
+                    budgetSheetRow.categoryName(),
+                    budgetSheetRow
+            );
+            return;
+        }
+
+        budgetRows.put(
+                budgetSheetRow.categoryName(),
+                new BudgetSheetRow(
+                        budgetSheetRow.categoryName(),
+                        existingRow.totalAmount().add(
+                                budgetSheetRow.totalAmount()
+                        ),
+                        existingRow.usedAmount().add(
+                                budgetSheetRow.usedAmount()
+                        ),
+                        existingRow.remainingAmount().add(
+                                budgetSheetRow.remainingAmount()
+                        )
+                )
+        );
     }
 
     private List<String> findColumnCandidates(
@@ -195,15 +220,14 @@ public class BudgetGoogleSheetAdapter
         }
 
         for (List<Object> row : rows) {
-            List<String> columns =
-                    toStringList(
-                            row
+            List<String> columns = toStringList(
+                    row
+            )
+                    .stream()
+                    .filter(
+                            column -> !column.isBlank()
                     )
-                            .stream()
-                            .filter(
-                                    column -> !column.isBlank()
-                            )
-                            .toList();
+                    .toList();
 
             if (columns.size() >= MIN_HEADER_COLUMN_COUNT) {
                 return columns;
@@ -218,12 +242,11 @@ public class BudgetGoogleSheetAdapter
             BudgetColumnMapping columnMapping
     ) {
         for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
-            Map<String, Integer> headerIndex =
-                    createHeaderIndex(
-                            rows.get(
-                                    rowIndex
-                            )
-                    );
+            Map<String, Integer> headerIndex = createHeaderIndex(
+                    rows.get(
+                            rowIndex
+                    )
+            );
 
             if (headerIndex.containsKey(
                     columnMapping.category()
@@ -250,29 +273,67 @@ public class BudgetGoogleSheetAdapter
     private void validateColumnMapping(
             BudgetColumnMapping columnMapping
     ) {
-        if (columnMapping == null
-                || isBlank(
-                columnMapping.category()
-        )
-                || isBlank(
-                columnMapping.totalAmount()
-        )
-                || isBlank(
-                columnMapping.usedAmount()
-        )
-                || isBlank(
-                columnMapping.remainingAmount()
-        )) {
+        if (columnMapping == null) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "예산 컬럼 매핑 정보가 올바르지 않습니다."
             );
         }
+
+        List<String> columns = new ArrayList<>();
+        columns.add(
+                columnMapping.category()
+        );
+        columns.add(
+                columnMapping.totalAmount()
+        );
+        columns.add(
+                columnMapping.usedAmount()
+        );
+        columns.add(
+                columnMapping.remainingAmount()
+        );
+
+        boolean hasBlankColumn = columns.stream()
+                .anyMatch(
+                        this::isBlank
+                );
+
+        if (hasBlankColumn) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "예산 컬럼 매핑 정보가 올바르지 않습니다."
+            );
+        }
+
+        long uniqueColumnCount = columns.stream()
+                .map(
+                        String::strip
+                )
+                .distinct()
+                .count();
+
+        if (uniqueColumnCount != MIN_HEADER_COLUMN_COUNT) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "예산 컬럼은 서로 다른 값으로 매핑해야 합니다."
+            );
+        }
+    }
+
+    private BudgetColumnMapping normalizeColumnMapping(
+            BudgetColumnMapping columnMapping
+    ) {
+        return new BudgetColumnMapping(
+                columnMapping.category().strip(),
+                columnMapping.totalAmount().strip(),
+                columnMapping.usedAmount().strip(),
+                columnMapping.remainingAmount().strip()
+        );
     }
 
     private String toRange(
-            String sheetName,
-            String range
+            String sheetName
     ) {
         if (sheetName == null || sheetName.isBlank()) {
             throw new BusinessException(
@@ -284,12 +345,16 @@ public class BudgetGoogleSheetAdapter
         return "'" + sheetName.replace(
                 "'",
                 "''"
-        ) + "'!" + range;
+        ) + "'";
     }
 
     private List<String> toStringList(
             List<Object> row
     ) {
+        if (row == null || row.isEmpty()) {
+            return List.of();
+        }
+
         return row
                 .stream()
                 .map(
@@ -297,7 +362,7 @@ public class BudgetGoogleSheetAdapter
                                 ? ""
                                 : value
                                 .toString()
-                                .trim()
+                                .strip()
                 )
                 .toList();
     }
@@ -305,26 +370,27 @@ public class BudgetGoogleSheetAdapter
     private Map<String, Integer> createHeaderIndex(
             List<Object> headerRow
     ) {
-        Map<String, Integer> headerIndex =
-                new LinkedHashMap<>();
+        Map<String, Integer> headerIndex = new LinkedHashMap<>();
+
+        if (headerRow == null || headerRow.isEmpty()) {
+            return headerIndex;
+        }
 
         for (int index = 0; index < headerRow.size(); index++) {
-            Object value =
-                    headerRow.get(
-                            index
-                    );
+            Object value = headerRow.get(
+                    index
+            );
 
             if (value == null) {
                 continue;
             }
 
-            String header =
-                    value
-                            .toString()
-                            .trim();
+            String header = value
+                    .toString()
+                    .strip();
 
             if (!header.isBlank()) {
-                headerIndex.put(
+                headerIndex.putIfAbsent(
                         header,
                         index
                 );
@@ -338,10 +404,9 @@ public class BudgetGoogleSheetAdapter
             Map<String, Integer> headerIndex,
             String columnName
     ) {
-        Integer index =
-                headerIndex.get(
-                        columnName
-                );
+        Integer index = headerIndex.get(
+                columnName.strip()
+        );
 
         if (index == null) {
             throw new BusinessException(
@@ -357,7 +422,8 @@ public class BudgetGoogleSheetAdapter
             List<Object> row,
             int index
     ) {
-        if (index >= row.size()
+        if (row == null
+                || index >= row.size()
                 || row.get(
                 index
         ) == null) {
@@ -369,38 +435,36 @@ public class BudgetGoogleSheetAdapter
                         index
                 )
                 .toString()
-                .trim();
+                .strip();
     }
 
     private BigDecimal getCellAsAmount(
             List<Object> row,
             int index
     ) {
-        String value =
-                getCellAsString(
-                        row,
-                        index
-                );
+        String value = getCellAsString(
+                row,
+                index
+        );
 
         if (value.isBlank()) {
             return BigDecimal.ZERO;
         }
 
-        String normalized =
-                value
-                        .replace(
-                                ",",
-                                ""
-                        )
-                        .replace(
-                                "₩",
-                                ""
-                        )
-                        .replace(
-                                "원",
-                                ""
-                        )
-                        .trim();
+        String normalized = value
+                .replace(
+                        ",",
+                        ""
+                )
+                .replace(
+                        "₩",
+                        ""
+                )
+                .replace(
+                        "원",
+                        ""
+                )
+                .strip();
 
         try {
             return new BigDecimal(

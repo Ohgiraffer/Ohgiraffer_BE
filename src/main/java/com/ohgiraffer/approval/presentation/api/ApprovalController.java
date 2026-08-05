@@ -36,7 +36,7 @@ public class ApprovalController {
     ) {
         CreateLeaveApprovalCommand command =
                 new CreateLeaveApprovalCommand(
-                        principal.id(),
+                        principal.getId(),
                         request.approverId(),
                         request.startDate(),
                         request.endDate()

@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,7 +15,15 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "external_sheet_link")
+@Table(
+        name = "external_sheet_link",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "UQ_EXTERNAL_SHEET_LINK_DOMAIN",
+                        columnNames = "domain"
+                )
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ExternalSheetLinkJpaEntity {
@@ -29,7 +38,7 @@ public class ExternalSheetLinkJpaEntity {
     @Column(
             name = "domain",
             nullable = false,
-            length = 20
+            length = 30
     )
     private String domain;
 
@@ -42,12 +51,14 @@ public class ExternalSheetLinkJpaEntity {
 
     @Column(
             name = "tab_name",
+            nullable = false,
             length = 100
     )
     private String tabName;
 
     @Column(
             name = "column_mapping",
+            nullable = false,
             columnDefinition = "JSON"
     )
     private String columnMapping;

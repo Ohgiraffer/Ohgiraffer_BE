@@ -7,12 +7,21 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "budget_category")
+@Table(
+        name = "budget_category",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "UQ_BUDGET_CATEGORY_NAME",
+                        columnNames = "name"
+                )
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class BudgetCategoryJpaEntity {

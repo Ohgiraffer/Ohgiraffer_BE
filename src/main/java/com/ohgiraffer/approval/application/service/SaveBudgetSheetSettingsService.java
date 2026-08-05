@@ -16,42 +16,35 @@ import com.ohgiraffer.approval.domain.repository.BudgetCategoryRepository;
 import com.ohgiraffer.approval.domain.repository.ExternalSheetLinkRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.global.google.sheets.SpreadsheetIdExtractor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
-public class SaveBudgetSheetSettingsService
-        implements SaveBudgetSheetSettingsUseCase {
+@RequiredArgsConstructor
+@Transactional
+public class SaveBudgetSheetSettingsService implements SaveBudgetSheetSettingsUseCase {
+
+    private static final int REQUIRED_MAPPING_COUNT = 4;
 
     private final BudgetSheetPort budgetSheetPort;
     private final BudgetCategoryRepository budgetCategoryRepository;
     private final BudgetAllocationRepository budgetAllocationRepository;
     private final ExternalSheetLinkRepository externalSheetLinkRepository;
+    private final SpreadsheetIdExtractor spreadsheetIdExtractor;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
-    public SaveBudgetSheetSettingsService(
-            BudgetSheetPort budgetSheetPort,
-            BudgetCategoryRepository budgetCategoryRepository,
-            BudgetAllocationRepository budgetAllocationRepository,
-            ExternalSheetLinkRepository externalSheetLinkRepository,
-            ObjectMapper objectMapper,
-            Clock clock
-    ) {
-        this.budgetSheetPort = budgetSheetPort;
-        this.budgetCategoryRepository = budgetCategoryRepository;
-        this.budgetAllocationRepository = budgetAllocationRepository;
-        this.externalSheetLinkRepository = externalSheetLinkRepository;
-        this.objectMapper = objectMapper;
-        this.clock = clock;
-    }
-
     @Override
-    @Transactional
     public BudgetSyncResult saveAndSync(
             SaveBudgetSheetSettingsCommand command
     ) {
@@ -59,54 +52,57 @@ public class SaveBudgetSheetSettingsService
                 command
         );
 
-        String spreadsheetId =
-                budgetSheetPort.extractSpreadsheetId(
-                        command.spreadsheetUrl()
-                );
+        LocalDateTime now = LocalDateTime.now(
+                clock
+        );
 
-        LocalDateTime now =
-                LocalDateTime.now(
-                        clock
-                );
+        String spreadsheetId = spreadsheetIdExtractor.extract(
+                command.spreadsheetUrl()
+        );
 
-        List<BudgetSheetRow> rows =
-                budgetSheetPort.readBudgetRows(
-                        spreadsheetId,
-                        command.sheetName(),
-                        command.columnMapping()
-                );
+        BudgetColumnMapping normalizedColumnMapping = normalizeColumnMapping(
+                command.columnMapping()
+        );
 
-        if (rows.isEmpty()) {
+        List<BudgetSheetRow> rows = budgetSheetPort.readBudgetRows(
+                spreadsheetId,
+                command.sheetName().strip(),
+                normalizedColumnMapping
+        );
+
+        List<BudgetSheetRow> aggregatedRows = aggregateRows(
+                rows
+        );
+
+        if (aggregatedRows.isEmpty()) {
             throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "동기화할 예산 데이터가 없습니다."
+                    ErrorCode.INVALID_INPUT_VALUE
             );
         }
 
-        saveSheetSettings(
-                command,
+        saveOrUpdateExternalSheetLink(
+                command.spreadsheetUrl().strip(),
+                command.sheetName().strip(),
+                normalizedColumnMapping,
                 now
         );
 
-        int syncedCount = 0;
-
-        for (BudgetSheetRow row : rows) {
-            BudgetCategory category =
-                    saveOrUpdateCategory(
-                            row.categoryName()
-                    );
+        for (BudgetSheetRow row : aggregatedRows) {
+            BudgetCategory category = saveOrUpdateCategory(
+                    row.categoryName()
+            );
 
             saveOrUpdateAllocation(
                     category.getId(),
-                    row,
+                    row.totalAmount(),
+                    row.usedAmount(),
+                    row.remainingAmount(),
                     now
             );
-
-            syncedCount++;
         }
 
         return new BudgetSyncResult(
-                syncedCount,
+                aggregatedRows.size(),
                 now
         );
     }
@@ -114,18 +110,25 @@ public class SaveBudgetSheetSettingsService
     private void validateCommand(
             SaveBudgetSheetSettingsCommand command
     ) {
-        if (command.spreadsheetUrl() == null
-                || command.spreadsheetUrl().isBlank()) {
+        if (command == null) {
             throw new BusinessException(
-                    ErrorCode.GOOGLE_SHEET_INVALID_URL
+                    ErrorCode.INVALID_INPUT_VALUE
             );
         }
 
-        if (command.sheetName() == null
-                || command.sheetName().isBlank()) {
+        if (isBlank(
+                command.spreadsheetUrl()
+        )) {
             throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "예산 시트명은 필수입니다."
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+
+        if (isBlank(
+                command.sheetName()
+        )) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
             );
         }
 
@@ -139,166 +142,259 @@ public class SaveBudgetSheetSettingsService
     ) {
         if (columnMapping == null) {
             throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "예산 컬럼 매핑 정보는 필수입니다."
+                    ErrorCode.INVALID_INPUT_VALUE
             );
         }
 
-        if (isBlank(columnMapping.category())
-                || isBlank(columnMapping.totalAmount())
-                || isBlank(columnMapping.usedAmount())
-                || isBlank(columnMapping.remainingAmount())) {
+        List<String> columns = List.of(
+                columnMapping.category(),
+                columnMapping.totalAmount(),
+                columnMapping.usedAmount(),
+                columnMapping.remainingAmount()
+        );
+
+        boolean hasBlankColumn = columns.stream()
+                .anyMatch(
+                        this::isBlank
+                );
+
+        if (hasBlankColumn) {
             throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "카테고리, 예산액, 사용액, 잔여액 컬럼 매핑은 모두 필수입니다."
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+
+        long uniqueColumnCount = columns.stream()
+                .map(
+                        String::strip
+                )
+                .distinct()
+                .count();
+
+        if (uniqueColumnCount != REQUIRED_MAPPING_COUNT) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
             );
         }
     }
 
-    private void saveSheetSettings(
-            SaveBudgetSheetSettingsCommand command,
-            LocalDateTime syncedAt
+    private BudgetColumnMapping normalizeColumnMapping(
+            BudgetColumnMapping columnMapping
     ) {
-        String columnMappingJson =
-                toJson(
-                        command.columnMapping()
-                );
+        return new BudgetColumnMapping(
+                columnMapping.category().strip(),
+                columnMapping.totalAmount().strip(),
+                columnMapping.usedAmount().strip(),
+                columnMapping.remainingAmount().strip()
+        );
+    }
 
-        ExternalSheetLink externalSheetLink =
-                externalSheetLinkRepository
-                        .findByDomain(
-                                ExternalSheetLink.budgetDomain()
+    private List<BudgetSheetRow> aggregateRows(
+            List<BudgetSheetRow> rows
+    ) {
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, BudgetSheetRow> aggregatedRows = new LinkedHashMap<>();
+
+        for (BudgetSheetRow row : rows) {
+            String normalizedCategoryName = normalizeCategoryName(
+                    row.categoryName()
+            );
+
+            validateAmounts(
+                    row.totalAmount(),
+                    row.usedAmount(),
+                    row.remainingAmount()
+            );
+
+            BudgetSheetRow existingRow = aggregatedRows.get(
+                    normalizedCategoryName
+            );
+
+            if (existingRow == null) {
+                aggregatedRows.put(
+                        normalizedCategoryName,
+                        new BudgetSheetRow(
+                                normalizedCategoryName,
+                                row.totalAmount(),
+                                row.usedAmount(),
+                                row.remainingAmount()
                         )
-                        .map(existingLink -> {
-                            existingLink.update(
-                                    command.spreadsheetUrl(),
-                                    command.sheetName(),
-                                    columnMappingJson,
-                                    syncedAt
-                            );
+                );
+                continue;
+            }
 
-                            return existingLink;
-                        })
-                        .orElseGet(() ->
-                                ExternalSheetLink.createBudgetLink(
-                                        command.spreadsheetUrl(),
-                                        command.sheetName(),
-                                        columnMappingJson,
-                                        syncedAt
-                                )
-                        );
+            aggregatedRows.put(
+                    normalizedCategoryName,
+                    new BudgetSheetRow(
+                            normalizedCategoryName,
+                            existingRow.totalAmount().add(
+                                    row.totalAmount()
+                            ),
+                            existingRow.usedAmount().add(
+                                    row.usedAmount()
+                            ),
+                            existingRow.remainingAmount().add(
+                                    row.remainingAmount()
+                            )
+                    )
+            );
+        }
+
+        return new ArrayList<>(
+                aggregatedRows.values()
+        );
+    }
+
+    private String normalizeCategoryName(
+            String categoryName
+    ) {
+        if (isBlank(
+                categoryName
+        )) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+
+        return categoryName.strip();
+    }
+
+    private void validateAmounts(
+            BigDecimal totalAmount,
+            BigDecimal usedAmount,
+            BigDecimal remainingAmount
+    ) {
+        if (totalAmount == null
+                || usedAmount == null
+                || remainingAmount == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+
+        if (totalAmount.signum() < 0
+                || usedAmount.signum() < 0
+                || remainingAmount.signum() < 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+
+        if (usedAmount.compareTo(
+                totalAmount
+        ) > 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+
+        if (usedAmount.add(
+                remainingAmount
+        ).compareTo(
+                totalAmount
+        ) != 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+    }
+
+    private void saveOrUpdateExternalSheetLink(
+            String sheetUrl,
+            String tabName,
+            BudgetColumnMapping columnMapping,
+            LocalDateTime lastSyncedAt
+    ) {
+        String columnMappingJson = toColumnMappingJson(
+                columnMapping
+        );
+
+        ExternalSheetLink externalSheetLink = externalSheetLinkRepository.findByDomain(
+                        ExternalSheetLink.budgetDomain()
+                )
+                .orElseGet(() -> ExternalSheetLink.createBudgetLink(
+                        sheetUrl,
+                        tabName,
+                        columnMappingJson,
+                        lastSyncedAt
+                ));
+
+        externalSheetLink.update(
+                sheetUrl,
+                tabName,
+                columnMappingJson,
+                lastSyncedAt
+        );
 
         externalSheetLinkRepository.save(
                 externalSheetLink
         );
     }
 
-    private BudgetCategory saveOrUpdateCategory(
-            String categoryName
-    ) {
-        validateCategoryName(
-                categoryName
-        );
-
-        return budgetCategoryRepository
-                .findByName(
-                        categoryName
-                )
-                .orElseGet(() ->
-                        budgetCategoryRepository.save(
-                                BudgetCategory.createFromSheet(
-                                        categoryName
-                                )
-                        )
-                );
-    }
-
-    private void saveOrUpdateAllocation(
-            Long budgetCategoryId,
-            BudgetSheetRow row,
-            LocalDateTime syncedAt
-    ) {
-        validateAmounts(
-                row
-        );
-
-        BudgetAllocation budgetAllocation =
-                budgetAllocationRepository
-                        .findByBudgetCategoryId(
-                                budgetCategoryId
-                        )
-                        .map(existingAllocation -> {
-                            existingAllocation.updateAmounts(
-                                    row.totalAmount(),
-                                    row.usedAmount(),
-                                    row.remainingAmount(),
-                                    syncedAt
-                            );
-
-                            return existingAllocation;
-                        })
-                        .orElseGet(() ->
-                                BudgetAllocation.create(
-                                        budgetCategoryId,
-                                        row.totalAmount(),
-                                        row.usedAmount(),
-                                        row.remainingAmount(),
-                                        syncedAt
-                                )
-                        );
-
-        budgetAllocationRepository.save(
-                budgetAllocation
-        );
-    }
-
-    private void validateCategoryName(
-            String categoryName
-    ) {
-        if (categoryName == null || categoryName.isBlank()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "예산 카테고리명은 필수입니다."
-            );
-        }
-    }
-
-    private void validateAmounts(
-            BudgetSheetRow row
-    ) {
-        if (row.totalAmount() == null
-                || row.usedAmount() == null
-                || row.remainingAmount() == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "예산액, 사용액, 잔여액은 필수입니다."
-            );
-        }
-
-        if (row.totalAmount().signum() < 0
-                || row.usedAmount().signum() < 0
-                || row.remainingAmount().signum() < 0) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "예산액, 사용액, 잔여액은 음수일 수 없습니다."
-            );
-        }
-    }
-
-    private String toJson(
+    private String toColumnMappingJson(
             BudgetColumnMapping columnMapping
     ) {
         try {
             return objectMapper.writeValueAsString(
                     columnMapping
             );
-
         } catch (JsonProcessingException exception) {
             throw new BusinessException(
-                    ErrorCode.INTERNAL_SERVER_ERROR,
-                    "예산 컬럼 매핑 정보를 저장할 수 없습니다."
+                    ErrorCode.INVALID_INPUT_VALUE
             );
         }
+    }
+
+    private BudgetCategory saveOrUpdateCategory(
+            String categoryName
+    ) {
+        String normalizedCategoryName = normalizeCategoryName(
+                categoryName
+        );
+
+        BudgetCategory category = budgetCategoryRepository.findByName(
+                        normalizedCategoryName
+                )
+                .orElseGet(() -> BudgetCategory.createFromSheet(
+                        normalizedCategoryName
+                ));
+
+        return budgetCategoryRepository.save(
+                category
+        );
+    }
+
+    private void saveOrUpdateAllocation(
+            Long budgetCategoryId,
+            BigDecimal totalAmount,
+            BigDecimal usedAmount,
+            BigDecimal remainingAmount,
+            LocalDateTime syncedAt
+    ) {
+        BudgetAllocation budgetAllocation = budgetAllocationRepository.findByBudgetCategoryId(
+                        budgetCategoryId
+                )
+                .orElseGet(() -> BudgetAllocation.create(
+                        budgetCategoryId,
+                        totalAmount,
+                        usedAmount,
+                        remainingAmount,
+                        syncedAt
+                ));
+
+        budgetAllocation.updateAmounts(
+                totalAmount,
+                usedAmount,
+                remainingAmount,
+                syncedAt
+        );
+
+        budgetAllocationRepository.save(
+                budgetAllocation
+        );
     }
 
     private boolean isBlank(

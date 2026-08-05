@@ -7,16 +7,24 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "budget_allocation")
+@Table(
+        name = "budget_allocation",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "UQ_BUDGET_ALLOCATION_CATEGORY",
+                        columnNames = "budget_category_id"
+                )
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class BudgetAllocationJpaEntity {
@@ -58,12 +66,6 @@ public class BudgetAllocationJpaEntity {
     )
     private BigDecimal remainingAmount;
 
-    @Column(name = "period_start")
-    private LocalDate periodStart;
-
-    @Column(name = "period_end")
-    private LocalDate periodEnd;
-
     @Column(name = "last_synced_at")
     private LocalDateTime lastSyncedAt;
 
@@ -73,8 +75,6 @@ public class BudgetAllocationJpaEntity {
             BigDecimal totalAmount,
             BigDecimal usedAmount,
             BigDecimal remainingAmount,
-            LocalDate periodStart,
-            LocalDate periodEnd,
             LocalDateTime lastSyncedAt
     ) {
         this.id = id;
@@ -82,8 +82,6 @@ public class BudgetAllocationJpaEntity {
         this.totalAmount = totalAmount;
         this.usedAmount = usedAmount;
         this.remainingAmount = remainingAmount;
-        this.periodStart = periodStart;
-        this.periodEnd = periodEnd;
         this.lastSyncedAt = lastSyncedAt;
     }
 
@@ -96,8 +94,6 @@ public class BudgetAllocationJpaEntity {
                 budgetAllocation.getTotalAmount(),
                 budgetAllocation.getUsedAmount(),
                 budgetAllocation.getRemainingAmount(),
-                budgetAllocation.getPeriodStart(),
-                budgetAllocation.getPeriodEnd(),
                 budgetAllocation.getLastSyncedAt()
         );
     }
@@ -109,8 +105,6 @@ public class BudgetAllocationJpaEntity {
                 totalAmount,
                 usedAmount,
                 remainingAmount,
-                periodStart,
-                periodEnd,
                 lastSyncedAt
         );
     }
