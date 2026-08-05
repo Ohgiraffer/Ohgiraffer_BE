@@ -17,7 +17,10 @@ import java.util.stream.IntStream;
 public record CreateSubmissionBoxRequest(
 
         @NotBlank(message = "프로젝트명은 필수입니다.")
-        @Size(max = 255, message = "프로젝트명은 255자 이하여야 합니다.")
+        @Size(
+                max = 255,
+                message = "프로젝트명은 255자 이하여야 합니다."
+        )
         String projectName,
 
         @NotNull(message = "제출 단위는 필수입니다.")
@@ -33,8 +36,15 @@ public record CreateSubmissionBoxRequest(
         LatePolicy latePolicy,
 
         @Valid
-        @NotEmpty(message = "제출 항목을 최소 1개 이상 등록해야 합니다.")
-        List<CreateSubmissionBoxItemRequest> items
+        @NotEmpty(
+                message = "제출 항목을 최소 1개 이상 등록해야 합니다."
+        )
+        List<
+                @NotNull(
+                        message = "제출 항목에는 null을 입력할 수 없습니다."
+                )
+                        CreateSubmissionBoxItemRequest
+                > items
 ) {
 
     public CreateSubmissionBoxCommand toCommand(

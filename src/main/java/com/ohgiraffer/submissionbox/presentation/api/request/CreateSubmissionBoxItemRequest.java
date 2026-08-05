@@ -9,7 +9,10 @@ import jakarta.validation.constraints.Size;
 public record CreateSubmissionBoxItemRequest(
 
         @NotBlank(message = "제출 항목명은 필수입니다.")
-        @Size(max = 100, message = "제출 항목명은 100자 이하여야 합니다.")
+        @Size(
+                max = 100,
+                message = "제출 항목명은 100자 이하여야 합니다."
+        )
         String itemName,
 
         @NotNull(message = "제출 항목 유형은 필수입니다.")
