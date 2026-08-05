@@ -1,7 +1,7 @@
 package com.ohgiraffer.approval.application.service;
 
 import com.ohgiraffer.approval.application.usecase.DeleteMySignatureUseCase;
-import com.ohgiraffer.approval.domain.model.UserSignature;
+import com.ohgiraffer.approval.domain.model.signature.UserSignature;
 import com.ohgiraffer.approval.domain.repository.UserSignatureRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;

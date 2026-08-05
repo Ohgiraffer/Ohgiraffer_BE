@@ -1,6 +1,6 @@
 package com.ohgiraffer.approval.infrastructure.persistence;
 
-import com.ohgiraffer.approval.domain.model.UserSignature;
+import com.ohgiraffer.approval.domain.model.signature.UserSignature;
 import com.ohgiraffer.approval.domain.repository.UserSignatureRepository;
 import org.springframework.stereotype.Repository;
 
