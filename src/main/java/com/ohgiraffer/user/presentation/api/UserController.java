@@ -5,15 +5,18 @@ import com.ohgiraffer.user.application.usecase.UserCommandUsecase;
 import com.ohgiraffer.user.presentation.api.request.SetPasswordRequest;
 import com.ohgiraffer.user.presentation.api.response.SetAlarmResponse;
 import com.ohgiraffer.user.presentation.api.response.SetPasswordResponse;
+import com.ohgiraffer.user.presentation.api.response.SetProfileImgResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -55,6 +58,22 @@ public class UserController {
     ) {
         boolean result = userCommandUsecase.setAlarm(principal.getId());
         return ResponseEntity.ok(new SetAlarmResponse(result));
+    }
+
+    @Operation(summary = "프로필 이미지 등록/수정", description = "프로필 이미지를 업로드합니다. 기존 이미지가 있으면 자동으로 교체됩니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "프로필 이미지 변경 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PatchMapping(value = "/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<SetProfileImgResponse> updateProfileImage(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @RequestParam("profileImg") MultipartFile profileImg
+    ) {
+        String url = userCommandUsecase.updateProfileImg(principal.getId(), profileImg);
+        return ResponseEntity.ok(new SetProfileImgResponse(url));
     }
 
 }
