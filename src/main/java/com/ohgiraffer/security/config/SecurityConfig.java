@@ -46,7 +46,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(
                 "Authorization", "Content-Type", "Accept", "X-Requested-With", "Cache-Control", "Idempotency-Key","X-Refresh-Token","Origin",
-                "Access-Control-Request-Method", "Access-Control-Request-Headers"
+                "Access-Control-Request-Method", "Access-Control-Request-Headers", "Refresh-Token"
         ));
         configuration.setExposedHeaders(List.of("Authorization","New-Access-Token"));
         configuration.setAllowCredentials(true);
@@ -84,7 +84,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // 인증/회원가입/토큰 재발급 - 반드시 permitAll
+                        .requestMatchers("/auth/logout").authenticated()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/error").permitAll()

@@ -1,4 +1,4 @@
-package com.ohgiraffer.approval.domain.model;
+package com.ohgiraffer.approval.domain.model.approval;
 
 public enum ApprovalType {
     LEAVE,     // 휴가
