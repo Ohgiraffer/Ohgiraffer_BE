@@ -27,8 +27,23 @@ public class NoticeCategoryJpaEntity extends BaseTimeEntity {
     protected NoticeCategoryJpaEntity() {
     }
 
+    private NoticeCategoryJpaEntity(String name) {
+        this.name = name;
+        this.defaultCategory = false;
+    }
+
+    /**
+     * 새로 저장할 카테고리를 만든다. 식별자는 DB가 채번한다.
+     *
+     * <p>is_default 는 NOT NULL 이라 값을 넣어야 하는데, 작성 화면이 기본 선택을 쓰지 않기로 해
+     * 도메인에서 다루지 않는다. 여기서 false 로 채워 제약만 만족시킨다.
+     */
+    public static NoticeCategoryJpaEntity from(NoticeCategory category) {
+        return new NoticeCategoryJpaEntity(category.getName());
+    }
+
     public NoticeCategory toDomain() {
-        return NoticeCategory.restore(id, name, defaultCategory);
+        return NoticeCategory.restore(id, name);
     }
 
     public Long getId() {

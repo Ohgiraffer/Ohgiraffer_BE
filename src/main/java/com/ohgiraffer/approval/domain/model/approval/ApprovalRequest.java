@@ -53,6 +53,34 @@ public class ApprovalRequest {
         return approvalRequest;
     }
 
+    public static ApprovalRequest createPurchase(
+            Long requesterId,
+            Long approverId,
+            String reason,
+            Long signatureId,
+            byte[] signatureImageSnapshot,
+            String signatureFileTypeSnapshot,
+            LocalDateTime requestedAt
+    ) {
+        ApprovalRequest approvalRequest =
+                new ApprovalRequest(
+                        null,
+                        requesterId,
+                        approverId,
+                        ApprovalType.PURCHASE,
+                        "구매 요청",
+                        reason,
+                        requestedAt,
+                        signatureId,
+                        copyBytes(signatureImageSnapshot),
+                        signatureFileTypeSnapshot
+                );
+
+        approvalRequest.status = ApprovalStatus.PENDING;
+
+        return approvalRequest;
+    }
+
     public static ApprovalRequest restore(
             Long id,
             Long requesterId,

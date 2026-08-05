@@ -28,4 +28,6 @@ public interface SpringDataNoticeRepository
             @Param("categoryId") Long categoryId,
             @Param("visibleToTrainee") Boolean visibleToTrainee
     );
+
+    long countByCategoryId(Long categoryId);
 }

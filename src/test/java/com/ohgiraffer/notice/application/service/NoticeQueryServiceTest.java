@@ -2,12 +2,14 @@ package com.ohgiraffer.notice.application.service;
 
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.notice.application.port.AuthorNameQueryPort;
 import com.ohgiraffer.notice.application.query.NoticeDetailView;
 import com.ohgiraffer.notice.application.query.NoticeSummaryView;
 import com.ohgiraffer.notice.domain.model.Notice;
 import com.ohgiraffer.notice.domain.model.NoticeCategory;
 import com.ohgiraffer.notice.domain.model.ViewerRole;
 import com.ohgiraffer.notice.domain.repository.NoticeCategoryRepository;
+import com.ohgiraffer.notice.domain.repository.NoticeConfirmationRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,12 +20,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -34,6 +40,7 @@ class NoticeQueryServiceTest {
 
     private static final Long NOTICE_ID = 10L;
     private static final Long AUTHOR_ID = 1L;
+    private static final Long VIEWER_ID = 7L;
     private static final Long CATEGORY_ID = 2L;
     private static final Instant CREATED_AT =
             Instant.parse("2026-08-04T03:00:00Z");
@@ -44,13 +51,21 @@ class NoticeQueryServiceTest {
     @Mock
     private NoticeCategoryRepository noticeCategoryRepository;
 
+    @Mock
+    private NoticeConfirmationRepository noticeConfirmationRepository;
+
+    @Mock
+    private AuthorNameQueryPort authorNameQueryPort;
+
     private NoticeQueryService noticeQueryService;
 
     @BeforeEach
     void setUp() {
         noticeQueryService = new NoticeQueryService(
                 noticeRepository,
-                noticeCategoryRepository
+                noticeCategoryRepository,
+                noticeConfirmationRepository,
+                authorNameQueryPort
         );
     }
 
@@ -61,13 +76,14 @@ class NoticeQueryServiceTest {
                 .thenReturn(Optional.of(notice(true)));
         when(noticeCategoryRepository.findById(CATEGORY_ID))
                 .thenReturn(Optional.of(
-                        NoticeCategory.restore(CATEGORY_ID, "과제", false)
+                        NoticeCategory.restore(CATEGORY_ID, "과제")
                 ));
 
         NoticeDetailView view = noticeQueryService.findDetail(
                 NOTICE_ID,
-                ViewerRole.TRAINEE
-        );
+                ViewerRole.TRAINEE,
+                VIEWER_ID
+            );
 
         assertEquals(NOTICE_ID, view.noticeId());
         assertEquals(CATEGORY_ID, view.categoryId());
@@ -88,8 +104,9 @@ class NoticeQueryServiceTest {
                 BusinessException.class,
                 () -> noticeQueryService.findDetail(
                         NOTICE_ID,
-                        ViewerRole.STAFF
-                )
+                        ViewerRole.STAFF,
+                        VIEWER_ID
+                    )
         );
 
         assertEquals(
@@ -109,8 +126,9 @@ class NoticeQueryServiceTest {
                 BusinessException.class,
                 () -> noticeQueryService.findDetail(
                         NOTICE_ID,
-                        ViewerRole.TRAINEE
-                )
+                        ViewerRole.TRAINEE,
+                        VIEWER_ID
+                    )
         );
 
         /*
@@ -131,13 +149,14 @@ class NoticeQueryServiceTest {
                 .thenReturn(Optional.of(notice(false)));
         when(noticeCategoryRepository.findById(CATEGORY_ID))
                 .thenReturn(Optional.of(
-                        NoticeCategory.restore(CATEGORY_ID, "운영", false)
+                        NoticeCategory.restore(CATEGORY_ID, "운영")
                 ));
 
         NoticeDetailView view = noticeQueryService.findDetail(
                 NOTICE_ID,
-                ViewerRole.STAFF
-        );
+                ViewerRole.STAFF,
+                VIEWER_ID
+            );
 
         assertEquals(NOTICE_ID, view.noticeId());
         assertEquals("운영", view.categoryName());
@@ -153,8 +172,9 @@ class NoticeQueryServiceTest {
 
         NoticeDetailView view = noticeQueryService.findDetail(
                 NOTICE_ID,
-                ViewerRole.STAFF
-        );
+                ViewerRole.STAFF,
+                VIEWER_ID
+            );
 
         assertEquals(NOTICE_ID, view.noticeId());
         assertNull(view.categoryName());
@@ -167,11 +187,11 @@ class NoticeQueryServiceTest {
                 .thenReturn(List.of(notice(true)));
         when(noticeCategoryRepository.findAll())
                 .thenReturn(List.of(
-                        NoticeCategory.restore(CATEGORY_ID, "과제", false)
+                        NoticeCategory.restore(CATEGORY_ID, "과제")
                 ));
 
         List<NoticeSummaryView> views =
-                noticeQueryService.findAll(ViewerRole.TRAINEE, 2L);
+                noticeQueryService.findAll(ViewerRole.TRAINEE, 2L, VIEWER_ID);
 
         assertEquals(1, views.size());
         assertEquals(NOTICE_ID, views.get(0).noticeId());
@@ -187,7 +207,7 @@ class NoticeQueryServiceTest {
                 .thenReturn(List.of());
 
         List<NoticeSummaryView> views =
-                noticeQueryService.findAll(ViewerRole.STAFF, null);
+                noticeQueryService.findAll(ViewerRole.STAFF, null, VIEWER_ID);
 
         assertTrue(views.isEmpty());
         verify(noticeCategoryRepository, never()).findAll();
@@ -200,24 +220,189 @@ class NoticeQueryServiceTest {
                 .thenReturn(List.of(notice(true), notice(false), notice(true)));
         when(noticeCategoryRepository.findAll())
                 .thenReturn(List.of(
-                        NoticeCategory.restore(CATEGORY_ID, "과제", false)
+                        NoticeCategory.restore(CATEGORY_ID, "과제")
                 ));
 
         List<NoticeSummaryView> views =
-                noticeQueryService.findAll(ViewerRole.STAFF, null);
+                noticeQueryService.findAll(ViewerRole.STAFF, null, VIEWER_ID);
 
         assertEquals(3, views.size());
         verify(noticeCategoryRepository, times(1)).findAll();
     }
 
-    private Notice notice(boolean visibleToTrainee) {
-        return Notice.restore(
+    @Test
+    @DisplayName("필수 공지 상세는 확인 인원과 내 확인 여부를 함께 담는다")
+    void findDetailFillsConfirmation() {
+        when(noticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(notice(true)));
+        when(noticeCategoryRepository.findById(CATEGORY_ID))
+                .thenReturn(Optional.of(
+                        NoticeCategory.restore(CATEGORY_ID, "과제")
+                ));
+        when(noticeConfirmationRepository.countBy(NOTICE_ID))
+                .thenReturn(12L);
+        when(noticeConfirmationRepository.existsBy(NOTICE_ID, VIEWER_ID))
+                .thenReturn(true);
+
+        NoticeDetailView view = noticeQueryService.findDetail(
                 NOTICE_ID,
+                ViewerRole.TRAINEE,
+                VIEWER_ID
+        );
+
+        assertEquals(12L, view.confirmationCount());
+        assertTrue(view.confirmedByMe());
+    }
+
+    @Test
+    @DisplayName("일반 공지 상세는 확인 정보를 조회하지 않는다")
+    void findDetailSkipsConfirmationForOptionalNotice() {
+        when(noticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(notice(true, false)));
+        when(noticeCategoryRepository.findById(CATEGORY_ID))
+                .thenReturn(Optional.of(
+                        NoticeCategory.restore(CATEGORY_ID, "과제")
+                ));
+
+        NoticeDetailView view = noticeQueryService.findDetail(
+                NOTICE_ID,
+                ViewerRole.TRAINEE,
+                VIEWER_ID
+        );
+
+        assertEquals(0L, view.confirmationCount());
+        assertFalse(view.confirmedByMe());
+        verify(noticeConfirmationRepository, never()).countBy(NOTICE_ID);
+        verify(noticeConfirmationRepository, never())
+                .existsBy(NOTICE_ID, VIEWER_ID);
+    }
+
+    @Test
+    @DisplayName("목록의 확인 여부는 필수 공지만 모아 한 번에 조회한다")
+    void findAllFetchesConfirmationsInOneQuery() {
+        Notice mandatory = notice(NOTICE_ID, true, true);
+        Notice optional = notice(11L, true, false);
+
+        when(noticeRepository.findAllVisible(ViewerRole.TRAINEE, null))
+                .thenReturn(List.of(mandatory, optional));
+        when(noticeCategoryRepository.findAll())
+                .thenReturn(List.of(
+                        NoticeCategory.restore(CATEGORY_ID, "과제")
+                ));
+        when(noticeConfirmationRepository
+                .findConfirmedNoticeIds(VIEWER_ID, List.of(NOTICE_ID)))
+                .thenReturn(Set.of(NOTICE_ID));
+
+        List<NoticeSummaryView> views =
+                noticeQueryService.findAll(ViewerRole.TRAINEE, null, VIEWER_ID);
+
+        assertTrue(views.get(0).confirmedByMe());
+        assertFalse(views.get(1).confirmedByMe());
+        verify(noticeConfirmationRepository, times(1))
+                .findConfirmedNoticeIds(VIEWER_ID, List.of(NOTICE_ID));
+    }
+
+    @Test
+    @DisplayName("필수 공지가 하나도 없으면 확인 여부를 조회하지 않는다")
+    void findAllSkipsConfirmationLookupWithoutMandatoryNotice() {
+        when(noticeRepository.findAllVisible(ViewerRole.STAFF, null))
+                .thenReturn(List.of(notice(11L, true, false)));
+        when(noticeCategoryRepository.findAll())
+                .thenReturn(List.of(
+                        NoticeCategory.restore(CATEGORY_ID, "과제")
+                ));
+
+        List<NoticeSummaryView> views =
+                noticeQueryService.findAll(ViewerRole.STAFF, null, VIEWER_ID);
+
+        assertFalse(views.get(0).confirmedByMe());
+        verify(noticeConfirmationRepository, never())
+                .findConfirmedNoticeIds(any(), any());
+    }
+
+    @Test
+    @DisplayName("상세 조회는 작성자 이름을 함께 담는다")
+    void findDetailFillsAuthorName() {
+        when(noticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(notice(true)));
+        when(noticeCategoryRepository.findById(CATEGORY_ID))
+                .thenReturn(Optional.of(
+                        NoticeCategory.restore(CATEGORY_ID, "과제")
+                ));
+        when(authorNameQueryPort.findName(AUTHOR_ID))
+                .thenReturn(Optional.of("박강사"));
+
+        NoticeDetailView view = noticeQueryService.findDetail(
+                NOTICE_ID,
+                ViewerRole.TRAINEE,
+                VIEWER_ID
+        );
+
+        assertEquals("박강사", view.authorName());
+    }
+
+    @Test
+    @DisplayName("작성자를 찾지 못해도 상세 조회는 성공하고 이름만 비운다")
+    void findDetailToleratesMissingAuthor() {
+        when(noticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(notice(true)));
+        when(noticeCategoryRepository.findById(CATEGORY_ID))
+                .thenReturn(Optional.of(
+                        NoticeCategory.restore(CATEGORY_ID, "과제")
+                ));
+        when(authorNameQueryPort.findName(AUTHOR_ID))
+                .thenReturn(Optional.empty());
+
+        NoticeDetailView view = noticeQueryService.findDetail(
+                NOTICE_ID,
+                ViewerRole.TRAINEE,
+                VIEWER_ID
+        );
+
+        assertEquals(NOTICE_ID, view.noticeId());
+        assertNull(view.authorName());
+    }
+
+    @Test
+    @DisplayName("목록의 작성자 이름은 한 번의 조회로 채운다")
+    void findAllFetchesAuthorNamesInOneCall() {
+        when(noticeRepository.findAllVisible(ViewerRole.STAFF, null))
+                .thenReturn(List.of(notice(true), notice(true)));
+        when(noticeCategoryRepository.findAll())
+                .thenReturn(List.of(
+                        NoticeCategory.restore(CATEGORY_ID, "과제")
+                ));
+        when(authorNameQueryPort.findNames(List.of(AUTHOR_ID, AUTHOR_ID)))
+                .thenReturn(Map.of(AUTHOR_ID, "박강사"));
+
+        List<NoticeSummaryView> views =
+                noticeQueryService.findAll(ViewerRole.STAFF, null, VIEWER_ID);
+
+        assertEquals("박강사", views.get(0).authorName());
+        assertEquals("박강사", views.get(1).authorName());
+        verify(authorNameQueryPort, times(1)).findNames(any());
+    }
+
+    private Notice notice(boolean visibleToTrainee) {
+        return notice(NOTICE_ID, visibleToTrainee, true);
+    }
+
+    private Notice notice(boolean visibleToTrainee, boolean mandatory) {
+        return notice(NOTICE_ID, visibleToTrainee, mandatory);
+    }
+
+    private Notice notice(
+            Long noticeId,
+            boolean visibleToTrainee,
+            boolean mandatory
+    ) {
+        return Notice.restore(
+                noticeId,
                 AUTHOR_ID,
                 CATEGORY_ID,
                 "8월 특강 안내",
                 "<p>본문입니다.</p>",
-                true,
+                mandatory,
                 visibleToTrainee,
                 CREATED_AT,
                 CREATED_AT

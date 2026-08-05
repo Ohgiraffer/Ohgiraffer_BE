@@ -7,12 +7,8 @@ import java.time.Instant;
 /**
  * 공지 목록 화면의 한 줄.
  *
- * <p>요구사항의 목록 항목 중 아직 채우지 못하는 것이 둘 있다.
- * <ul>
- *   <li>작성자 이름 — users 는 인증 도메인 소유라 직접 조회하지 않는다.
- *       사용자 도메인에 조회 유스케이스가 생기면 포트로 채운다.</li>
- *   <li>확인 여부 — 공지 확인 기능을 구현할 때 함께 추가한다.</li>
- * </ul>
+ * <p>{@code authorName} 은 사용자 도메인에서 포트로 가져온다.
+ * 탈퇴 등으로 사용자를 찾지 못하면 null 이며, 화면에서 대체 문구를 보여주면 된다.
  */
 public record NoticeSummaryView(
         Long noticeId,
@@ -20,13 +16,17 @@ public record NoticeSummaryView(
         String categoryName,
         String title,
         Long authorId,
+        String authorName,
         boolean mandatory,
+        boolean confirmedByMe,
         Instant createdAt
 ) {
 
     public static NoticeSummaryView of(
             Notice notice,
-            String categoryName
+            String categoryName,
+            String authorName,
+            boolean confirmedByMe
     ) {
         return new NoticeSummaryView(
                 notice.getId(),
@@ -34,7 +34,9 @@ public record NoticeSummaryView(
                 categoryName,
                 notice.getTitle(),
                 notice.getAuthorId(),
+                authorName,
                 notice.isMandatory(),
+                confirmedByMe,
                 notice.getCreatedAt()
         );
     }

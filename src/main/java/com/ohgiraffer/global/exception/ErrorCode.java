@@ -61,14 +61,20 @@ public enum ErrorCode {
     SURVEY_FORM_INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "SURVEY_002", "변경할 수 없는 설문 상태입니다."),
     SURVEY_FORM_HAS_RESPONSES(HttpStatus.CONFLICT, "SURVEY_003", "응답이 존재하는 설문은 삭제할 수 없습니다."),
 
-    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_001", "존재하지 않는 공지입니다."),
-    NOTICE_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_002", "존재하지 않는 공지 카테고리입니다."),
-
+    SUBMISSION_BOX_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_001", "제출함을 찾을 수 없습니다."),
+  
     BOOTCAMP_NOT_FOUND(HttpStatus.NOT_FOUND, "BOOTCAMP_001", "부트캠프를 찾을 수 없습니다."),
     INVALID_PERIOD_RANGE(HttpStatus.BAD_REQUEST, "BOOTCAMP_002", "단위기간 시작일이 종료일보다 늦을 수 없습니다."),
     DUPLICATE_PERIOD_NO(HttpStatus.BAD_REQUEST, "BOOTCAMP_003", "단위기간 번호가 중복되었습니다."),
     OVERLAPPING_PERIOD(HttpStatus.BAD_REQUEST, "BOOTCAMP_004", "단위기간이 서로 겹칩니다."),
-    INVALID_POLICY_THRESHOLD_ORDER(HttpStatus.BAD_REQUEST, "BOOTCAMP_005", "출석률 기준은 주의 > 경고 > 제적위험 순이어야 합니다.");
+    INVALID_POLICY_THRESHOLD_ORDER(HttpStatus.BAD_REQUEST, "BOOTCAMP_005", "출석률 기준은 주의 > 경고 > 제적위험 순이어야 합니다."),
+
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_001", "존재하지 않는 공지입니다."),
+    NOTICE_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_002", "존재하지 않는 공지 카테고리입니다."),
+    NOTICE_NOT_AUTHOR(HttpStatus.FORBIDDEN, "NOTICE_003", "공지 작성자만 수정하거나 삭제할 수 있습니다."),
+    NOTICE_NOT_MANDATORY(HttpStatus.BAD_REQUEST, "NOTICE_004", "필수 공지만 확인 처리할 수 있습니다."),
+    NOTICE_CATEGORY_DUPLICATE_NAME(HttpStatus.CONFLICT, "NOTICE_005", "이미 같은 이름의 카테고리가 있습니다."),
+    NOTICE_CATEGORY_IN_USE(HttpStatus.CONFLICT, "NOTICE_006", "공지가 사용 중인 카테고리는 삭제할 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;

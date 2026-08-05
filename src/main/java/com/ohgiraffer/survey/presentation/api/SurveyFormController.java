@@ -62,7 +62,7 @@ public class SurveyFormController {
                 new CreateSurveyFormCommand(
                         request.title(),
                         request.dueAt(),
-                        principal.id()
+                        principal.getId()
                 );
 
         CreateSurveyFormResult result =
