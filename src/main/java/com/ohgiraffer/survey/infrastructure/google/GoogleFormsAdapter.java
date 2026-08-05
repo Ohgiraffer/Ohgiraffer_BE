@@ -12,7 +12,17 @@ import com.ohgiraffer.survey.application.port.GoogleFormPort;
 import com.google.api.services.forms.v1.model.PublishSettings;
 import com.google.api.services.forms.v1.model.PublishState;
 import com.google.api.services.forms.v1.model.SetPublishSettingsRequest;
+import com.google.api.services.drive.model.File;
+import com.google.api.services.forms.v1.model.BatchUpdateFormRequest;
+import com.google.api.services.forms.v1.model.FormSettings;
+import com.google.api.services.forms.v1.model.Request;
+import com.google.api.services.forms.v1.model.UpdateSettingsRequest;
+import com.google.api.services.forms.v1.model.ListFormResponsesResponse;
+import com.ohgiraffer.survey.application.port.GoogleFormResponseInfo;
 
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.io.IOException;
 
@@ -30,33 +40,15 @@ public class GoogleFormsAdapter implements GoogleFormPort {
     }
 
     @Override
-    public CreatedGoogleForm createDraft(
-            String title
-    ) {
-        validateTitle(title);
+    public CreatedGoogleForm createDraft(String title) {
+        validateTitle(title);String normalizedTitle = title.trim();
+        Form requestedForm = new Form().setInfo(
+                                new Info().setTitle(normalizedTitle)
+                                        .setDocumentTitle(normalizedTitle));
 
-        String normalizedTitle =
-                title.trim();
-
-        Form requestedForm =
-                new Form()
-                        .setInfo(
-                                new Info()
-                                        .setTitle(
-                                                normalizedTitle
-                                        )
-                                        .setDocumentTitle(
-                                                normalizedTitle
-                                        )
-                        );
-
-        try {
-            Form createdForm =
-                    forms
+        try {Form createdForm = forms
                             .forms()
-                            .create(
-                                    requestedForm
-                            )
+                            .create(requestedForm)
                             .setUnpublished(true)
                             .execute();
 
@@ -72,6 +64,60 @@ public class GoogleFormsAdapter implements GoogleFormPort {
             return new CreatedGoogleForm(
                     createdForm.getFormId()
             );
+
+        } catch (GoogleJsonResponseException exception) {
+            throw convertGoogleException(
+                    exception
+            );
+
+        } catch (IOException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR
+            );
+        }
+    }
+
+    @Override
+    public void enableVerifiedEmailCollection(String googleFormId) {
+        validateGoogleFormId(
+                googleFormId
+        );
+
+        FormSettings formSettings =
+                new FormSettings()
+                        .setEmailCollectionType(
+                                "VERIFIED"
+                        );
+
+        UpdateSettingsRequest updateSettingsRequest =
+                new UpdateSettingsRequest()
+                        .setSettings(
+                                formSettings
+                        )
+                        .setUpdateMask(
+                                "emailCollectionType"
+                        );
+
+        Request request =
+                new Request()
+                        .setUpdateSettings(
+                                updateSettingsRequest
+                        );
+
+        BatchUpdateFormRequest batchRequest =
+                new BatchUpdateFormRequest()
+                        .setRequests(
+                                List.of(request)
+                        );
+
+        try {
+            forms
+                    .forms()
+                    .batchUpdate(
+                            googleFormId.trim(),
+                            batchRequest
+                    )
+                    .execute();
 
         } catch (GoogleJsonResponseException exception) {
             throw convertGoogleException(
@@ -120,6 +166,69 @@ public class GoogleFormsAdapter implements GoogleFormPort {
                             googleFormId.trim(),
                             request
                     )
+                    .execute();
+
+        } catch (GoogleJsonResponseException exception) {
+            throw convertGoogleException(exception);
+
+        } catch (IOException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR
+            );
+        }
+    }
+
+    @Override
+    public boolean moveToTrash(
+            String googleFormId
+    ) {
+        validateGoogleFormId(googleFormId);
+
+        File updateFile =
+                new File()
+                        .setTrashed(true);
+
+        try {
+            drive
+                    .files()
+                    .update(
+                            googleFormId.trim(),
+                            updateFile
+                    )
+                    .setFields("id, trashed")
+                    .execute();
+
+            return true;
+
+        } catch (GoogleJsonResponseException exception) {
+            if (exception.getStatusCode() == 404) {
+                return false;
+            }
+
+            throw convertGoogleException(
+                    exception
+            );
+
+        } catch (IOException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR
+            );
+        }
+    }
+
+    @Override
+    public void restoreFromTrash(String googleFormId) {
+        validateGoogleFormId(googleFormId);
+
+        File updateFile = new File().setTrashed(false);
+        try {
+            drive
+                    .files()
+                    .update(
+                            googleFormId.trim(),
+                            updateFile
+                    )
+                    .setFields("id, trashed")
                     .execute();
 
         } catch (GoogleJsonResponseException exception) {
@@ -214,5 +323,126 @@ public class GoogleFormsAdapter implements GoogleFormPort {
                     ErrorCode.GOOGLE_FORM_API_ERROR
             );
         };
+    }
+
+    @Override
+    public List<GoogleFormResponseInfo> getResponses(
+            String googleFormId
+    ) {
+        validateGoogleFormId(googleFormId);
+
+        List<GoogleFormResponseInfo> responses =
+                new ArrayList<>();
+
+        String pageToken = null;
+
+        try {
+            do {
+                ListFormResponsesResponse responsePage =
+                        forms
+                                .forms()
+                                .responses()
+                                .list(googleFormId.trim())
+                                .setPageSize(5000)
+                                .setPageToken(pageToken)
+                                .execute();
+
+                if (responsePage.getResponses() != null) {
+                    responsePage
+                            .getResponses()
+                            .stream()
+                            .filter(response ->
+                                    response.getRespondentEmail() != null
+                                            && !response
+                                            .getRespondentEmail()
+                                            .isBlank()
+                            )
+                            .map(response ->
+                                    new GoogleFormResponseInfo(
+                                            normalizeEmail(
+                                                    response.getRespondentEmail()
+                                            ),
+                                            parseSubmittedAt(
+                                                    response.getLastSubmittedTime()
+                                            )
+                                    )
+                            )
+                            .forEach(responses::add);
+                }
+
+                pageToken = responsePage.getNextPageToken();
+
+            } while (pageToken != null && !pageToken.isBlank());
+
+            return responses;
+
+        } catch (GoogleJsonResponseException exception) {
+            throw convertGoogleException(exception);
+
+        } catch (IOException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR
+            );
+        }
+    }
+
+    private String normalizeEmail(
+            String email
+    ) {
+        return email
+                .trim()
+                .toLowerCase();
+    }
+
+    private Instant parseSubmittedAt(
+            String submittedAt
+    ) {
+        if (submittedAt == null || submittedAt.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Instant.parse(submittedAt);
+
+        } catch (DateTimeParseException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR,
+                    "Google Form 응답 시각 형식이 올바르지 않습니다."
+            );
+        }
+    }
+
+    @Override
+    public boolean hasResponses(
+            String googleFormId
+    ) {
+        validateGoogleFormId(
+                googleFormId
+        );
+
+        try {
+            ListFormResponsesResponse response =
+                    forms
+                            .forms()
+                            .responses()
+                            .list(googleFormId.trim())
+                            .setPageSize(1)
+                            .execute();
+
+            return response.getResponses() != null
+                    && !response
+                    .getResponses()
+                    .isEmpty();
+
+        } catch (GoogleJsonResponseException exception) {
+            throw convertGoogleException(
+                    exception
+            );
+
+        } catch (IOException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR
+            );
+        }
     }
 }

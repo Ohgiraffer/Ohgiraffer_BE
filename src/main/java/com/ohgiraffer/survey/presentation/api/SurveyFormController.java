@@ -17,6 +17,11 @@ import com.ohgiraffer.survey.application.usecase.UpdateSurveyFormResult;
 import com.ohgiraffer.survey.application.usecase.UpdateSurveyFormUseCase;
 import com.ohgiraffer.survey.presentation.api.request.UpdateSurveyFormRequest;
 import com.ohgiraffer.survey.presentation.api.response.UpdateSurveyFormResponse;
+import com.ohgiraffer.survey.application.usecase.DeleteSurveyFormUseCase;
+import com.ohgiraffer.survey.application.usecase.GetSurveyResponsesUseCase;
+import com.ohgiraffer.survey.application.usecase.SurveyResponseDetailResult;
+import com.ohgiraffer.survey.application.usecase.SurveyResponseStatus;
+import com.ohgiraffer.survey.presentation.api.response.SurveyResponseDetailResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,6 +35,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -42,6 +49,8 @@ public class SurveyFormController {
     private final GetSurveyFormListUseCase getSurveyFormListUseCase;
     private final GetSurveyFormDetailUseCase getSurveyFormDetailUseCase;
     private final UpdateSurveyFormUseCase updateSurveyFormUseCase;
+    private final DeleteSurveyFormUseCase deleteSurveyFormUseCase;
+    private final GetSurveyResponsesUseCase getSurveyResponsesUseCase;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
@@ -115,6 +124,59 @@ public class SurveyFormController {
 
         return ResponseEntity.ok(
                 UpdateSurveyFormResponse.from(result)
+        );
+    }
+
+    @DeleteMapping("/{surveyFormId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
+    public ResponseEntity<Void> deleteSurveyForm(
+            @PathVariable Long surveyFormId
+    ) {
+        deleteSurveyFormUseCase.delete(surveyFormId);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{surveyFormId}/responses")
+    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
+    public ResponseEntity<SurveyResponseDetailResponse>
+    getSurveyResponses(
+            @PathVariable Long surveyFormId,
+            @RequestParam(
+                    required = false,
+                    defaultValue = ""
+            )
+            String keyword,
+            @RequestParam(
+                    required = false,
+                    defaultValue = "ALL"
+            )
+            SurveyResponseStatus responseStatus,
+            @RequestParam(
+                    required = false,
+                    defaultValue = "0"
+            )
+            int page,
+            @RequestParam(
+                    required = false,
+                    defaultValue = "20"
+            )
+            int size
+    ) {
+        SurveyResponseDetailResult result =
+                getSurveyResponsesUseCase
+                        .getSurveyResponses(
+                                surveyFormId,
+                                keyword,
+                                responseStatus,
+                                page,
+                                size
+                        );
+
+        return ResponseEntity.ok(
+                SurveyResponseDetailResponse.from(
+                        result
+                )
         );
     }
 
