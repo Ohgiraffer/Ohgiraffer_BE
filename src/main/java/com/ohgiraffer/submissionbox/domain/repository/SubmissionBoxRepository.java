@@ -11,9 +11,29 @@ public interface SubmissionBoxRepository {
             SubmissionBox submissionBox
     );
 
+    SubmissionBox update(
+            SubmissionBox submissionBox
+    );
+
     List<SubmissionBox> findAll();
 
     Optional<SubmissionBox> findById(
+            Long submissionBoxId
+    );
+
+    Optional<SubmissionBox> findByIdForUpdate(
+            Long submissionBoxId
+    );
+
+    boolean existsById(
+            Long submissionBoxId
+    );
+
+    boolean hasSubmissions(
+            Long submissionBoxId
+    );
+
+    void deleteById(
             Long submissionBoxId
     );
 }

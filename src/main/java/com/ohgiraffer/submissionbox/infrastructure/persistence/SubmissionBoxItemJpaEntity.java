@@ -96,6 +96,16 @@ public class SubmissionBoxItemJpaEntity extends BaseTimeEntity {
         );
     }
 
+    void updateFrom(
+            SubmissionBoxItem item
+    ) {
+        this.itemName = item.getItemName();
+        this.itemType = item.getItemType();
+        this.allowedFileTypes = item.getAllowedFileTypes();
+        this.required = item.isRequired();
+        this.sortOrder = item.getSortOrder();
+    }
+
     void assignSubmissionBox(
             SubmissionBoxJpaEntity submissionBox
     ) {
@@ -115,4 +125,6 @@ public class SubmissionBoxItemJpaEntity extends BaseTimeEntity {
                 getUpdatedAt()
         );
     }
+
+    public Long getId() {return id;}
 }

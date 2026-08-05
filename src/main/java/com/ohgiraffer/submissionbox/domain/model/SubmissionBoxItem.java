@@ -117,6 +117,36 @@ public final class SubmissionBoxItem {
         );
     }
 
+    public SubmissionBoxItem update(
+            String itemName,
+            SubmissionItemType itemType,
+            String allowedFileTypes,
+            boolean required,
+            int sortOrder
+    ) {
+        validate(
+                itemName,
+                itemType,
+                allowedFileTypes,
+                sortOrder
+        );
+
+        return new SubmissionBoxItem(
+                id,
+                submissionBoxId,
+                itemName.trim(),
+                itemType,
+                normalizeAllowedFileTypes(
+                        itemType,
+                        allowedFileTypes
+                ),
+                required,
+                sortOrder,
+                createdAt,
+                updatedAt
+        );
+    }
+
     private static void validate(
             String itemName,
             SubmissionItemType itemType,

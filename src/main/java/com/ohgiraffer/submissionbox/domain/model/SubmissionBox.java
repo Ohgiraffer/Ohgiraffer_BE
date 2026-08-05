@@ -120,6 +120,38 @@ public final class SubmissionBox {
         );
     }
 
+    public SubmissionBox update(
+            String projectName,
+            SubmissionTargetScope targetScope,
+            LocalDateTime startAt,
+            LocalDateTime dueAt,
+            LatePolicy latePolicy,
+            List<SubmissionBoxItem> items
+    ) {
+        validate(
+                projectName,
+                targetScope,
+                startAt,
+                dueAt,
+                latePolicy,
+                createdBy,
+                items
+        );
+
+        return new SubmissionBox(
+                id,
+                projectName.trim(),
+                targetScope,
+                startAt,
+                dueAt,
+                latePolicy,
+                createdBy,
+                items,
+                createdAt,
+                updatedAt
+        );
+    }
+
     private static void validate(
             String projectName,
             SubmissionTargetScope targetScope,
