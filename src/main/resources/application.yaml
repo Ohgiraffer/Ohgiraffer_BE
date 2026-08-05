@@ -105,3 +105,8 @@ app:
   retry:
     fixed-delay-ms: 5000
   seed-scale: large
+
+sendbird:
+  app-id: ${SENDBIRD_APP_ID}
+  api-token: ${SENDBIRD_API_TOKEN}
+
