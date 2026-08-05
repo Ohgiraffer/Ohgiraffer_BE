@@ -1,12 +1,16 @@
 package com.ohgiraffer.bootcamp.application.service;
 
 import com.ohgiraffer.bootcamp.application.port.GetUserBootcampIdPort;
+import com.ohgiraffer.bootcamp.application.port.GetUserNamesPort;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePeriod;
 import com.ohgiraffer.bootcamp.domain.model.Bootcamp;
+import com.ohgiraffer.bootcamp.domain.model.SettingChangeLog;
 import com.ohgiraffer.bootcamp.domain.repository.AttendancePeriodRepository;
 import com.ohgiraffer.bootcamp.domain.repository.BootcampRepository;
+import com.ohgiraffer.bootcamp.domain.repository.SettingChangeLogRepository;
 import com.ohgiraffer.bootcamp.presentation.api.response.BootcampSettingsResponse;
+import com.ohgiraffer.bootcamp.presentation.api.response.SettingChangeLogResponse;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -25,6 +30,8 @@ public class BootcampQueryService implements BootcampQueryUsecase {
     private final BootcampRepository bootcampRepository;
     private final AttendancePeriodRepository attendancePeriodRepository;
     private final GetUserBootcampIdPort getUserBootcampIdPort ;
+    private final SettingChangeLogRepository settingChangeLogRepository;
+    private final GetUserNamesPort getUserNamesPort;
 
     @Override
     public BootcampSettingsResponse getSettings(Long userId) {
@@ -45,5 +52,28 @@ public class BootcampQueryService implements BootcampQueryUsecase {
                 bootcamp.getId(), bootcamp.getOrgName(), bootcamp.getProName(),
                 bootcamp.getStartDate(), bootcamp.getEndDate(), periodItems
         );
+    }
+
+    @Override
+    public SettingChangeLogResponse getSettingChangeLogs() {
+        List<SettingChangeLog> logs = settingChangeLogRepository.findAllByOrderByChangedAtDesc();
+
+        List<Long> userIds = logs.stream()
+                .map(SettingChangeLog::getChangedBy)
+                .distinct()
+                .toList();
+        Map<Long, String> nameByUserId = getUserNamesPort.findNamesByUserIds(userIds);
+
+        List<SettingChangeLogResponse.Item> items = logs.stream()
+                .map(l -> new SettingChangeLogResponse.Item(
+                        nameByUserId.getOrDefault(l.getChangedBy(), "알 수 없음"),
+                        l.getChangedAt(),
+                        l.getChangedField(),
+                        l.getOldValue(),
+                        l.getNewValue()
+                ))
+                .toList();
+
+        return new SettingChangeLogResponse(items);
     }
 }

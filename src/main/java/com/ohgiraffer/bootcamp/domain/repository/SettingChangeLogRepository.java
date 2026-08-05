@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface SettingChangeLogRepository {
     List<SettingChangeLog> saveAll(List<SettingChangeLog> logs);
+    List<SettingChangeLog> findAllByOrderByChangedAtDesc();
 }

@@ -22,4 +22,11 @@ public class SettingChangeLogRepositoryAdapter implements SettingChangeLogReposi
                 .map(SettingChangeLogJpaEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    public List<SettingChangeLog> findAllByOrderByChangedAtDesc() {
+        return springDataSettingChangeLogRepository.findAllByOrderByChangedAtDesc().stream()
+                .map(SettingChangeLogJpaEntity::toDomain)
+                .toList();
+    }
 }

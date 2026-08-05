@@ -9,6 +9,7 @@ import com.ohgiraffer.bootcamp.presentation.api.request.BootcampSettingsUpdateRe
 import com.ohgiraffer.bootcamp.presentation.api.request.BootcampUpdateRequest;
 import com.ohgiraffer.bootcamp.presentation.api.response.BootcampInfoResponse;
 import com.ohgiraffer.bootcamp.presentation.api.response.BootcampSettingsResponse;
+import com.ohgiraffer.bootcamp.presentation.api.response.SettingChangeLogResponse;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -118,5 +119,16 @@ public class BootcampController {
                 principal.getId(), request.orgName(), request.proName(),
                 request.startDate(), request.endDate(), periods);
         return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "설정 변경 이력 조회", description = "관리자 설정 화면에서 발생한 모든 변경 이력을 최신순으로 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PreAuthorize("hasRole('MANAGER')")
+    @GetMapping("/settings/logs")
+    public ResponseEntity<SettingChangeLogResponse> getSettingChangeLogs() {
+        return ResponseEntity.ok(bootcampQueryUsecase.getSettingChangeLogs());
     }
 }
