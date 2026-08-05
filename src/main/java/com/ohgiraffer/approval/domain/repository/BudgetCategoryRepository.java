@@ -11,6 +11,10 @@ public interface BudgetCategoryRepository {
             BudgetCategory budgetCategory
     );
 
+    Optional<BudgetCategory> findById(
+            Long id
+    );
+
     Optional<BudgetCategory> findByName(
             String name
     );
