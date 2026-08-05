@@ -91,6 +91,27 @@ public class UserCommandService implements UserCommandUsecase {
         return s3UrlResolver.resolve(key);
     }
 
+    @Override
+    public void deleteProfileImg(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        String key = user.getProfileImg();
+
+        s3FileHandler.delete(key);
+        deleteUserProfileImg(userId);
+
+        log.info("[deleteProfileImage] 프로필 이미지 삭제 완료 | userId={}", userId);
+    }
+
+    @Transactional
+    public void deleteUserProfileImg(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        user.deleteProfileImg();
+        userRepository.save(user);
+    }
+
     @Transactional
     public void updateUserProfileImg(Long userId, String key) {
         User user = userRepository.findById(userId)

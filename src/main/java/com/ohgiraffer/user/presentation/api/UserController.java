@@ -63,8 +63,10 @@ public class UserController {
     @Operation(summary = "프로필 이미지 등록/수정", description = "프로필 이미지를 업로드합니다. 기존 이미지가 있으면 자동으로 교체됩니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "프로필 이미지 변경 성공"),
+            @ApiResponse(responseCode = "400", description = "업로드할 이미지가 없거나(USER_003), 형식이 JPG/PNG가 아님(USER_005)"),
             @ApiResponse(responseCode = "401", description = "인증되지 않음"),
             @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+            @ApiResponse(responseCode = "413", description = "파일 크기가 50MB를 초과함(USER_004)"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @PatchMapping(value = "/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -74,6 +76,21 @@ public class UserController {
     ) {
         String url = userCommandUsecase.updateProfileImg(principal.getId(), profileImg);
         return ResponseEntity.ok(new SetProfileImgResponse(url));
+    }
+
+    @Operation(summary = "프로필 이미지 삭제", description = "등록된 프로필 이미지를 삭제합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "프로필 이미지 삭제 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @DeleteMapping("/profile-image")
+    public ResponseEntity<Void> deleteProfileImage(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        userCommandUsecase.deleteProfileImg(principal.getId());
+        return ResponseEntity.noContent().build();
     }
 
 }

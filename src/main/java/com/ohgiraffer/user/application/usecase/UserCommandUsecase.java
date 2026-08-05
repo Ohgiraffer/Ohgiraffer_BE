@@ -9,4 +9,6 @@ public interface UserCommandUsecase {
     boolean setAlarm(Long id);
 
     String updateProfileImg(Long userId, MultipartFile profileImg);
+
+    void deleteProfileImg(Long id);
 }
