@@ -7,29 +7,30 @@ import com.ohgiraffer.survey.application.port.GoogleFormPort;
 import org.springframework.stereotype.Component;
 
 @Component
-public class DisabledGoogleFormAdapter
-        implements GoogleFormPort {
+public class DisabledGoogleFormAdapter implements GoogleFormPort {
 
     @Override
-    public CreatedGoogleForm createDraft(
-            String title
-    ) {
+    public CreatedGoogleForm createDraft(String title) {
         throw disabledException();
     }
 
     @Override
-    public void updatePublishState(
-            String googleFormId,
-            boolean published,
-            boolean acceptingResponses
-    ) {
+    public void updatePublishState(String googleFormId, boolean published, boolean acceptingResponses) {
         throw disabledException();
     }
 
     @Override
-    public void delete(
-            String googleFormId
-    ) {
+    public boolean moveToTrash(String googleFormId) {
+        throw disabledException();
+    }
+
+    @Override
+    public void restoreFromTrash(String googleFormId) {
+        throw disabledException();
+    }
+
+    @Override
+    public void delete(String googleFormId) {
         throw disabledException();
     }
 

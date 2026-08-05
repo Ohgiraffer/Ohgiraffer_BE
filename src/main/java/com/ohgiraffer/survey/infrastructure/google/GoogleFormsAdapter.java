@@ -12,8 +12,9 @@ import com.ohgiraffer.survey.application.port.GoogleFormPort;
 import com.google.api.services.forms.v1.model.PublishSettings;
 import com.google.api.services.forms.v1.model.PublishState;
 import com.google.api.services.forms.v1.model.SetPublishSettingsRequest;
+import com.google.api.services.drive.model.File;
 
-import java.util.List;
+
 import java.io.IOException;
 
 public class GoogleFormsAdapter implements GoogleFormPort {
@@ -120,6 +121,69 @@ public class GoogleFormsAdapter implements GoogleFormPort {
                             googleFormId.trim(),
                             request
                     )
+                    .execute();
+
+        } catch (GoogleJsonResponseException exception) {
+            throw convertGoogleException(exception);
+
+        } catch (IOException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR
+            );
+        }
+    }
+
+    @Override
+    public boolean moveToTrash(
+            String googleFormId
+    ) {
+        validateGoogleFormId(googleFormId);
+
+        File updateFile =
+                new File()
+                        .setTrashed(true);
+
+        try {
+            drive
+                    .files()
+                    .update(
+                            googleFormId.trim(),
+                            updateFile
+                    )
+                    .setFields("id, trashed")
+                    .execute();
+
+            return true;
+
+        } catch (GoogleJsonResponseException exception) {
+            if (exception.getStatusCode() == 404) {
+                return false;
+            }
+
+            throw convertGoogleException(
+                    exception
+            );
+
+        } catch (IOException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR
+            );
+        }
+    }
+
+    @Override
+    public void restoreFromTrash(String googleFormId) {
+        validateGoogleFormId(googleFormId);
+
+        File updateFile = new File().setTrashed(false);
+        try {
+            drive
+                    .files()
+                    .update(
+                            googleFormId.trim(),
+                            updateFile
+                    )
+                    .setFields("id, trashed")
                     .execute();
 
         } catch (GoogleJsonResponseException exception) {

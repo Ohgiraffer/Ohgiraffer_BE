@@ -17,6 +17,7 @@ import com.ohgiraffer.survey.application.usecase.UpdateSurveyFormResult;
 import com.ohgiraffer.survey.application.usecase.UpdateSurveyFormUseCase;
 import com.ohgiraffer.survey.presentation.api.request.UpdateSurveyFormRequest;
 import com.ohgiraffer.survey.presentation.api.response.UpdateSurveyFormResponse;
+import com.ohgiraffer.survey.application.usecase.DeleteSurveyFormUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import java.util.List;
 
@@ -42,6 +44,7 @@ public class SurveyFormController {
     private final GetSurveyFormListUseCase getSurveyFormListUseCase;
     private final GetSurveyFormDetailUseCase getSurveyFormDetailUseCase;
     private final UpdateSurveyFormUseCase updateSurveyFormUseCase;
+    private final DeleteSurveyFormUseCase deleteSurveyFormUseCase;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
@@ -116,6 +119,16 @@ public class SurveyFormController {
         return ResponseEntity.ok(
                 UpdateSurveyFormResponse.from(result)
         );
+    }
+
+    @DeleteMapping("/{surveyFormId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
+    public ResponseEntity<Void> deleteSurveyForm(
+            @PathVariable Long surveyFormId
+    ) {
+        deleteSurveyFormUseCase.delete(surveyFormId);
+
+        return ResponseEntity.noContent().build();
     }
 
 }

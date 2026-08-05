@@ -16,6 +16,14 @@ public interface GoogleFormPort {
             boolean acceptingResponses
     );
 
+    boolean moveToTrash(
+            String googleFormId
+    );
+
+    void restoreFromTrash(
+            String googleFormId
+    );
+
     /*
      * Google Form을 삭제합니다.
      *

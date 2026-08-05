@@ -48,6 +48,7 @@ public class SurveyFormRepositoryAdapter implements SurveyFormRepository {
     @Override
     public void delete(SurveyForm surveyForm) {
         repository.deleteById(surveyForm.getId());
+        repository.flush();
     }
 
 
