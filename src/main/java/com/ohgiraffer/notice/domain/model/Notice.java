@@ -106,6 +106,43 @@ public class Notice {
     }
 
     /**
+     * 등록 내용을 바꾼 새 공지를 돌려준다.
+     *
+     * <p>식별자·작성자·생성 시각은 유지한다. 요구사항상 필수 항목은 수정할 때도
+     * 비울 수 없으므로 등록과 같은 검증을 다시 수행한다.
+     */
+    public Notice update(
+            Long categoryId,
+            String title,
+            String content,
+            boolean mandatory,
+            boolean visibleToTrainee
+    ) {
+        validateCategoryId(categoryId);
+        validateTitle(title);
+        validateContent(content);
+
+        return new Notice(
+                id,
+                authorId,
+                categoryId,
+                title.trim(),
+                content,
+                mandatory,
+                visibleToTrainee,
+                createdAt,
+                updatedAt
+        );
+    }
+
+    /**
+     * 요구사항상 공지는 등록자만 수정·삭제할 수 있다. 같은 운영진이라도 남의 공지는 손대지 못한다.
+     */
+    public boolean isAuthoredBy(Long userId) {
+        return authorId.equals(userId);
+    }
+
+    /**
      * 훈련생에게 확인 체크박스를 노출해야 하는지 여부.
      */
     public boolean requiresConfirmation() {

@@ -76,6 +76,18 @@ public class NoticeJpaEntity extends BaseTimeEntity {
         );
     }
 
+    /**
+     * 영속 상태에서 내용만 바꾼다. 식별자·작성자·생성 시각은 건드리지 않는다.
+     * 변경 감지로 UPDATE 되며 updated_at 은 감사 기능이 채운다.
+     */
+    public void applyUpdate(Notice notice) {
+        this.categoryId = notice.getCategoryId();
+        this.title = notice.getTitle();
+        this.content = notice.getContent();
+        this.mandatory = notice.isMandatory();
+        this.visibleToTrainee = notice.isVisibleToTrainee();
+    }
+
     public Notice toDomain() {
         return Notice.restore(
                 id,

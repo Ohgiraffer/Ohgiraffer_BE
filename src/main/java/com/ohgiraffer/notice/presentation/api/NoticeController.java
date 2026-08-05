@@ -3,15 +3,19 @@ package com.ohgiraffer.notice.presentation.api;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.global.exception.ErrorResponse;
+import com.ohgiraffer.notice.application.query.NoticeConfirmationView;
 import com.ohgiraffer.notice.application.usecase.NoticeCommandUseCase;
 import com.ohgiraffer.notice.application.usecase.NoticeQueryUseCase;
 import com.ohgiraffer.notice.domain.model.Notice;
 import com.ohgiraffer.notice.domain.model.ViewerRole;
 import com.ohgiraffer.notice.presentation.api.request.CreateNoticeRequest;
+import com.ohgiraffer.notice.presentation.api.request.UpdateNoticeRequest;
 import com.ohgiraffer.notice.presentation.api.response.CreateNoticeResponse;
+import com.ohgiraffer.notice.presentation.api.response.NoticeConfirmationResponse;
 import com.ohgiraffer.notice.presentation.api.response.NoticeDetailResponse;
 import com.ohgiraffer.notice.presentation.api.response.NoticeSummaryResponse;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
+import com.ohgiraffer.user.domain.model.Role;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -22,11 +26,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -39,11 +44,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/notices")
 public class NoticeController {
-
-    /**
-     * 인증 도메인이 훈련생 역할에 부여하는 권한 이름.
-     */
-    private static final String TRAINEE_AUTHORITY = "ROLE_STUDENT";
 
     private final NoticeCommandUseCase noticeCommandUseCase;
     private final NoticeQueryUseCase noticeQueryUseCase;
@@ -119,7 +119,11 @@ public class NoticeController {
             @RequestParam(required = false) Long categoryId
     ) {
         List<NoticeSummaryResponse> notices =
-                noticeQueryUseCase.findAll(viewerRole(principal), categoryId)
+                noticeQueryUseCase.findAll(
+                        viewerRole(principal),
+                        categoryId,
+                        currentUserId(principal)
+                )
                         .stream()
                         .map(NoticeSummaryResponse::from)
                         .toList();
@@ -156,10 +160,134 @@ public class NoticeController {
                 NoticeDetailResponse.from(
                         noticeQueryUseCase.findDetail(
                                 noticeId,
-                                viewerRole(principal)
+                                viewerRole(principal),
+                                currentUserId(principal)
                         )
                 )
         );
+    }
+
+    /**
+     * 공지 수정. 요구사항상 등록자 본인만 가능하다.
+     */
+    @Operation(
+            summary = "공지 수정",
+            description = """
+                    등록자 본인만 수정할 수 있다. 같은 운영진이라도 남의 공지는 수정할 수 없다.
+                    필수 항목은 수정할 때도 비울 수 없어 등록과 같은 항목을 모두 받아 전체를 교체한다.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "수정 성공"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "필수 값 누락 또는 형식 오류",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "작성자가 아님 (NOTICE_003)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "존재하지 않는 공지 (NOTICE_001) 또는 카테고리 (NOTICE_002)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    @PutMapping("/{noticeId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
+    public ResponseEntity<CreateNoticeResponse> update(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Parameter(description = "공지 식별자", example = "1")
+            @PathVariable Long noticeId,
+            @Valid @RequestBody UpdateNoticeRequest request
+    ) {
+        Notice notice = noticeCommandUseCase.update(
+                request.toCommand(noticeId, currentUserId(principal))
+        );
+
+        return ResponseEntity.ok(CreateNoticeResponse.from(notice));
+    }
+
+    /**
+     * 공지 삭제. 요구사항상 등록자 본인만 가능하며 하드 딜리트다.
+     */
+    @Operation(
+            summary = "공지 삭제",
+            description = """
+                    등록자 본인만 삭제할 수 있다.
+                    하드 딜리트이며 첨부파일과 AI 일정 후보도 함께 지워진다.
+                    다만 이미 캘린더에 등록된 일정은 남는다.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "삭제 성공"),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "작성자가 아님 (NOTICE_003)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "존재하지 않는 공지 (NOTICE_001)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    @DeleteMapping("/{noticeId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
+    public ResponseEntity<Void> delete(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Parameter(description = "공지 식별자", example = "1")
+            @PathVariable Long noticeId
+    ) {
+        noticeCommandUseCase.delete(noticeId, currentUserId(principal));
+
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 필수 공지 확인 처리. 화면의 확인 체크박스가 호출한다.
+     */
+    @Operation(
+            summary = "공지 확인 처리",
+            description = """
+                    필수 공지에만 확인 체크박스가 노출되므로 일반 공지에는 사용할 수 없다.
+                    이미 확인한 공지를 다시 호출해도 결과는 같다.
+                    확인은 취소할 수 없으므로 confirmedByMe 가 true 인 체크박스는 잠가야 한다.
+                    응답에 갱신된 인원수가 담기므로 화면에서 1을 더하지 말고 이 값을 쓴다.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "확인 처리 완료. 갱신된 확인 현황",
+                    content = @Content(schema = @Schema(implementation = NoticeConfirmationResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "필수 공지가 아님 (NOTICE_004)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "존재하지 않는 공지 (NOTICE_001)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    @PostMapping("/{noticeId}/confirmation")
+    public ResponseEntity<NoticeConfirmationResponse> confirm(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Parameter(description = "공지 식별자", example = "1")
+            @PathVariable Long noticeId
+    ) {
+        NoticeConfirmationView view =
+                noticeCommandUseCase.confirm(noticeId, currentUserId(principal));
+
+        return ResponseEntity.ok(NoticeConfirmationResponse.from(view));
     }
 
     /**
@@ -169,7 +297,7 @@ public class NoticeController {
     private Long currentUserId(CustomUserPrincipal principal) {
         requireAuthenticated(principal);
 
-        return principal.id();
+        return principal.getId();
     }
 
     /**
@@ -178,12 +306,9 @@ public class NoticeController {
     private ViewerRole viewerRole(CustomUserPrincipal principal) {
         requireAuthenticated(principal);
 
-        boolean trainee = principal.getAuthorities()
-                .stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(TRAINEE_AUTHORITY::equals);
-
-        return trainee ? ViewerRole.TRAINEE : ViewerRole.STAFF;
+        return principal.getRole() == Role.STUDENT
+                ? ViewerRole.TRAINEE
+                : ViewerRole.STAFF;
     }
 
     private void requireAuthenticated(CustomUserPrincipal principal) {

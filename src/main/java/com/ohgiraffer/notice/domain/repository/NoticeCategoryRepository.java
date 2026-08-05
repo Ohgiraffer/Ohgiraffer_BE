@@ -21,4 +21,14 @@ public interface NoticeCategoryRepository {
      * 공지 작성 화면의 카테고리 드롭다운에 쓰인다. 등록 순서대로 반환한다.
      */
     List<NoticeCategory> findAll();
+
+    NoticeCategory save(NoticeCategory category);
+
+    void deleteById(Long categoryId);
+
+    /**
+     * 이름 중복 검사. name 에 UNIQUE 제약이 있어 DB도 막지만,
+     * 제약 위반 예외는 500 으로 새기 때문에 저장 전에 걸러 409 로 알린다.
+     */
+    boolean existsByName(String name);
 }

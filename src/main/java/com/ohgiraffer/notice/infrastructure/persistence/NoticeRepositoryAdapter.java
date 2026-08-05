@@ -1,5 +1,7 @@
 package com.ohgiraffer.notice.infrastructure.persistence;
 
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.notice.domain.model.Notice;
 import com.ohgiraffer.notice.domain.model.ViewerRole;
 import com.ohgiraffer.notice.domain.repository.NoticeRepository;
@@ -29,6 +31,29 @@ public class NoticeRepositoryAdapter implements NoticeRepository {
     }
 
     @Override
+    public Notice update(Notice notice) {
+        NoticeJpaEntity entity = springDataNoticeRepository
+                .findById(notice.getId())
+                .orElseThrow(() ->
+                        new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
+
+        entity.applyUpdate(notice);
+
+        /*
+         * 변경 감지는 트랜잭션이 끝날 때 반영되는데, 응답에 수정 시각을 담아야 하므로
+         * 여기서 flush 해 감사 기능이 updated_at 을 채우게 한다.
+         */
+        springDataNoticeRepository.flush();
+
+        return entity.toDomain();
+    }
+
+    @Override
+    public void deleteById(Long noticeId) {
+        springDataNoticeRepository.deleteById(noticeId);
+    }
+
+    @Override
     public Optional<Notice> findById(Long noticeId) {
         return springDataNoticeRepository.findById(noticeId)
                 .map(NoticeJpaEntity::toDomain);
@@ -41,6 +66,11 @@ public class NoticeRepositoryAdapter implements NoticeRepository {
                 .stream()
                 .map(NoticeJpaEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public long countByCategoryId(Long categoryId) {
+        return springDataNoticeRepository.countByCategoryId(categoryId);
     }
 
     /**
