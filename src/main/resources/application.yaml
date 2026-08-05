@@ -64,3 +64,7 @@ jwt:
   access-token-validity: ${JWT_ACCESS_VALIDITY:3600000}
   refresh-token-validity: ${JWT_REFRESH_VALIDITY:1209600000}
 
+sendbird:
+  app-id: ${SENDBIRD_APP_ID}
+  api-token: ${SENDBIRD_API_TOKEN}
+
