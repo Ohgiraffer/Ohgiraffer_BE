@@ -37,6 +37,19 @@ public class BudgetCategoryRepositoryAdapter
     }
 
     @Override
+    public Optional<BudgetCategory> findById(
+            Long id
+    ) {
+        return repository
+                .findById(
+                        id
+                )
+                .map(
+                        BudgetCategoryJpaEntity::toDomain
+                );
+    }
+
+    @Override
     public Optional<BudgetCategory> findByName(
             String name
     ) {
