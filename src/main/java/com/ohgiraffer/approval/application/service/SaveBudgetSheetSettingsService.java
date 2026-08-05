@@ -4,30 +4,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ohgiraffer.approval.application.command.BudgetColumnMapping;
 import com.ohgiraffer.approval.application.command.SaveBudgetSheetSettingsCommand;
-import com.ohgiraffer.approval.application.port.BudgetSheetPort;
-import com.ohgiraffer.approval.application.port.BudgetSheetRow;
 import com.ohgiraffer.approval.application.usecase.BudgetSyncResult;
 import com.ohgiraffer.approval.application.usecase.SaveBudgetSheetSettingsUseCase;
-import com.ohgiraffer.approval.domain.model.budget.BudgetAllocation;
-import com.ohgiraffer.approval.domain.model.budget.BudgetCategory;
 import com.ohgiraffer.approval.domain.model.budget.ExternalSheetLink;
-import com.ohgiraffer.approval.domain.repository.BudgetAllocationRepository;
-import com.ohgiraffer.approval.domain.repository.BudgetCategoryRepository;
 import com.ohgiraffer.approval.domain.repository.ExternalSheetLinkRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
-import com.ohgiraffer.global.google.sheets.SpreadsheetIdExtractor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -36,11 +25,8 @@ public class SaveBudgetSheetSettingsService implements SaveBudgetSheetSettingsUs
 
     private static final int REQUIRED_MAPPING_COUNT = 4;
 
-    private final BudgetSheetPort budgetSheetPort;
-    private final BudgetCategoryRepository budgetCategoryRepository;
-    private final BudgetAllocationRepository budgetAllocationRepository;
     private final ExternalSheetLinkRepository externalSheetLinkRepository;
-    private final SpreadsheetIdExtractor spreadsheetIdExtractor;
+    private final BudgetSheetSyncService budgetSheetSyncService;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
@@ -56,29 +42,9 @@ public class SaveBudgetSheetSettingsService implements SaveBudgetSheetSettingsUs
                 clock
         );
 
-        String spreadsheetId = spreadsheetIdExtractor.extract(
-                command.spreadsheetUrl()
-        );
-
         BudgetColumnMapping normalizedColumnMapping = normalizeColumnMapping(
                 command.columnMapping()
         );
-
-        List<BudgetSheetRow> rows = budgetSheetPort.readBudgetRows(
-                spreadsheetId,
-                command.sheetName().strip(),
-                normalizedColumnMapping
-        );
-
-        List<BudgetSheetRow> aggregatedRows = aggregateRows(
-                rows
-        );
-
-        if (aggregatedRows.isEmpty()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE
-            );
-        }
 
         saveOrUpdateExternalSheetLink(
                 command.spreadsheetUrl().strip(),
@@ -87,23 +53,10 @@ public class SaveBudgetSheetSettingsService implements SaveBudgetSheetSettingsUs
                 now
         );
 
-        for (BudgetSheetRow row : aggregatedRows) {
-            BudgetCategory category = saveOrUpdateCategory(
-                    row.categoryName()
-            );
-
-            saveOrUpdateAllocation(
-                    category.getId(),
-                    row.totalAmount(),
-                    row.usedAmount(),
-                    row.remainingAmount(),
-                    now
-            );
-        }
-
-        return new BudgetSyncResult(
-                aggregatedRows.size(),
-                now
+        return budgetSheetSyncService.sync(
+                command.spreadsheetUrl().strip(),
+                command.sheetName().strip(),
+                normalizedColumnMapping
         );
     }
 
@@ -189,119 +142,6 @@ public class SaveBudgetSheetSettingsService implements SaveBudgetSheetSettingsUs
         );
     }
 
-    private List<BudgetSheetRow> aggregateRows(
-            List<BudgetSheetRow> rows
-    ) {
-        if (rows == null || rows.isEmpty()) {
-            return List.of();
-        }
-
-        Map<String, BudgetSheetRow> aggregatedRows = new LinkedHashMap<>();
-
-        for (BudgetSheetRow row : rows) {
-            String normalizedCategoryName = normalizeCategoryName(
-                    row.categoryName()
-            );
-
-            validateAmounts(
-                    row.totalAmount(),
-                    row.usedAmount(),
-                    row.remainingAmount()
-            );
-
-            BudgetSheetRow existingRow = aggregatedRows.get(
-                    normalizedCategoryName
-            );
-
-            if (existingRow == null) {
-                aggregatedRows.put(
-                        normalizedCategoryName,
-                        new BudgetSheetRow(
-                                normalizedCategoryName,
-                                row.totalAmount(),
-                                row.usedAmount(),
-                                row.remainingAmount()
-                        )
-                );
-                continue;
-            }
-
-            aggregatedRows.put(
-                    normalizedCategoryName,
-                    new BudgetSheetRow(
-                            normalizedCategoryName,
-                            existingRow.totalAmount().add(
-                                    row.totalAmount()
-                            ),
-                            existingRow.usedAmount().add(
-                                    row.usedAmount()
-                            ),
-                            existingRow.remainingAmount().add(
-                                    row.remainingAmount()
-                            )
-                    )
-            );
-        }
-
-        return new ArrayList<>(
-                aggregatedRows.values()
-        );
-    }
-
-    private String normalizeCategoryName(
-            String categoryName
-    ) {
-        if (isBlank(
-                categoryName
-        )) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE
-            );
-        }
-
-        return categoryName.strip();
-    }
-
-    private void validateAmounts(
-            BigDecimal totalAmount,
-            BigDecimal usedAmount,
-            BigDecimal remainingAmount
-    ) {
-        if (totalAmount == null
-                || usedAmount == null
-                || remainingAmount == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE
-            );
-        }
-
-        if (totalAmount.signum() < 0
-                || usedAmount.signum() < 0
-                || remainingAmount.signum() < 0) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE
-            );
-        }
-
-        if (usedAmount.compareTo(
-                totalAmount
-        ) > 0) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE
-            );
-        }
-
-        if (usedAmount.add(
-                remainingAmount
-        ).compareTo(
-                totalAmount
-        ) != 0) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE
-            );
-        }
-    }
-
     private void saveOrUpdateExternalSheetLink(
             String sheetUrl,
             String tabName,
@@ -346,55 +186,6 @@ public class SaveBudgetSheetSettingsService implements SaveBudgetSheetSettingsUs
                     ErrorCode.INVALID_INPUT_VALUE
             );
         }
-    }
-
-    private BudgetCategory saveOrUpdateCategory(
-            String categoryName
-    ) {
-        String normalizedCategoryName = normalizeCategoryName(
-                categoryName
-        );
-
-        BudgetCategory category = budgetCategoryRepository.findByName(
-                        normalizedCategoryName
-                )
-                .orElseGet(() -> BudgetCategory.createFromSheet(
-                        normalizedCategoryName
-                ));
-
-        return budgetCategoryRepository.save(
-                category
-        );
-    }
-
-    private void saveOrUpdateAllocation(
-            Long budgetCategoryId,
-            BigDecimal totalAmount,
-            BigDecimal usedAmount,
-            BigDecimal remainingAmount,
-            LocalDateTime syncedAt
-    ) {
-        BudgetAllocation budgetAllocation = budgetAllocationRepository.findByBudgetCategoryId(
-                        budgetCategoryId
-                )
-                .orElseGet(() -> BudgetAllocation.create(
-                        budgetCategoryId,
-                        totalAmount,
-                        usedAmount,
-                        remainingAmount,
-                        syncedAt
-                ));
-
-        budgetAllocation.updateAmounts(
-                totalAmount,
-                usedAmount,
-                remainingAmount,
-                syncedAt
-        );
-
-        budgetAllocationRepository.save(
-                budgetAllocation
-        );
     }
 
     private boolean isBlank(
