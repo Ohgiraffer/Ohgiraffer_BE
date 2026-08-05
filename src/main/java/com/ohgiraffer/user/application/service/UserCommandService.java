@@ -9,6 +9,7 @@ import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.security.jwt.JwtTokenProvider;
 import com.ohgiraffer.security.token.RefreshTokenService;
 import com.ohgiraffer.security.token.TokenBlacklistService;
+import com.ohgiraffer.user.application.helper.UserProfileImgTransactionHelper;
 import com.ohgiraffer.user.application.policy.PasswordChangePolicy;
 import com.ohgiraffer.user.application.policy.ProfileImgChangePolicy;
 import com.ohgiraffer.user.application.usecase.UserCommandUsecase;
@@ -24,7 +25,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @Slf4j
-@Transactional
 @RequiredArgsConstructor
 public class UserCommandService implements UserCommandUsecase {
 
@@ -35,8 +35,10 @@ public class UserCommandService implements UserCommandUsecase {
     private final RefreshTokenService refreshTokenService;
     private final S3FileHandler s3FileHandler;
     private final S3UrlResolver s3UrlResolver;
+    private final UserProfileImgTransactionHelper transactionHelper;
 
     @Override
+    @Transactional
     public void changePassword(Long userId, String bearerToken, String newPassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
@@ -64,6 +66,7 @@ public class UserCommandService implements UserCommandUsecase {
     }
 
     @Override
+    @Transactional
     public boolean setAlarm(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
@@ -83,15 +86,9 @@ public class UserCommandService implements UserCommandUsecase {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         String key = S3KeyGenerator.profileImageKey(userId);
-        s3FileHandler.upload(profileImg, key);
 
-        try {
-            updateUserProfileImg(userId, key);
-        } catch (Exception e) {
-            log.error("[updateProfileImage] DB 반영 실패로 S3 객체 롤백 | userId={}, key={}", userId, key, e);
-            s3FileHandler.delete(key);
-            throw e;
-        }
+        transactionHelper.updateUserProfileImg(userId, key);
+        s3FileHandler.upload(profileImg, key);
 
         log.info("[updateProfileImage] 프로필 이미지 변경 완료 | userId={}, key={}", userId, key);
         return s3UrlResolver.resolve(key);
@@ -103,25 +100,10 @@ public class UserCommandService implements UserCommandUsecase {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         String key = user.getProfileImg();
-        deleteUserProfileImg(userId);
+
+        transactionHelper.deleteUserProfileImg(userId);
         s3FileHandler.delete(key);
 
         log.info("[deleteProfileImage] 프로필 이미지 삭제 완료 | userId={}", userId);
-    }
-
-    @Transactional
-    public void deleteUserProfileImg(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        user.deleteProfileImg();
-        userRepository.save(user);
-    }
-
-    @Transactional
-    public void updateUserProfileImg(Long userId, String key) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        user.updateProfileImg(key);
-        userRepository.save(user);
     }
 }
