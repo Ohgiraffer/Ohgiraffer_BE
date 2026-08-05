@@ -17,7 +17,12 @@ import com.google.api.services.forms.v1.model.BatchUpdateFormRequest;
 import com.google.api.services.forms.v1.model.FormSettings;
 import com.google.api.services.forms.v1.model.Request;
 import com.google.api.services.forms.v1.model.UpdateSettingsRequest;
+import com.google.api.services.forms.v1.model.ListFormResponsesResponse;
+import com.ohgiraffer.survey.application.port.GoogleFormResponseInfo;
 
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.io.IOException;
 
@@ -318,5 +323,92 @@ public class GoogleFormsAdapter implements GoogleFormPort {
                     ErrorCode.GOOGLE_FORM_API_ERROR
             );
         };
+    }
+
+    @Override
+    public List<GoogleFormResponseInfo> getResponses(
+            String googleFormId
+    ) {
+        validateGoogleFormId(googleFormId);
+
+        List<GoogleFormResponseInfo> responses =
+                new ArrayList<>();
+
+        String pageToken = null;
+
+        try {
+            do {
+                ListFormResponsesResponse responsePage =
+                        forms
+                                .forms()
+                                .responses()
+                                .list(googleFormId.trim())
+                                .setPageSize(5000)
+                                .setPageToken(pageToken)
+                                .execute();
+
+                if (responsePage.getResponses() != null) {
+                    responsePage
+                            .getResponses()
+                            .stream()
+                            .filter(response ->
+                                    response.getRespondentEmail() != null
+                                            && !response
+                                            .getRespondentEmail()
+                                            .isBlank()
+                            )
+                            .map(response ->
+                                    new GoogleFormResponseInfo(
+                                            normalizeEmail(
+                                                    response.getRespondentEmail()
+                                            ),
+                                            parseSubmittedAt(
+                                                    response.getLastSubmittedTime()
+                                            )
+                                    )
+                            )
+                            .forEach(responses::add);
+                }
+
+                pageToken = responsePage.getNextPageToken();
+
+            } while (pageToken != null && !pageToken.isBlank());
+
+            return responses;
+
+        } catch (GoogleJsonResponseException exception) {
+            throw convertGoogleException(exception);
+
+        } catch (IOException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR
+            );
+        }
+    }
+
+    private String normalizeEmail(
+            String email
+    ) {
+        return email
+                .trim()
+                .toLowerCase();
+    }
+
+    private Instant parseSubmittedAt(
+            String submittedAt
+    ) {
+        if (submittedAt == null || submittedAt.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Instant.parse(submittedAt);
+
+        } catch (DateTimeParseException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_FORM_API_ERROR,
+                    "Google Form 응답 시각 형식이 올바르지 않습니다."
+            );
+        }
     }
 }
