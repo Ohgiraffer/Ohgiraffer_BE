@@ -2,11 +2,22 @@
 # /notices 와 /notice-categories 는 SecurityConfig 에서 인증을 요구하므로
 # 아래 요청은 모두 Authorization 헤더가 필요하다. 없으면 전부 401 이다.
 #
-# accessToken 은 같은 폴더의 http-client.env.json 에 넣어 두고 쓴다.
+# 토큰은 같은 폴더의 http-client.env.json 에 넣어 두고 쓴다.
 # (토큰이 담기므로 커밋하지 않는다)
 #   {
-#     "local": { "accessToken": "발급받은 JWT" }
+#     "local": {
+#       "accessToken": "강사 또는 매니저 JWT",
+#       "otherStaffAccessToken": "위와 다른 사람인 강사 또는 매니저 JWT",
+#       "traineeAccessToken": "훈련생 JWT"
+#     }
 #   }
+#
+# 세 개가 필요한 이유는 권한 실패 사례를 실제로 눌러 보기 위해서다.
+#   accessToken           공지 등록·수정·삭제, 카테고리 관리 (운영진 전용 API)
+#   otherStaffAccessToken 남의 공지 수정·삭제 시도 → 403 NOTICE_003
+#                         accessToken 과 다른 사람이어야 한다. 같으면 작성자라 성공해 버린다
+#   traineeAccessToken    필수 공지 확인 처리, 훈련생 비공개 공지 → 404,
+#                         운영진 전용 API 접근 시도
 #
 # 로그인 API 가 아직 없어 토큰을 발급받을 수 없다.
 # 인증 도메인에 로그인 엔드포인트가 들어오면 그때부터 실제로 호출할 수 있다.
@@ -153,6 +164,12 @@ Authorization: Bearer {{accessToken}}
 ### 실패 - 없는 공지 확인 시도 (404 NOTICE_001)
 POST http://localhost:8080/notices/99999/confirmation
 Authorization: Bearer {{accessToken}}
+
+### 실패 - 훈련생이 비공개 공지 확인 시도 (404 NOTICE_001)
+# visibleToTrainee 가 false 인 공지 번호로 훈련생 토큰을 써서 호출한다.
+# 403 이 아니라 404 다. 403 이면 그 번호의 공지가 있다는 사실이 드러난다.
+POST http://localhost:8080/notices/3/confirmation
+Authorization: Bearer {{traineeAccessToken}}
 
 ###############################################
 # 카테고리 관리 (등록 · 삭제)

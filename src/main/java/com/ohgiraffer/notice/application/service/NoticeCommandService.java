@@ -7,6 +7,7 @@ import com.ohgiraffer.notice.application.command.UpdateNoticeCommand;
 import com.ohgiraffer.notice.application.query.NoticeConfirmationView;
 import com.ohgiraffer.notice.application.usecase.NoticeCommandUseCase;
 import com.ohgiraffer.notice.domain.model.Notice;
+import com.ohgiraffer.notice.domain.model.ViewerRole;
 import com.ohgiraffer.notice.domain.repository.NoticeCategoryRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeConfirmationRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeRepository;
@@ -73,8 +74,22 @@ public class NoticeCommandService implements NoticeCommandUseCase {
     }
 
     @Override
-    public NoticeConfirmationView confirm(Long noticeId, Long userId) {
+    public NoticeConfirmationView confirm(
+            Long noticeId,
+            ViewerRole viewer,
+            Long userId
+    ) {
         Notice notice = findNotice(noticeId);
+
+        /*
+         * 공개 대상 확인이 가장 먼저다. 상세 조회와 같은 이유로 403 이 아니라 404 로 답한다.
+         *
+         * 필수 여부보다 먼저 보는 것도 일부러다. 순서를 바꾸면 훈련생이 못 보는 공지에
+         * 필수는 404, 일반은 400 이 돌아가 응답만으로 그 공지의 성격을 알아낼 수 있다.
+         */
+        if (!notice.isVisibleTo(viewer)) {
+            throw new BusinessException(ErrorCode.NOTICE_NOT_FOUND);
+        }
 
         /*
          * 화면상 확인 체크박스는 필수 공지에만 노출된다.
