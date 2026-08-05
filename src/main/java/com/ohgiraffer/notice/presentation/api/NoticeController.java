@@ -105,9 +105,9 @@ public class NoticeController {
             summary = "공지 목록 조회",
             description = """
                     필수 공지를 상단에 두고 같은 등급 안에서는 최신순으로 정렬해 전체를 반환한다.
-                    페이지네이션은 화면에서 처리하기로 해 서버는 자르지 않는다.
+                    페이지네이션과 검색은 화면에서 처리하기로 해 서버는 자르거나 거르지 않는다.
                     훈련생에게는 훈련생 비공개 공지를 제외한다.
-                    작성자 이름과 확인 여부는 아직 내려주지 않는다.
+                    confirmedByMe 는 필수 공지에만 의미가 있다. 일반 공지는 항상 false 다.
                     """
     )
     @ApiResponse(responseCode = "200", description = "조회 성공. 비어 있을 수 있다")
@@ -273,7 +273,7 @@ public class NoticeController {
             ),
             @ApiResponse(
                     responseCode = "404",
-                    description = "존재하지 않는 공지 (NOTICE_001)",
+                    description = "존재하지 않거나 훈련생에게 비공개인 공지 (NOTICE_001)",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
@@ -284,8 +284,11 @@ public class NoticeController {
             @Parameter(description = "공지 식별자", example = "1")
             @PathVariable Long noticeId
     ) {
-        NoticeConfirmationView view =
-                noticeCommandUseCase.confirm(noticeId, currentUserId(principal));
+        NoticeConfirmationView view = noticeCommandUseCase.confirm(
+                noticeId,
+                viewerRole(principal),
+                currentUserId(principal)
+        );
 
         return ResponseEntity.ok(NoticeConfirmationResponse.from(view));
     }

@@ -6,6 +6,7 @@ import com.ohgiraffer.notice.application.command.CreateNoticeCommand;
 import com.ohgiraffer.notice.application.command.UpdateNoticeCommand;
 import com.ohgiraffer.notice.application.query.NoticeConfirmationView;
 import com.ohgiraffer.notice.domain.model.Notice;
+import com.ohgiraffer.notice.domain.model.ViewerRole;
 import com.ohgiraffer.notice.domain.repository.NoticeCategoryRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeConfirmationRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeRepository;
@@ -230,7 +231,7 @@ class NoticeCommandServiceTest {
         when(noticeRepository.findById(NOTICE_ID))
                 .thenReturn(Optional.of(stored(AUTHOR_ID, true)));
 
-        noticeCommandService.confirm(NOTICE_ID, OTHER_USER_ID);
+        noticeCommandService.confirm(NOTICE_ID, ViewerRole.TRAINEE, OTHER_USER_ID);
 
         verify(noticeConfirmationRepository).confirm(NOTICE_ID, OTHER_USER_ID);
     }
@@ -244,7 +245,7 @@ class NoticeCommandServiceTest {
                 .thenReturn(12L);
 
         NoticeConfirmationView view =
-                noticeCommandService.confirm(NOTICE_ID, OTHER_USER_ID);
+                noticeCommandService.confirm(NOTICE_ID, ViewerRole.TRAINEE, OTHER_USER_ID);
 
         assertEquals(NOTICE_ID, view.noticeId());
         assertEquals(12L, view.confirmationCount());
@@ -257,7 +258,7 @@ class NoticeCommandServiceTest {
         when(noticeRepository.findById(NOTICE_ID))
                 .thenReturn(Optional.of(stored(AUTHOR_ID, true)));
 
-        noticeCommandService.confirm(NOTICE_ID, OTHER_USER_ID);
+        noticeCommandService.confirm(NOTICE_ID, ViewerRole.TRAINEE, OTHER_USER_ID);
 
         InOrder inOrder = inOrder(noticeConfirmationRepository);
         inOrder.verify(noticeConfirmationRepository)
@@ -271,7 +272,7 @@ class NoticeCommandServiceTest {
         when(noticeRepository.findById(NOTICE_ID))
                 .thenReturn(Optional.of(stored(AUTHOR_ID, true)));
 
-        noticeCommandService.confirm(NOTICE_ID, AUTHOR_ID);
+        noticeCommandService.confirm(NOTICE_ID, ViewerRole.STAFF, AUTHOR_ID);
 
         verify(noticeConfirmationRepository).confirm(NOTICE_ID, AUTHOR_ID);
     }
@@ -284,7 +285,7 @@ class NoticeCommandServiceTest {
 
         BusinessException exception = assertThrows(
                 BusinessException.class,
-                () -> noticeCommandService.confirm(NOTICE_ID, OTHER_USER_ID)
+                () -> noticeCommandService.confirm(NOTICE_ID, ViewerRole.TRAINEE, OTHER_USER_ID)
         );
 
         assertEquals(ErrorCode.NOTICE_NOT_MANDATORY, exception.getErrorCode());
@@ -300,12 +301,62 @@ class NoticeCommandServiceTest {
 
         BusinessException exception = assertThrows(
                 BusinessException.class,
-                () -> noticeCommandService.confirm(NOTICE_ID, OTHER_USER_ID)
+                () -> noticeCommandService.confirm(NOTICE_ID, ViewerRole.TRAINEE, OTHER_USER_ID)
         );
 
         assertEquals(ErrorCode.NOTICE_NOT_FOUND, exception.getErrorCode());
         verify(noticeConfirmationRepository, never())
                 .confirm(any(), any());
+    }
+
+    @Test
+    @DisplayName("훈련생 비공개 공지는 훈련생이 확인할 수 없고 기록도 남지 않는다")
+    void confirmHidesTraineeInvisibleNoticeFromTrainee() {
+        when(noticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(stored(AUTHOR_ID, true, false)));
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> noticeCommandService.confirm(
+                        NOTICE_ID, ViewerRole.TRAINEE, OTHER_USER_ID)
+        );
+
+        /*
+         * 403이면 "그 번호의 공지가 있다"는 사실이 드러나므로 404여야 한다.
+         */
+        assertEquals(ErrorCode.NOTICE_NOT_FOUND, exception.getErrorCode());
+        verify(noticeConfirmationRepository, never()).confirm(any(), any());
+        verify(noticeConfirmationRepository, never()).countBy(any());
+    }
+
+    @Test
+    @DisplayName("훈련생 비공개 공지라도 운영진은 확인할 수 있다")
+    void confirmAllowsStaffOnTraineeInvisibleNotice() {
+        when(noticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(stored(AUTHOR_ID, true, false)));
+
+        noticeCommandService.confirm(
+                NOTICE_ID, ViewerRole.STAFF, OTHER_USER_ID);
+
+        verify(noticeConfirmationRepository).confirm(NOTICE_ID, OTHER_USER_ID);
+    }
+
+    @Test
+    @DisplayName("훈련생이 못 보는 공지는 필수가 아니어도 404로 답해 성격을 감춘다")
+    void confirmHidesMandatoryFlagOfInvisibleNotice() {
+        when(noticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(stored(AUTHOR_ID, false, false)));
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> noticeCommandService.confirm(
+                        NOTICE_ID, ViewerRole.TRAINEE, OTHER_USER_ID)
+        );
+
+        /*
+         * 400 NOTICE_NOT_MANDATORY 가 나가면 응답만으로 필수 공지가 아님을 알 수 있다.
+         */
+        assertEquals(ErrorCode.NOTICE_NOT_FOUND, exception.getErrorCode());
     }
 
     private UpdateNoticeCommand updateCommand(
@@ -329,6 +380,14 @@ class NoticeCommandServiceTest {
     }
 
     private Notice stored(Long authorId, boolean mandatory) {
+        return stored(authorId, mandatory, true);
+    }
+
+    private Notice stored(
+            Long authorId,
+            boolean mandatory,
+            boolean visibleToTrainee
+    ) {
         Instant now = Instant.parse("2026-08-04T03:00:00Z");
 
         return Notice.restore(
@@ -338,7 +397,7 @@ class NoticeCommandServiceTest {
                 TITLE,
                 CONTENT,
                 mandatory,
-                true,
+                visibleToTrainee,
                 now,
                 now
         );

@@ -156,7 +156,7 @@ class NoticeControllerTest {
     @Test
     @DisplayName("확인 처리는 로그인 사용자로 호출하고 갱신된 인원수를 응답한다")
     void confirmReturnsUpdatedCount() {
-        when(noticeCommandUseCase.confirm(NOTICE_ID, LOGIN_USER_ID))
+        when(noticeCommandUseCase.confirm(NOTICE_ID, ViewerRole.TRAINEE, LOGIN_USER_ID))
                 .thenReturn(new NoticeConfirmationView(NOTICE_ID, 12L, true));
 
         ResponseEntity<NoticeConfirmationResponse> response =
@@ -165,7 +165,8 @@ class NoticeControllerTest {
         assertEquals(200, response.getStatusCode().value());
         assertEquals(12L, response.getBody().confirmationCount());
         assertTrue(response.getBody().confirmedByMe());
-        verify(noticeCommandUseCase).confirm(NOTICE_ID, LOGIN_USER_ID);
+        verify(noticeCommandUseCase)
+                .confirm(NOTICE_ID, ViewerRole.TRAINEE, LOGIN_USER_ID);
     }
 
     private NoticeSummaryView summaryView() {
