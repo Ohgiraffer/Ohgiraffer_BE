@@ -44,6 +44,6 @@ public interface ChatMessageMirrorJpaRepository
     List<ChannelLastMessageProjection> findLatestMessagesByChannelIds(@org.springframework.data.repository.query.Param("channelIds") List<String> channelIds);
 
     // 채널 최신 메시지 1건 - Spring Data 'Top' 키워드로 LIMIT 1 자동 적용
-    Optional<ChatMessageMirrorJpaEntity> findTopByChannelIdAndDeletedAtIsNullOrderBySentAtDesc(String channelId);
+    Optional<ChatMessageMirrorJpaEntity> findTopByChannelIdAndDeletedAtIsNullOrderBySentAtDescIdDesc(String channelId);
 
 }

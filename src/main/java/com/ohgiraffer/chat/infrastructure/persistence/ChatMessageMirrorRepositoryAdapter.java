@@ -93,7 +93,7 @@ public class ChatMessageMirrorRepositoryAdapter implements ChatMessageMirrorRepo
     // 채널 최신 메시지 단건 조회 - 상세조회에서 최신메시지 id만 필요할 때 전체 이력 대신 이걸 씀
     @Override
     public Optional<ChatMessageMirror> findTopByChannelIdOrderBySentAtDesc(String channelId) {
-        return jpaRepository.findTopByChannelIdAndDeletedAtIsNullOrderBySentAtDesc(channelId)
+        return jpaRepository.findTopByChannelIdAndDeletedAtIsNullOrderBySentAtDescIdDesc(channelId)
                 .map(ChatMessageMirrorJpaEntity::toDomain);
     }
 
