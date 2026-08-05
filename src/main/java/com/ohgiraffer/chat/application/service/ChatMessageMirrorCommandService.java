@@ -29,6 +29,7 @@ public class ChatMessageMirrorCommandService implements ChatMessageMirrorCommand
 
     private final ChatMessageMirrorRepository chatMessageMirrorRepository;
     private final ChatChannelRepository chatChannelRepository;
+    private final ChatMessageMirrorSaver chatMessageMirrorSaver;
 
     // 웹훅으로 수신한 메시지/답글 생성 이벤트 저장 - 중복 이벤트는 existsBySendbirdMessageId로 걸러냄
     // exists 체크 후 save 사이 경쟁상태 대비 - 유니크 제약 위반이면 이미 다른 요청이 저장한 것으로 보고 멱등 처리
@@ -53,12 +54,11 @@ public class ChatMessageMirrorCommandService implements ChatMessageMirrorCommand
                     command.senderId(), command.content(), command.attachmentUrl(),
                     command.attachmentType(), command.sentAt()
             );
-            chatMessageMirrorRepository.save(message);
+            chatMessageMirrorSaver.saveAndFlush(message); // REQUIRES_NEW + 즉시 flush
 
             log.info("[Chat] 메시지 미러링 완료 | channelId={}, sendbirdMessageId={}, parentMessageId={}",
                     command.channelId(), command.sendbirdMessageId(), command.parentMessageId());
         } catch (DataIntegrityViolationException e) {
-            // 즉시반영(ChatReplyCommandService/ChatMessageCommandService)과 웹훅이 동시에 들어온 경우 - 먼저 저장된 쪽을 인정하고 성공 처리
             log.info("[Chat] 동시 저장 경쟁상태 감지 - 멱등 처리로 스킵 | sendbirdMessageId={}", command.sendbirdMessageId());
         }
     }

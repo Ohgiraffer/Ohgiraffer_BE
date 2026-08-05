@@ -57,14 +57,14 @@ public class ChatMessageMirrorRepositoryAdapter implements ChatMessageMirrorRepo
     // 채널 메시지 이력 조회 - 최신순, 삭제 제외
     @Override
     public Page<ChatMessageMirror> findByChannelIdOrderBySentAtDesc(String channelId, Pageable pageable) {
-        return jpaRepository.findByChannelIdAndDeletedAtIsNullOrderBySentAtDesc(channelId, pageable)
+        return jpaRepository.findByChannelIdAndDeletedAtIsNullOrderBySentAtDescIdDesc(channelId, pageable)
                 .map(ChatMessageMirrorJpaEntity::toDomain);
     }
 
     // 스레드 답글 목록 조회 - 삭제 제외
     @Override
     public Page<ChatMessageMirror> findByParentMessageId(Long parentMessageId, Pageable pageable) {
-        return jpaRepository.findByParentMessageIdAndDeletedAtIsNull(parentMessageId, pageable)
+        return jpaRepository.findByParentMessageIdAndDeletedAtIsNullOrderBySentAtDescIdDesc(parentMessageId, pageable)
                 .map(ChatMessageMirrorJpaEntity::toDomain);
     }
 
@@ -95,6 +95,13 @@ public class ChatMessageMirrorRepositoryAdapter implements ChatMessageMirrorRepo
     public Optional<ChatMessageMirror> findTopByChannelIdOrderBySentAtDesc(String channelId) {
         return jpaRepository.findTopByChannelIdAndDeletedAtIsNullOrderBySentAtDesc(channelId)
                 .map(ChatMessageMirrorJpaEntity::toDomain);
+    }
+
+    // 즉시 flush하여 제약 위반 예외를 호출부(ChatMessageMirrorSaver)에서 그 자리에 바로 잡을 수 있게 함
+    @Override
+    public ChatMessageMirror saveAndFlush(ChatMessageMirror message) {
+        ChatMessageMirrorJpaEntity entity = ChatMessageMirrorJpaEntity.from(message);
+        return jpaRepository.saveAndFlush(entity).toDomain();
     }
 
 }

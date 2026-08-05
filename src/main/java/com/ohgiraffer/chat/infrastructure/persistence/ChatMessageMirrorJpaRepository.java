@@ -22,10 +22,10 @@ public interface ChatMessageMirrorJpaRepository
     boolean existsBySendbirdMessageId(String sendbirdMessageId);
 
     // 채널 메시지 이력 조회, 삭제된 건 제외
-    Page<ChatMessageMirrorJpaEntity> findByChannelIdAndDeletedAtIsNullOrderBySentAtDesc(String channelId, Pageable pageable);
+    Page<ChatMessageMirrorJpaEntity> findByChannelIdAndDeletedAtIsNullOrderBySentAtDescIdDesc(String channelId, Pageable pageable);
 
     // 스레드 답글 조회, 삭제된 건 제외
-    Page<ChatMessageMirrorJpaEntity> findByParentMessageIdAndDeletedAtIsNull(Long parentMessageId, Pageable pageable);
+    Page<ChatMessageMirrorJpaEntity> findByParentMessageIdAndDeletedAtIsNullOrderBySentAtDescIdDesc(Long parentMessageId, Pageable pageable);
 
     // 원본 메시지 답글 수 카운트, 삭제된 건 제외
     long countByParentMessageIdAndDeletedAtIsNull(Long parentMessageId);

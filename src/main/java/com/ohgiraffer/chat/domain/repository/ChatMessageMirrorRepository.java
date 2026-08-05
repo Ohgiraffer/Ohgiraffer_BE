@@ -45,4 +45,7 @@ public interface ChatMessageMirrorRepository {
     // 채널의 최신 메시지 1건만 조회 (상세조회 최적화용) - 전체 이력 대신 단건만 가져옴
     Optional<ChatMessageMirror> findTopByChannelIdOrderBySentAtDesc(String channelId);
 
+    // 즉시 flush하여 제약 위반 예외를 호출부에서 바로 잡을 수 있게 함 (경쟁상태 멱등 처리용)
+    ChatMessageMirror saveAndFlush(ChatMessageMirror message);
+
 }
