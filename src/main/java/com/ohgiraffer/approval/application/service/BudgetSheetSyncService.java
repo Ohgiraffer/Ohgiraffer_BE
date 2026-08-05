@@ -14,15 +14,18 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 @RequiredArgsConstructor
 public class BudgetSheetSyncService {
 
     private static final int REQUIRED_MAPPING_COUNT = 4;
+    private static final ReentrantLock SYNC_LOCK = new ReentrantLock();
 
     private final BudgetSheetPort budgetSheetPort;
     private final SpreadsheetIdExtractor spreadsheetIdExtractor;
@@ -30,6 +33,24 @@ public class BudgetSheetSyncService {
     private final Clock clock;
 
     public BudgetSyncResult sync(
+            String sheetUrl,
+            String tabName,
+            BudgetColumnMapping columnMapping
+    ) {
+        SYNC_LOCK.lock();
+
+        try {
+            return doSync(
+                    sheetUrl,
+                    tabName,
+                    columnMapping
+            );
+        } finally {
+            SYNC_LOCK.unlock();
+        }
+    }
+
+    private BudgetSyncResult doSync(
             String sheetUrl,
             String tabName,
             BudgetColumnMapping columnMapping
@@ -120,7 +141,7 @@ public class BudgetSheetSyncService {
             );
         }
 
-        List<String> columns = List.of(
+        List<String> columns = Arrays.asList(
                 columnMapping.category(),
                 columnMapping.totalAmount(),
                 columnMapping.usedAmount(),

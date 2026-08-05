@@ -1,8 +1,5 @@
 package com.ohgiraffer.approval.application.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ohgiraffer.approval.application.command.BudgetColumnMapping;
 import com.ohgiraffer.approval.application.query.BudgetCategorySummaryResult;
 import com.ohgiraffer.approval.application.query.BudgetSummaryResult;
 import com.ohgiraffer.approval.application.usecase.GetBudgetSummaryUseCase;
@@ -36,8 +33,6 @@ public class GetBudgetSummaryService implements GetBudgetSummaryUseCase {
     private final ExternalSheetLinkRepository externalSheetLinkRepository;
     private final BudgetAllocationRepository budgetAllocationRepository;
     private final BudgetCategoryRepository budgetCategoryRepository;
-    private final BudgetSheetSyncService budgetSheetSyncService;
-    private final ObjectMapper objectMapper;
 
     @Override
     public BudgetSummaryResult getSummary() {
@@ -47,16 +42,6 @@ public class GetBudgetSummaryService implements GetBudgetSummaryUseCase {
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.INVALID_INPUT_VALUE
                 ));
-
-        BudgetColumnMapping columnMapping = toColumnMapping(
-                externalSheetLink.getColumnMapping()
-        );
-
-        budgetSheetSyncService.sync(
-                externalSheetLink.getSheetUrl(),
-                externalSheetLink.getTabName(),
-                columnMapping
-        );
 
         List<BudgetAllocation> allocations = budgetAllocationRepository.findAll();
 
@@ -161,21 +146,6 @@ public class GetBudgetSummaryService implements GetBudgetSummaryUseCase {
                         allocation.getTotalAmount()
                 )
         );
-    }
-
-    private BudgetColumnMapping toColumnMapping(
-            String columnMappingJson
-    ) {
-        try {
-            return objectMapper.readValue(
-                    columnMappingJson,
-                    BudgetColumnMapping.class
-            );
-        } catch (JsonProcessingException exception) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE
-            );
-        }
     }
 
     private BigDecimal calculateUsageRate(

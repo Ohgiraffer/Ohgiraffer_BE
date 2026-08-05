@@ -13,6 +13,7 @@ import com.ohgiraffer.approval.domain.repository.ExternalSheetLinkRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -100,7 +101,8 @@ public class BudgetSheetSyncPersistenceService {
             );
         } catch (JsonProcessingException exception) {
             throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    exception
             );
         }
     }
@@ -108,16 +110,32 @@ public class BudgetSheetSyncPersistenceService {
     private BudgetCategory saveOrUpdateCategory(
             String categoryName
     ) {
-        BudgetCategory category = budgetCategoryRepository.findByName(
+        return budgetCategoryRepository.findByName(
                         categoryName
                 )
-                .orElseGet(() -> BudgetCategory.createFromSheet(
+                .orElseGet(() -> saveNewCategory(
                         categoryName
                 ));
+    }
 
-        return budgetCategoryRepository.save(
-                category
-        );
+    private BudgetCategory saveNewCategory(
+            String categoryName
+    ) {
+        try {
+            return budgetCategoryRepository.save(
+                    BudgetCategory.createFromSheet(
+                            categoryName
+                    )
+            );
+        } catch (DataIntegrityViolationException exception) {
+            return budgetCategoryRepository.findByName(
+                            categoryName
+                    )
+                    .orElseThrow(() -> new BusinessException(
+                            ErrorCode.INTERNAL_SERVER_ERROR,
+                            exception
+                    ));
+        }
     }
 
     private void saveOrUpdateAllocation(
@@ -130,7 +148,7 @@ public class BudgetSheetSyncPersistenceService {
         BudgetAllocation budgetAllocation = budgetAllocationRepository.findByBudgetCategoryId(
                         budgetCategoryId
                 )
-                .orElseGet(() -> BudgetAllocation.create(
+                .orElseGet(() -> saveNewAllocation(
                         budgetCategoryId,
                         totalAmount,
                         usedAmount,
@@ -148,5 +166,33 @@ public class BudgetSheetSyncPersistenceService {
         budgetAllocationRepository.save(
                 budgetAllocation
         );
+    }
+
+    private BudgetAllocation saveNewAllocation(
+            Long budgetCategoryId,
+            BigDecimal totalAmount,
+            BigDecimal usedAmount,
+            BigDecimal remainingAmount,
+            LocalDateTime syncedAt
+    ) {
+        try {
+            return budgetAllocationRepository.save(
+                    BudgetAllocation.create(
+                            budgetCategoryId,
+                            totalAmount,
+                            usedAmount,
+                            remainingAmount,
+                            syncedAt
+                    )
+            );
+        } catch (DataIntegrityViolationException exception) {
+            return budgetAllocationRepository.findByBudgetCategoryId(
+                            budgetCategoryId
+                    )
+                    .orElseThrow(() -> new BusinessException(
+                            ErrorCode.INTERNAL_SERVER_ERROR,
+                            exception
+                    ));
+        }
     }
 }

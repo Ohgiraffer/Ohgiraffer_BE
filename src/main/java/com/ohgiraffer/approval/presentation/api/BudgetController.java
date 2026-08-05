@@ -5,6 +5,7 @@ import com.ohgiraffer.approval.application.usecase.BudgetSheetValidationResult;
 import com.ohgiraffer.approval.application.usecase.BudgetSyncResult;
 import com.ohgiraffer.approval.application.usecase.GetBudgetSummaryUseCase;
 import com.ohgiraffer.approval.application.usecase.SaveBudgetSheetSettingsUseCase;
+import com.ohgiraffer.approval.application.usecase.SyncBudgetSheetUseCase;
 import com.ohgiraffer.approval.application.usecase.ValidateBudgetSheetUseCase;
 import com.ohgiraffer.approval.presentation.api.request.SaveBudgetSheetSettingsRequest;
 import com.ohgiraffer.approval.presentation.api.request.ValidateBudgetSheetRequest;
@@ -26,15 +27,18 @@ public class BudgetController {
 
     private final ValidateBudgetSheetUseCase validateBudgetSheetUseCase;
     private final SaveBudgetSheetSettingsUseCase saveBudgetSheetSettingsUseCase;
+    private final SyncBudgetSheetUseCase syncBudgetSheetUseCase;
     private final GetBudgetSummaryUseCase getBudgetSummaryUseCase;
 
     public BudgetController(
             ValidateBudgetSheetUseCase validateBudgetSheetUseCase,
             SaveBudgetSheetSettingsUseCase saveBudgetSheetSettingsUseCase,
+            SyncBudgetSheetUseCase syncBudgetSheetUseCase,
             GetBudgetSummaryUseCase getBudgetSummaryUseCase
     ) {
         this.validateBudgetSheetUseCase = validateBudgetSheetUseCase;
         this.saveBudgetSheetSettingsUseCase = saveBudgetSheetSettingsUseCase;
+        this.syncBudgetSheetUseCase = syncBudgetSheetUseCase;
         this.getBudgetSummaryUseCase = getBudgetSummaryUseCase;
     }
 
@@ -64,6 +68,19 @@ public class BudgetController {
                 saveBudgetSheetSettingsUseCase.saveAndSync(
                         request.toCommand()
                 );
+
+        return ResponseEntity.ok(
+                BudgetSyncResponse.from(
+                        result
+                )
+        );
+    }
+
+    @PostMapping("/sync")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<BudgetSyncResponse> syncBudgetSheet() {
+        BudgetSyncResult result =
+                syncBudgetSheetUseCase.sync();
 
         return ResponseEntity.ok(
                 BudgetSyncResponse.from(
