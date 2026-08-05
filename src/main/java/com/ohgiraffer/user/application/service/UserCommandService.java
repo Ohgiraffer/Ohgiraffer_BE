@@ -85,7 +85,13 @@ public class UserCommandService implements UserCommandUsecase {
         String key = S3KeyGenerator.profileImageKey(userId);
         s3FileHandler.upload(profileImg, key);
 
-        updateUserProfileImg(userId, key);
+        try {
+            updateUserProfileImg(userId, key);
+        } catch (Exception e) {
+            log.error("[updateProfileImage] DB 반영 실패로 S3 객체 롤백 | userId={}, key={}", userId, key, e);
+            s3FileHandler.delete(key);
+            throw e;
+        }
 
         log.info("[updateProfileImage] 프로필 이미지 변경 완료 | userId={}, key={}", userId, key);
         return s3UrlResolver.resolve(key);
@@ -97,9 +103,8 @@ public class UserCommandService implements UserCommandUsecase {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         String key = user.getProfileImg();
-
-        s3FileHandler.delete(key);
         deleteUserProfileImg(userId);
+        s3FileHandler.delete(key);
 
         log.info("[deleteProfileImage] 프로필 이미지 삭제 완료 | userId={}", userId);
     }

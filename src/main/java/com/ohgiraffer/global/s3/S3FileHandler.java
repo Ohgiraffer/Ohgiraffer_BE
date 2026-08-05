@@ -1,5 +1,7 @@
 package com.ohgiraffer.global.s3;
 
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,7 +34,10 @@ public class S3FileHandler {
 
             s3Client.putObject(request, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
         } catch (IOException e) {
-            throw new UncheckedIOException("S3 업로드 중 파일 읽기 실패", e);
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "파일을 읽을 수 없습니다."
+            );
         }
 
         return key;
