@@ -1,5 +1,7 @@
 package com.ohgiraffer.bootcamp.domain.model;
 
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.Getter;
 
 import java.time.LocalDate;
@@ -34,9 +36,16 @@ public class Bootcamp {
 
     // 수정
     public void changeInfo(String orgName, String proName, LocalDate startDate, LocalDate endDate) {
+        LocalDate newStart = startDate != null ? startDate : this.startDate;
+        LocalDate newEnd = endDate != null ? endDate : this.endDate;
+
+        if (newStart.isAfter(newEnd)) {
+            throw new BusinessException(ErrorCode.INVALID_PERIOD_RANGE);
+        }
+
         if (orgName != null) this.orgName = orgName;
         if (proName != null) this.proName = proName;
-        if (startDate != null) this.startDate = startDate;
-        if (endDate != null) this.endDate = endDate;
+        this.startDate = newStart;
+        this.endDate = newEnd;
     }
 }

@@ -68,6 +68,7 @@ public enum ErrorCode {
     DUPLICATE_PERIOD_NO(HttpStatus.BAD_REQUEST, "BOOTCAMP_003", "단위기간 번호가 중복되었습니다."),
     OVERLAPPING_PERIOD(HttpStatus.BAD_REQUEST, "BOOTCAMP_004", "단위기간이 서로 겹칩니다."),
     INVALID_POLICY_THRESHOLD_ORDER(HttpStatus.BAD_REQUEST, "BOOTCAMP_005", "출석률 기준은 주의 > 경고 > 제적위험 순이어야 합니다."),
+    INVALID_POLICY_THRESHOLD_RANGE(HttpStatus.BAD_REQUEST, "BOOTCAMP_006", "출석률 기준은 0 이상 100 이하여야 합니다."),
 
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_001", "존재하지 않는 공지입니다."),
     NOTICE_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_002", "존재하지 않는 공지 카테고리입니다."),
