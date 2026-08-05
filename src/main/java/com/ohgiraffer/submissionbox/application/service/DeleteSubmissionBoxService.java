@@ -7,6 +7,8 @@ import com.ohgiraffer.submissionbox.domain.repository.SubmissionBoxRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ohgiraffer.submissionbox.domain.model.SubmissionBox;
+import com.ohgiraffer.user.domain.model.Role;
 
 @Service
 @RequiredArgsConstructor
@@ -18,17 +20,26 @@ public class DeleteSubmissionBoxService
     @Override
     @Transactional
     public void delete(
-            Long submissionBoxId
+            Long submissionBoxId,
+            Long requesterId,
+            Role requesterRole
     ) {
         validateSubmissionBoxId(submissionBoxId);
 
-        if (!submissionBoxRepository.existsById(
-                submissionBoxId
-        )) {
-            throw new BusinessException(
-                    ErrorCode.SUBMISSION_BOX_NOT_FOUND
-            );
-        }
+        SubmissionBox submissionBox =
+                submissionBoxRepository
+                        .findByIdForUpdate(submissionBoxId)
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.SUBMISSION_BOX_NOT_FOUND
+                                )
+                        );
+
+        validateManagementAuthority(
+                submissionBox,
+                requesterId,
+                requesterRole
+        );
 
         if (submissionBoxRepository.hasSubmissions(
                 submissionBoxId
@@ -41,6 +52,34 @@ public class DeleteSubmissionBoxService
         submissionBoxRepository.deleteById(
                 submissionBoxId
         );
+    }
+
+    private void validateManagementAuthority(
+            SubmissionBox submissionBox,
+            Long requesterId,
+            Role requesterRole
+    ) {
+        if (requesterId == null || requesterRole == null) {
+            throw new BusinessException(
+                    ErrorCode.SUBMISSION_BOX_ACCESS_DENIED
+            );
+        }
+
+        if (requesterRole == Role.MANAGER) {
+            return;
+        }
+
+        boolean isCreator =
+                requesterRole == Role.INSTRUCTOR
+                        && requesterId.equals(
+                        submissionBox.getCreatedBy()
+                );
+
+        if (!isCreator) {
+            throw new BusinessException(
+                    ErrorCode.SUBMISSION_BOX_ACCESS_DENIED
+            );
+        }
     }
 
     private void validateSubmissionBoxId(

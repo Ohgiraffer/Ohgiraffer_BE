@@ -100,13 +100,18 @@ public class SubmissionController {
     public ResponseEntity<SubmissionBoxDetailResponse>
     updateSubmissionBox(
             @PathVariable Long submissionBoxId,
-            @Valid @RequestBody UpdateSubmissionBoxRequest request
+            @Valid @RequestBody UpdateSubmissionBoxRequest request,
+            @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         UpdateSubmissionBoxCommand command =
                 request.toCommand(submissionBoxId);
 
         SubmissionBoxDetailResult result =
-                updateSubmissionBoxUseCase.update(command);
+                updateSubmissionBoxUseCase.update(
+                        command,
+                        principal.getId(),
+                        principal.getRole()
+                );
 
         return ResponseEntity.ok(
                 SubmissionBoxDetailResponse.from(result)
@@ -116,10 +121,13 @@ public class SubmissionController {
     @DeleteMapping("/{submissionBoxId}")
     @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
     public ResponseEntity<Void> deleteSubmissionBox(
-            @PathVariable Long submissionBoxId
+            @PathVariable Long submissionBoxId,
+            @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         deleteSubmissionBoxUseCase.delete(
-                submissionBoxId
+                submissionBoxId,
+                principal.getId(),
+                principal.getRole()
         );
 
         return ResponseEntity.noContent().build();

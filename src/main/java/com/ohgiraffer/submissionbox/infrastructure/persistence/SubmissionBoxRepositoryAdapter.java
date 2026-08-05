@@ -2,6 +2,11 @@ package com.ohgiraffer.submissionbox.infrastructure.persistence;
 
 import com.ohgiraffer.submissionbox.domain.model.SubmissionBox;
 import com.ohgiraffer.submissionbox.domain.repository.SubmissionBoxRepository;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
@@ -67,6 +72,15 @@ public class SubmissionBoxRepositoryAdapter implements SubmissionBoxRepository {
             Long submissionBoxId
     ) {
         return repository.findWithItemsById(submissionBoxId)
+                .map(SubmissionBoxJpaEntity::toDomain);
+    }
+
+    @Override
+    public Optional<SubmissionBox> findByIdForUpdate(
+            Long submissionBoxId
+    ) {
+        return repository
+                .findWithItemsByIdForUpdate(submissionBoxId)
                 .map(SubmissionBoxJpaEntity::toDomain);
     }
 

@@ -21,6 +21,10 @@ public interface SubmissionBoxRepository {
             Long submissionBoxId
     );
 
+    Optional<SubmissionBox> findByIdForUpdate(
+            Long submissionBoxId
+    );
+
     boolean existsById(
             Long submissionBoxId
     );

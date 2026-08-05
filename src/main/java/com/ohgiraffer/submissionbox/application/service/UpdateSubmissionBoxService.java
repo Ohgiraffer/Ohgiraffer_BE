@@ -9,6 +9,7 @@ import com.ohgiraffer.submissionbox.application.usecase.UpdateSubmissionBoxUseCa
 import com.ohgiraffer.submissionbox.domain.model.SubmissionBox;
 import com.ohgiraffer.submissionbox.domain.model.SubmissionBoxItem;
 import com.ohgiraffer.submissionbox.domain.repository.SubmissionBoxRepository;
+import com.ohgiraffer.user.domain.model.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,19 +32,27 @@ public class UpdateSubmissionBoxService
     @Override
     @Transactional
     public SubmissionBoxDetailResult update(
-            UpdateSubmissionBoxCommand command
+            UpdateSubmissionBoxCommand command,
+            Long requesterId,
+            Role requesterRole
     ) {
         validateSubmissionBoxId(command.submissionBoxId());
         validateDuplicateItemIds(command.items());
 
         SubmissionBox existingSubmissionBox =
                 submissionBoxRepository
-                        .findById(command.submissionBoxId())
+                        .findByIdForUpdate(command.submissionBoxId())
                         .orElseThrow(() ->
                                 new BusinessException(
                                         ErrorCode.SUBMISSION_BOX_NOT_FOUND
                                 )
                         );
+
+        validateManagementAuthority(
+                existingSubmissionBox,
+                requesterId,
+                requesterRole
+        );
 
         Map<Long, SubmissionBoxItem> existingItemMap =
                 existingSubmissionBox.getItems()
@@ -83,6 +92,34 @@ public class UpdateSubmissionBoxService
                 savedSubmissionBox,
                 LocalDateTime.now()
         );
+    }
+
+    private void validateManagementAuthority(
+            SubmissionBox submissionBox,
+            Long requesterId,
+            Role requesterRole
+    ) {
+        if (requesterId == null || requesterRole == null) {
+            throw new BusinessException(
+                    ErrorCode.SUBMISSION_BOX_ACCESS_DENIED
+            );
+        }
+
+        if (requesterRole == Role.MANAGER) {
+            return;
+        }
+
+        boolean isCreator =
+                requesterRole == Role.INSTRUCTOR
+                        && requesterId.equals(
+                        submissionBox.getCreatedBy()
+                );
+
+        if (!isCreator) {
+            throw new BusinessException(
+                    ErrorCode.SUBMISSION_BOX_ACCESS_DENIED
+            );
+        }
     }
 
     private SubmissionBoxItem updateItem(
