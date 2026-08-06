@@ -73,10 +73,7 @@ public class UserRepositoryAdapter implements UserRepository {
         springDataUserRepository.saveAllAndFlush(entities);
     }
 
-    @Override
-    public Optional<Long> findBootcampIdByUserId(Long userId) {
-        return springDataUserRepository.findBootcampIdByUserId(userId);
-    }
+
 
 
 }

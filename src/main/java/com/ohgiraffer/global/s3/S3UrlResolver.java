@@ -6,6 +6,7 @@ import org.springframework.web.util.UriUtils;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import org.springframework.http.ContentDisposition;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -22,6 +23,7 @@ public class S3UrlResolver {
     private String region;
 
     private static final Duration URL_EXPIRATION = Duration.ofHours(24);
+    private static final Duration DOWNLOAD_URL_EXPIRATION = Duration.ofMinutes(5);
 
     public S3UrlResolver(S3Presigner s3Presigner) {
         this.s3Presigner = s3Presigner;
@@ -43,6 +45,55 @@ public class S3UrlResolver {
                 .build();
 
         return s3Presigner.presignGetObject(presignRequest).url().toString();
+    }
+
+    public String resolveDownload(String key, String originalFileName) {
+        if (key == null || key.isBlank()) {
+            throw new IllegalArgumentException(
+                    "S3 key가 필요합니다."
+            );
+        }
+
+        if (originalFileName == null
+                || originalFileName.isBlank()) {
+            throw new IllegalArgumentException(
+                    "원본 파일명이 필요합니다."
+            );
+        }
+
+        String contentDisposition =
+                ContentDisposition
+                        .attachment()
+                        .filename(
+                                originalFileName,
+                                StandardCharsets.UTF_8
+                        )
+                        .build()
+                        .toString();
+
+        GetObjectRequest getObjectRequest =
+                GetObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(key)
+                        .responseContentDisposition(
+                                contentDisposition
+                        )
+                        .build();
+
+        GetObjectPresignRequest presignRequest =
+                GetObjectPresignRequest.builder()
+                        .signatureDuration(
+                                DOWNLOAD_URL_EXPIRATION
+                        )
+                        .getObjectRequest(
+                                getObjectRequest
+                        )
+                        .build();
+
+        return s3Presigner
+                .presignGetObject(presignRequest)
+                .url()
+                .toString();
     }
 
     // 만료 없는 고정 public URL 생성 - 버킷 정책으로 이미 공개된 prefix(chatAttachments 등) 전용
