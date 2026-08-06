@@ -43,5 +43,10 @@ public class UserRepositoryAdapter implements UserRepository {
                 .toList();
     }
 
+    @Override
+    public boolean existsByEmail(String email) {
+        return springDataUserRepository.existsByEmail(email);
+    }
+
 
 }

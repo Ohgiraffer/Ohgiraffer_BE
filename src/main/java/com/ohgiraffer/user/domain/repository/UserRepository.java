@@ -14,4 +14,6 @@ public interface UserRepository {
 
     void save(User user);
     List<User> findAllByRoleAndStatus(Role role, UserStatus status);
+
+    boolean existsByEmail(String email);
 }

@@ -5,11 +5,9 @@ import com.ohgiraffer.security.user.CustomUserPrincipal;
 import com.ohgiraffer.user.application.usecase.UserCommandUsecase;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import com.ohgiraffer.user.presentation.api.request.SetPasswordRequest;
+import com.ohgiraffer.user.presentation.api.request.UserSheetConnectionRequest;
 import com.ohgiraffer.user.presentation.api.request.UserStatusChangeRequest;
-import com.ohgiraffer.user.presentation.api.response.SetAlarmResponse;
-import com.ohgiraffer.user.presentation.api.response.SetPasswordResponse;
-import com.ohgiraffer.user.presentation.api.response.SetProfileImgResponse;
-import com.ohgiraffer.user.presentation.api.response.UserResponse;
+import com.ohgiraffer.user.presentation.api.response.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -129,5 +127,22 @@ public class UserController {
     ) {
         userCommandUsecase.changeUserStatus(request.userId(), request.status());
         return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "구글시트 연결 확인", description = "관리자가 입력한 스프레드시트 URL의 접근 가능 여부와 시트명, 컬럼 목록을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "URL 형식이 올바르지 않음"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "서비스 계정에 시트가 공유되지 않음"),
+            @ApiResponse(responseCode = "404", description = "시트를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PreAuthorize("hasRole('MANAGER')")
+    @PostMapping("/sheet/info")
+    public ResponseEntity<UserSheetConnectionResponse> checkSheetConnection(
+            @Valid @RequestBody UserSheetConnectionRequest request
+    ) {
+        return ResponseEntity.ok(userQueryUsecase.checkSheetConnection(request.spreadsheetUrl()));
     }
 }

@@ -4,6 +4,7 @@ import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,6 +20,9 @@ public class SpreadsheetIdExtractor {
                         + "(?:/[^?#]*)?"
                         + "(?:[?#].*)?$"
         );
+
+    private static final Pattern GID_PATTERN =
+            Pattern.compile("[?#&]gid=(\\d+)");
 
     public String extract(String spreadsheetUrl) {
         if (spreadsheetUrl == null
@@ -40,5 +44,17 @@ public class SpreadsheetIdExtractor {
         }
 
         return matcher.group(1);
+    }
+
+    public Optional<Long> extractGid(String spreadsheetUrl) {
+        if (spreadsheetUrl == null) {
+            return Optional.empty();
+        }
+
+        Matcher matcher = GID_PATTERN.matcher(spreadsheetUrl);
+        if (matcher.find()) {
+            return Optional.of(Long.parseLong(matcher.group(1)));
+        }
+        return Optional.empty();
     }
 }
