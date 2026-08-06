@@ -15,6 +15,10 @@ public interface BudgetCategoryRepository {
             Long id
     );
 
+    List<BudgetCategory> findByIdIn(
+            List<Long> ids
+    );
+
     Optional<BudgetCategory> findByName(
             String name
     );

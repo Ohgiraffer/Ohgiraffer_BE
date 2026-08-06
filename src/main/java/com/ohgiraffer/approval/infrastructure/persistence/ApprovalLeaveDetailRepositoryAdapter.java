@@ -4,6 +4,7 @@ import com.ohgiraffer.approval.domain.model.approval.ApprovalLeaveDetail;
 import com.ohgiraffer.approval.domain.repository.ApprovalLeaveDetailRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -46,5 +47,24 @@ public class ApprovalLeaveDetailRepositoryAdapter
                 .map(
                         ApprovalLeaveDetailJpaEntity::toDomain
                 );
+    }
+
+    @Override
+    public List<ApprovalLeaveDetail> findByApprovalIdIn(
+            List<Long> approvalIds
+    ) {
+        if (approvalIds == null || approvalIds.isEmpty()) {
+            return List.of();
+        }
+
+        return repository
+                .findByApprovalIdIn(
+                        approvalIds
+                )
+                .stream()
+                .map(
+                        ApprovalLeaveDetailJpaEntity::toDomain
+                )
+                .toList();
     }
 }

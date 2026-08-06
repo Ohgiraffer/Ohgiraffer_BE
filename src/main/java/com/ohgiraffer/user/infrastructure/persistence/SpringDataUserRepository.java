@@ -16,6 +16,8 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, L
 
     List<UserJpaEntity> findAllByRoleAndStatus(Role role, UserStatus status);
 
+    List<UserJpaEntity> findByIdIn(List<Long> userIds);
+
     @Query("SELECT u.bootcampId FROM UserJpaEntity u WHERE u.id = :userId")
     Optional<Long> findBootcampIdByUserId(@Param("userId") Long userId);
 
