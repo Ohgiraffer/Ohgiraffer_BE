@@ -5,6 +5,7 @@ import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
 import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -81,5 +82,20 @@ public class ApprovalRequestRepositoryAdapter
                         ApprovalRequestJpaEntity::toDomain
                 )
                 .toList();
+    }
+
+    @Override
+    public int checkPendingApproval(
+            Long approvalId,
+            Long approverId,
+            LocalDateTime confirmedAt
+    ) {
+        return repository.checkPendingApproval(
+                approvalId,
+                approverId,
+                confirmedAt,
+                ApprovalStatus.PENDING,
+                ApprovalStatus.CHECKED
+        );
     }
 }

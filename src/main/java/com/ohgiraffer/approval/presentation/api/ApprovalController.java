@@ -5,14 +5,14 @@ import com.ohgiraffer.approval.application.command.CreatePurchaseApprovalCommand
 import com.ohgiraffer.approval.application.query.ApprovalDetailResult;
 import com.ohgiraffer.approval.application.query.ApprovalListItemResult;
 import com.ohgiraffer.approval.application.query.ApprovalListScope;
-import com.ohgiraffer.approval.application.usecase.CreateApprovalResult;
-import com.ohgiraffer.approval.application.usecase.CreateLeaveApprovalUseCase;
-import com.ohgiraffer.approval.application.usecase.CreatePurchaseApprovalUseCase;
-import com.ohgiraffer.approval.application.usecase.GetApprovalDetailUseCase;
-import com.ohgiraffer.approval.application.usecase.GetApprovalListUseCase;
+import com.ohgiraffer.approval.application.query.GetApprovalHistoriesQuery;
+import com.ohgiraffer.approval.application.result.ApprovalHistoryListResult;
+import com.ohgiraffer.approval.application.usecase.*;
 import com.ohgiraffer.approval.presentation.api.request.CreateLeaveApprovalRequest;
 import com.ohgiraffer.approval.presentation.api.request.CreatePurchaseApprovalRequest;
+import com.ohgiraffer.approval.presentation.api.request.RejectApprovalRequest;
 import com.ohgiraffer.approval.presentation.api.response.ApprovalDetailResponse;
+import com.ohgiraffer.approval.presentation.api.response.ApprovalHistoryListResponse;
 import com.ohgiraffer.approval.presentation.api.response.ApprovalListResponse;
 import com.ohgiraffer.approval.presentation.api.response.CreateApprovalResponse;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,17 +40,29 @@ public class ApprovalController {
     private final CreatePurchaseApprovalUseCase createPurchaseApprovalUseCase;
     private final GetApprovalListUseCase getApprovalListUseCase;
     private final GetApprovalDetailUseCase getApprovalDetailUseCase;
+    private final CheckApprovalUseCase checkApprovalUseCase;
+    private final ApproveApprovalUseCase approveApprovalUseCase;
+    private final RejectApprovalUseCase rejectApprovalUseCase;
+    private final GetApprovalHistoriesUseCase getApprovalHistoriesUseCase;
 
     public ApprovalController(
             CreateLeaveApprovalUseCase createLeaveApprovalUseCase,
             CreatePurchaseApprovalUseCase createPurchaseApprovalUseCase,
             GetApprovalListUseCase getApprovalListUseCase,
-            GetApprovalDetailUseCase getApprovalDetailUseCase
+            GetApprovalDetailUseCase getApprovalDetailUseCase,
+            CheckApprovalUseCase checkApprovalUseCase,
+            ApproveApprovalUseCase approveApprovalUseCase,
+            RejectApprovalUseCase rejectApprovalUseCase,
+            GetApprovalHistoriesUseCase getApprovalHistoriesUseCase
     ) {
         this.createLeaveApprovalUseCase = createLeaveApprovalUseCase;
         this.createPurchaseApprovalUseCase = createPurchaseApprovalUseCase;
         this.getApprovalListUseCase = getApprovalListUseCase;
         this.getApprovalDetailUseCase = getApprovalDetailUseCase;
+        this.checkApprovalUseCase = checkApprovalUseCase;
+        this.approveApprovalUseCase = approveApprovalUseCase;
+        this.rejectApprovalUseCase = rejectApprovalUseCase;
+        this.getApprovalHistoriesUseCase = getApprovalHistoriesUseCase;
     }
 
     @PostMapping("/leave")
@@ -61,7 +74,6 @@ public class ApprovalController {
         CreateLeaveApprovalCommand command =
                 new CreateLeaveApprovalCommand(
                         principal.getId(),
-                        request.approverId(),
                         request.startDate(),
                         request.endDate()
                 );
@@ -91,7 +103,6 @@ public class ApprovalController {
         CreatePurchaseApprovalCommand command =
                 new CreatePurchaseApprovalCommand(
                         principal.getId(),
-                        request.approverId(),
                         request.budgetCategoryId(),
                         request.itemName(),
                         request.amount(),
@@ -149,6 +160,90 @@ public class ApprovalController {
 
         return ResponseEntity.ok(
                 ApprovalDetailResponse.from(
+                        result
+                )
+        );
+    }
+
+    @PatchMapping("/{approvalId}/check")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<CreateApprovalResponse> checkApproval(
+            @PathVariable Long approvalId,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        CreateApprovalResult result =
+                checkApprovalUseCase.check(
+                        principal.getId(),
+                        principal.getRole(),
+                        approvalId
+                );
+
+        return ResponseEntity.ok(
+                CreateApprovalResponse.from(
+                        result
+                )
+        );
+    }
+
+    @PatchMapping("/{approvalId}/approve")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<CreateApprovalResponse> approveApproval(
+            @PathVariable Long approvalId,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        CreateApprovalResult result =
+                approveApprovalUseCase.approve(
+                        principal.getId(),
+                        principal.getRole(),
+                        approvalId
+                );
+
+        return ResponseEntity.ok(
+                CreateApprovalResponse.from(
+                        result
+                )
+        );
+    }
+
+    @PatchMapping("/{approvalId}/reject")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<CreateApprovalResponse> rejectApproval(
+            @PathVariable Long approvalId,
+            @Valid @RequestBody RejectApprovalRequest request,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        CreateApprovalResult result =
+                rejectApprovalUseCase.reject(
+                        principal.getId(),
+                        principal.getRole(),
+                        approvalId,
+                        request.rejectionReason()
+                );
+
+        return ResponseEntity.ok(
+                CreateApprovalResponse.from(
+                        result
+                )
+        );
+    }
+
+    @GetMapping("/{approvalId}/histories")
+    @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<ApprovalHistoryListResponse> getApprovalHistories(
+            @PathVariable Long approvalId,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        ApprovalHistoryListResult result =
+                getApprovalHistoriesUseCase.getHistories(
+                        new GetApprovalHistoriesQuery(
+                                approvalId,
+                                principal.getId(),
+                                principal.getRole()
+                        )
+                );
+
+        return ResponseEntity.ok(
+                ApprovalHistoryListResponse.from(
                         result
                 )
         );

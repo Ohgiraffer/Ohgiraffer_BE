@@ -10,7 +10,7 @@ public interface ApprovalHistoryRepository {
             ApprovalHistory approvalHistory
     );
 
-    List<ApprovalHistory> findAllByApprovalId(
+    List<ApprovalHistory> findAllByApprovalIdOrderByChangedAtAsc(
             Long approvalId
     );
 }
