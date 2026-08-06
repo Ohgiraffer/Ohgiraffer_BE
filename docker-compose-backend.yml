@@ -18,7 +18,15 @@ services:
       SENDBIRD_APP_ID: ${SENDBIRD_APP_ID:-}
       SENDBIRD_API_TOKEN: ${SENDBIRD_API_TOKEN:-}
       GOOGLE_SHEETS_ENABLED: ${GOOGLE_SHEETS_ENABLED:-false}
+      GOOGLE_SHEETS_CREDENTIALS_LOCATION: file:/app/secrets/ohgiraffer-sheets-key.json
       GOOGLE_FORMS_ENABLED: ${GOOGLE_FORMS_ENABLED:-false}
+    volumes:
+      - type: bind
+        source: ~/ohgiraffer-sheets-key.json
+        target: /app/secrets/ohgiraffer-sheets-key.json
+        read_only: true
+        bind:
+          create_host_path: false
     depends_on:
       redis:
         condition: service_healthy
