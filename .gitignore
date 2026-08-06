@@ -35,3 +35,14 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# Google service account credentials
+**/*credentials*.json
+**/*service-account*.json
+**/*sheets-key*.json
+secrets/
+
+# Google OAuth credentials and local tokens
+**/*oauth-client*.json
+**/forms-tokens/
+.env

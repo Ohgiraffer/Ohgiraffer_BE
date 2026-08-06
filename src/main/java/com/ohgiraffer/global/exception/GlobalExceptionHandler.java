@@ -4,6 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import com.ohgiraffer.global.trace.TraceIdFilter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -228,6 +230,46 @@ public ResponseEntity<ErrorResponse> handleMethodValidation(
     }
 
     /*
+     * 인증 실패 (토큰 없음, 만료 등) - 401
+     */
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(
+            org.springframework.security.core.AuthenticationException exception,
+            HttpServletRequest request
+    ) {
+        log.warn(
+                "Authentication failed. path={}",
+                request.getRequestURI()
+        );
+
+        return createResponse(
+                ErrorCode.UNAUTHORIZED,
+                ErrorCode.UNAUTHORIZED.getMessage(),
+                request
+        );
+    }
+
+    /*
+     * 권한 없음 (인증은 됐지만 권한 부족) - 403
+     */
+    @ExceptionHandler(org.springframework.security.authorization.AuthorizationDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAuthorizationDeniedException(
+            org.springframework.security.authorization.AuthorizationDeniedException exception,
+            HttpServletRequest request
+    ) {
+        log.warn(
+                "Authorization denied. path={}",
+                request.getRequestURI()
+        );
+
+        return createResponse(
+                ErrorCode.FORBIDDEN,
+                ErrorCode.FORBIDDEN.getMessage(),
+                request
+        );
+    }
+
+    /*
      * 예상하지 못한 서버 오류
      */
     @ExceptionHandler(Exception.class)
@@ -268,7 +310,9 @@ public ResponseEntity<ErrorResponse> handleMethodValidation(
         ErrorResponse response = ErrorResponse.of(
                 errorCode,
                 message,
-                request.getRequestURI()
+                request.getRequestURI(),
+                MDC.get(TraceIdFilter.TRACE_ID),
+                Map.of()
         );
 
         return ResponseEntity
@@ -286,6 +330,7 @@ public ResponseEntity<ErrorResponse> handleMethodValidation(
                 errorCode,
                 message,
                 request.getRequestURI(),
+                MDC.get(TraceIdFilter.TRACE_ID),
                 errors
         );
 
