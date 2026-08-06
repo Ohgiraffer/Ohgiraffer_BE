@@ -28,7 +28,7 @@ public class ApprovalHistoryRepositoryAdapter
                 );
 
         ApprovalHistoryJpaEntity savedEntity =
-                repository.saveAndFlush(
+                repository.save(
                         entity
                 );
 
@@ -36,11 +36,10 @@ public class ApprovalHistoryRepositoryAdapter
     }
 
     @Override
-    public List<ApprovalHistory> findAllByApprovalId(
+    public List<ApprovalHistory> findAllByApprovalIdOrderByChangedAtAsc(
             Long approvalId
     ) {
-        return repository
-                .findAllByApprovalIdOrderByChangedAtAsc(
+        return repository.findAllByApprovalIdOrderByChangedAtAsc(
                         approvalId
                 )
                 .stream()
