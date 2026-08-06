@@ -14,6 +14,7 @@ RUN ./gradlew dependencies --no-daemon || true
 
 # 전체 소스 복사 후 빌드
 COPY . .
+RUN chmod +x ./gradlew
 RUN ./gradlew bootJar --no-daemon -x test
 
 # plain.jar가 같이 생성되는 경우가 있어 bootJar 산출물만 명확히 찾아서 이름 고정
