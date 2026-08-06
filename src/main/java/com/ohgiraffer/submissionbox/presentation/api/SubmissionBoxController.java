@@ -38,7 +38,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/submission-boxes")
 @RequiredArgsConstructor
-public class SubmissionController {
+public class SubmissionBoxController {
 
     private final CreateSubmissionBoxUseCase createSubmissionBoxUseCase;
     private final GetSubmissionBoxListUseCase getSubmissionBoxListUseCase;

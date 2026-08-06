@@ -22,4 +22,16 @@ public class AttendancePeriodRepositoryAdapter implements AttendancePeriodReposi
                 .map(AttendancePeriodJpaEntity::toDomain)
                 .toList();
     }
+    @Override
+    public List<AttendancePeriod> findAllByBootcampId(Long bootcampId) {
+        return springDataAttendancePeriodRepository.findAllByBootcampIdOrderByPeriodNo(bootcampId).stream()
+                .map(AttendancePeriodJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public void deleteAllByBootcampId(Long bootcampId) {
+        springDataAttendancePeriodRepository.deleteAllByBootcampId(bootcampId);
+        springDataAttendancePeriodRepository.flush();
+    }
 }

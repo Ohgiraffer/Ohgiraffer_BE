@@ -1,5 +1,7 @@
 package com.ohgiraffer.user.domain.model;
 
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.Getter;
 
 import java.time.LocalDate;
@@ -18,6 +20,7 @@ public class User {
     private final LocalDate joinDate;
     private LocalDate leaveDate;
     private UserStatus status;
+    private Long bootcampId;
 
     public User(
             Long id,
@@ -31,7 +34,8 @@ public class User {
             boolean notificationOn,
             LocalDate joinDate,
             LocalDate leaveDate,
-            UserStatus status
+            UserStatus status,
+            Long bootcampId
     ) {
         this.id = id;
         this.name = name;
@@ -45,31 +49,32 @@ public class User {
         this.joinDate = joinDate;
         this.leaveDate = leaveDate;
         this.status = status;
+        this.bootcampId=bootcampId;
     }
 
     // 신규 회원 추가
-    public static User create(
-            String name,
-            String phone,
-            String email,
-            Role role,
-            String password
-    ) {
-        return new User(
-                null,
-                name,
-                phone,
-                email,
-                role,
-                null,
-                password,
-                true,
-                true,
-                LocalDate.now(),
-                null,
-                UserStatus.ACTIVE
-        );
-    }
+//    public static User create(
+//            String name,
+//            String phone,
+//            String email,
+//            Role role,
+//            String password
+//    ) {
+//        return new User(
+//                null,
+//                name,
+//                phone,
+//                email,
+//                role,
+//                null,
+//                password,
+//                true,
+//                true,
+//                LocalDate.now(),
+//                null,
+//                UserStatus.ACTIVE
+//        );
+//    }
 
     // 비밀번호 변경
     public void changePassword(String encodedPassword) {
@@ -90,5 +95,17 @@ public class User {
     // 프로필 이미지 삭제
     public void deleteProfileImg() {
         this.profileImg = null;
+    }
+
+    // 훈련생 자퇴 or 제적 처리
+    public void dismiss(UserStatus newStatus) {
+        if (this.status == UserStatus.COMPLETED) {
+            throw new BusinessException(ErrorCode.USER_ALREADY_COMPLETED);
+        }
+        if (this.status != UserStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.USER_ALREADY_INACTIVE);
+        }
+        this.status = newStatus;
+        this.leaveDate = LocalDate.now();
     }
 }
