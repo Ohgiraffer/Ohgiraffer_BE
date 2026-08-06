@@ -4,7 +4,7 @@ spring:
 
   # ===== Database (MySQL) =====
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/campflow?characterEncoding=UTF-8&useUnicode=true&serverTimezone=Asia/Seoul
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:campflow}?characterEncoding=UTF-8&useUnicode=true&serverTimezone=Asia/Seoul
     username: ${MYSQL_USERNAME:campflow}
     password: ${MYSQL_PASSWORD:1234}   # 본인 로컬 비밀번호로 교체
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -114,3 +114,9 @@ sendbird:
   app-id: ${SENDBIRD_APP_ID}
   api-token: ${SENDBIRD_API_TOKEN}
 
+# ===== AI =====
+ai:
+  gemini:
+    api-key: ${GEMINI_API_KEY}
+    model: ${GEMINI_MODEL:gemini-3.6-flash}
+    timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:90}

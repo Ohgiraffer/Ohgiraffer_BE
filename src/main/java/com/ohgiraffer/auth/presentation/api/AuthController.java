@@ -110,8 +110,7 @@ public class AuthController {
     public ResponseEntity<TokenResponse> refresh(
             @CookieValue(value = "refreshToken", required = false) String refreshToken
     ) {
-        String newAccessToken = authCommandUsecase.reissueAccessToken(refreshToken);
-        return ResponseEntity.ok(new TokenResponse(newAccessToken));
+        TokenResponse tokenResponse = authCommandUsecase.reissueAccessToken(refreshToken);
+        return ResponseEntity.ok(tokenResponse);
     }
-
 }

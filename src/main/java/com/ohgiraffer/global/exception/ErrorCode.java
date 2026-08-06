@@ -10,6 +10,8 @@ public enum ErrorCode {
     TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "COMMON_004", "요청 파라미터 타입이 올바르지 않습니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON_005", "지원하지 않는 HTTP 메서드입니다."),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_006", "요청한 대상을 찾을 수 없습니다."),
+    FILE_STORAGE_UPLOAD_FAILED(HttpStatus.BAD_GATEWAY, "COMMON_007", "파일 업로드에 실패했습니다."),
+    FILE_STORAGE_DELETE_FAILED(HttpStatus.BAD_GATEWAY, "COMMON_008", "파일 삭제에 실패했습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_999", "서버 내부 오류가 발생했습니다."),
 
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_001", "인증이 필요합니다."),
@@ -29,6 +31,9 @@ public enum ErrorCode {
     MISSING_PROFILE_IMAGE(HttpStatus.BAD_REQUEST, "USER_003", "업로드 할 프로필 이미지가 필요합니다."),
     PROFILE_IMAGE_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE, "USER_004", "프로필 이미지 크기는 50MB를 초과할 수 없습니다."),
     INVALID_PROFILE_IMAGE_TYPE(HttpStatus.BAD_REQUEST, "USER_005", "프로필 이미지는 JPG, PNG 형식만 업로드할 수 있습니다."),
+    INVALID_USER_STATUS_TARGET(HttpStatus.BAD_REQUEST, "USER_006", "제적 또는 자퇴 상태로만 변경할 수 있습니다."),
+    USER_ALREADY_INACTIVE(HttpStatus.CONFLICT, "USER_007", "이미 자퇴/제적 처리된 훈련생입니다."),
+    USER_ALREADY_COMPLETED(HttpStatus.CONFLICT, "USER_008", "이미 수료 완료된 훈련생은 자퇴/제적 처리할 수 없습니다."),
 
     GOOGLE_SHEET_INVALID_URL(HttpStatus.BAD_REQUEST, "SHEET_001", "올바른 Google 스프레드시트 URL이 아닙니다."),
     GOOGLE_SHEET_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SHEET_002", "Google 스프레드시트에 접근할 권한이 없습니다."),
@@ -64,6 +69,19 @@ public enum ErrorCode {
     SUBMISSION_BOX_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_001", "제출함을 찾을 수 없습니다."),
     SUBMISSION_BOX_HAS_SUBMISSIONS(HttpStatus.CONFLICT, "SUBMISSION_002", "제출물이 존재하는 제출함은 삭제할 수 없습니다."),
     SUBMISSION_BOX_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SUBMISSION_003", "해당 제출함을 수정하거나 삭제할 권한이 없습니다."),
+    SUBMISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_004", "제출물을 찾을 수 없습니다."),
+    SUBMISSION_ALREADY_EXISTS(HttpStatus.CONFLICT, "SUBMISSION_005", "이미 제출한 제출함입니다."),
+    SUBMISSION_NOT_STARTED(HttpStatus.BAD_REQUEST, "SUBMISSION_006", "아직 제출이 시작되지 않았습니다."),
+    SUBMISSION_DEADLINE_EXPIRED(HttpStatus.BAD_REQUEST, "SUBMISSION_007", "제출 마감 시간이 지났습니다."),
+    SUBMISSION_ITEM_MISMATCH(HttpStatus.BAD_REQUEST, "SUBMISSION_008", "제출 항목이 제출함 설정과 일치하지 않습니다."),
+    SUBMISSION_FILE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "SUBMISSION_009", "허용되지 않은 파일 형식입니다."),
+    SUBMISSION_TEAM_NOT_FOUND(HttpStatus.BAD_REQUEST, "SUBMISSION_010", "현재 소속된 팀을 찾을 수 없습니다."),
+    SUBMISSION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SUBMISSION_011", "해당 제출함에 제출할 권한이 없습니다."),
+    SUBMISSION_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "SUBMISSION_012", "제출 파일의 크기가 허용 범위를 초과했습니다."),
+    SUBMISSION_FILE_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "SUBMISSION_013", "제출할 수 있는 파일 개수를 초과했습니다."),
+    SUBMISSION_FILE_NAME_TOO_LONG(HttpStatus.BAD_REQUEST, "SUBMISSION_014", "제출 파일명이 허용 길이를 초과했습니다."),
+    SUBMISSION_FILE_UPLOAD_FAILED(HttpStatus.BAD_GATEWAY, "SUBMISSION_015", "파일 저장소에 파일을 업로드하지 못했습니다."),
+    SUBMISSION_TEAM_DATA_INCONSISTENT(HttpStatus.INTERNAL_SERVER_ERROR, "SUBMISSION_016", "학생의 팀 소속 정보가 올바르지 않습니다."),
   
     BOOTCAMP_NOT_FOUND(HttpStatus.NOT_FOUND, "BOOTCAMP_001", "부트캠프를 찾을 수 없습니다."),
     INVALID_PERIOD_RANGE(HttpStatus.BAD_REQUEST, "BOOTCAMP_002", "단위기간 시작일이 종료일보다 늦을 수 없습니다."),
@@ -71,6 +89,7 @@ public enum ErrorCode {
     OVERLAPPING_PERIOD(HttpStatus.BAD_REQUEST, "BOOTCAMP_004", "단위기간이 서로 겹칩니다."),
     INVALID_POLICY_THRESHOLD_ORDER(HttpStatus.BAD_REQUEST, "BOOTCAMP_005", "출석률 기준은 주의 > 경고 > 제적위험 순이어야 합니다."),
     INVALID_POLICY_THRESHOLD_RANGE(HttpStatus.BAD_REQUEST, "BOOTCAMP_006", "출석률 기준은 0 이상 100 이하여야 합니다."),
+    BOOTCAMP_ALREADY_REGISTERED(HttpStatus.CONFLICT, "BOOTCAMP_007", "이미 등록된 부트캠프가 있습니다."),
 
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_001", "존재하지 않는 공지입니다."),
     NOTICE_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_002", "존재하지 않는 공지 카테고리입니다."),
@@ -79,7 +98,8 @@ public enum ErrorCode {
     NOTICE_CATEGORY_IN_USE(HttpStatus.CONFLICT, "NOTICE_006", "공지가 사용 중인 카테고리는 삭제할 수 없습니다."),
 
     CALENDAR_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CALENDAR_001", "존재하지 않는 일정입니다."),
-    CALENDAR_EVENT_NOT_CREATOR(HttpStatus.FORBIDDEN, "CALENDAR_002", "일정을 등록한 사람만 삭제할 수 있습니다.");
+    CALENDAR_EVENT_NOT_CREATOR(HttpStatus.FORBIDDEN, "CALENDAR_002", "일정을 등록한 사람만 삭제할 수 있습니다."),
+    AI_API_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI_001", "AI API 호출 중 오류가 발생했습니다.");
 
     private final HttpStatus status;
     private final String code;

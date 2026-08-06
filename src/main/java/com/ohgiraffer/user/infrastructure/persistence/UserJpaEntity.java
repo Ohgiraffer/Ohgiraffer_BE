@@ -56,10 +56,13 @@ public class UserJpaEntity {
     @Column(nullable = false)
     private UserStatus status;
 
+    @Column(name = "bootcamp_id")
+    private Long bootcampId;
+
     private UserJpaEntity(
             Long id, String name, String phone, String email, Role role,
             String profileImg, String password, boolean needResetPw,
-            boolean notificationOn, LocalDate joinDate, LocalDate leaveDate, UserStatus status
+            boolean notificationOn, LocalDate joinDate, LocalDate leaveDate, UserStatus status, Long bootcampId
     ) {
         this.id = id;
         this.name = name;
@@ -73,6 +76,7 @@ public class UserJpaEntity {
         this.joinDate = joinDate;
         this.leaveDate = leaveDate;
         this.status = status;
+        this.bootcampId = bootcampId;
     }
 
     // 도메인 User -> UserEntity
@@ -89,7 +93,8 @@ public class UserJpaEntity {
                 user.isNotificationOn(),
                 user.getJoinDate(),
                 user.getLeaveDate(),
-                user.getStatus()
+                user.getStatus(),
+                user.getBootcampId()
         );
     }
 
@@ -97,7 +102,11 @@ public class UserJpaEntity {
     public User toDomain() {
         return new User(
                 id, name, phone, email, role, profileImg, password,
-                needResetPw, notificationOn, joinDate, leaveDate, status
+                needResetPw, notificationOn, joinDate, leaveDate, status, bootcampId
         );
+    }
+
+    public void assignBootcamp(Long bootcampId) {
+        this.bootcampId = bootcampId;
     }
 }

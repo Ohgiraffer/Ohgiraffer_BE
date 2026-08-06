@@ -6,6 +6,7 @@ import com.ohgiraffer.auth.domain.event.UserLoggedInEvent;
 import com.ohgiraffer.auth.domain.model.LoginResult;
 import com.ohgiraffer.auth.presentation.api.request.LoginRequest;
 import com.ohgiraffer.auth.presentation.api.response.LoginResponse;
+import com.ohgiraffer.auth.presentation.api.response.TokenResponse;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.security.jwt.JwtTokenProvider;
@@ -84,7 +85,7 @@ public class AuthCommandService implements AuthCommandUsecase {
         );
 
         return new LoginResult(
-                LoginResponse.of(accessToken, user.getRole(), user.getStatus()),
+                LoginResponse.of(accessToken, user.getRole(), user.getStatus(), user.getBootcampId(), user.isNeedResetPw()),
                 refreshToken
         );
     }
@@ -112,7 +113,7 @@ public class AuthCommandService implements AuthCommandUsecase {
     }
 
     @Override
-    public String reissueAccessToken(String refreshToken) {
+    public TokenResponse reissueAccessToken(String refreshToken) {
         if (refreshToken == null) {
             throw new BusinessException(ErrorCode.MISSING_REFRESH_TOKEN);
         }
@@ -128,6 +129,11 @@ public class AuthCommandService implements AuthCommandUsecase {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
-        return jwtTokenProvider.createAccessToken(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        String newAccessToken = jwtTokenProvider.createAccessToken(userId);
+
+        return new TokenResponse(user.getId(),newAccessToken, user.getRole(), user.getStatus());
     }
 }
