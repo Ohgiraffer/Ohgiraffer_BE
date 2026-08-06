@@ -150,7 +150,8 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
 
     }
 
-    // 팀 채팅방 자동 생성 - 이름 규칙("team-{teamId}")만 다르고 나머지는 일반 채널 생성과 동일해서 재사용
+    // 팀 채팅방 자동 생성 - 이름 규칙("team-{teamId}")을 적용하고, 인원수와 무관하게 항상 is_distinct=false로 생성
+    // (일반 채널 생성과 달리 재사용 대상이 아니므로 2명 이하여도 1:1로 합쳐지지 않도록 별도 처리)
     @Override
     public String createTeamChannel(Long teamId, List<Long> memberUserIds) {
         // 팀 채팅방은 이름 규칙만 다르고 나머지는 일반 채널 생성과 동일
