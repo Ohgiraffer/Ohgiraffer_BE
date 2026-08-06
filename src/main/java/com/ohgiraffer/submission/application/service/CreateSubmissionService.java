@@ -113,7 +113,6 @@ public class CreateSubmissionService
                         );
 
         validateSubmissionAccess(
-                submissionBox,
                 command.submittedBy()
         );
 
@@ -336,7 +335,6 @@ public class CreateSubmissionService
      * 제출함 생성자의 bootcampId를 기준으로 검사합니다.
      */
     private void validateSubmissionAccess(
-            SubmissionBox submissionBox,
             Long studentId
     ) {
         User student = userRepository
@@ -350,32 +348,6 @@ public class CreateSubmissionService
         if (student.getRole() != Role.STUDENT
                 || student.getStatus()
                 != UserStatus.ACTIVE) {
-            throw new BusinessException(
-                    ErrorCode.SUBMISSION_ACCESS_DENIED
-            );
-        }
-
-        User creator = userRepository
-                .findById(
-                        submissionBox.getCreatedBy()
-                )
-                .orElseThrow(() ->
-                        new BusinessException(
-                                ErrorCode.USER_NOT_FOUND
-                        )
-                );
-
-        Long studentBootcampId =
-                student.getBootcampId();
-
-        Long creatorBootcampId =
-                creator.getBootcampId();
-
-        if (studentBootcampId == null
-                || creatorBootcampId == null
-                || !studentBootcampId.equals(
-                creatorBootcampId
-        )) {
             throw new BusinessException(
                     ErrorCode.SUBMISSION_ACCESS_DENIED
             );

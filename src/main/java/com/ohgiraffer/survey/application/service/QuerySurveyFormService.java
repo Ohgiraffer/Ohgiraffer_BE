@@ -32,25 +32,25 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-public class QuerySurveyFormService
-        implements GetSurveyFormListUseCase,
-        GetSurveyFormDetailUseCase,
-        GetSurveyResponsesUseCase {
+public class QuerySurveyFormService implements GetSurveyFormListUseCase, GetSurveyFormDetailUseCase, GetSurveyResponsesUseCase {
 
     private static final int MAX_PAGE_SIZE = 100;
 
     private final SurveyFormRepository surveyFormRepository;
     private final UserRepository userRepository;
     private final GoogleFormPort googleFormPort;
+    private final SurveyFormAccessValidator accessValidator;
 
     public QuerySurveyFormService(
             SurveyFormRepository surveyFormRepository,
             UserRepository userRepository,
-            GoogleFormPort googleFormPort
+            GoogleFormPort googleFormPort,
+            SurveyFormAccessValidator accessValidator
     ) {
         this.surveyFormRepository = surveyFormRepository;
         this.userRepository = userRepository;
         this.googleFormPort = googleFormPort;
+        this.accessValidator = accessValidator;
     }
 
     @Override
@@ -148,13 +148,21 @@ public class QuerySurveyFormService
     }
 
     @Override
-    public SurveyResponseDetailResult getSurveyResponses(
+    public SurveyResponseDetailResult
+    getSurveyResponses(
             Long surveyFormId,
             String keyword,
             SurveyResponseStatus responseStatus,
             int page,
-            int size
+            int size,
+            Long requesterId,
+            Role requesterRole
     ) {
+        accessValidator.validateStaffAuthority(
+                requesterId,
+                requesterRole
+        );
+
         validatePageRequest(
                 page,
                 size

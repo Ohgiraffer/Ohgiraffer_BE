@@ -110,10 +110,17 @@ public class SurveyFormController {
     }
 
     @PatchMapping("/{surveyFormId}")
-    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
-    public ResponseEntity<UpdateSurveyFormResponse> updateSurveyForm(
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR')"
+    )
+    public ResponseEntity<UpdateSurveyFormResponse>
+    updateSurveyForm(
             @PathVariable Long surveyFormId,
-            @Valid @RequestBody UpdateSurveyFormRequest request
+            @Valid
+            @RequestBody
+            UpdateSurveyFormRequest request,
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
     ) {
         UpdateSurveyFormCommand command =
                 new UpdateSurveyFormCommand(
@@ -125,49 +132,72 @@ public class SurveyFormController {
 
         UpdateSurveyFormResult result =
                 updateSurveyFormUseCase.update(
-                        command
+                        command,
+                        principal.getId(),
+                        principal.getRole()
                 );
 
         return ResponseEntity.ok(
-                UpdateSurveyFormResponse.from(result)
+                UpdateSurveyFormResponse.from(
+                        result
+                )
         );
     }
 
     @DeleteMapping("/{surveyFormId}")
-    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR')"
+    )
     public ResponseEntity<Void> deleteSurveyForm(
-            @PathVariable Long surveyFormId
+            @PathVariable Long surveyFormId,
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
     ) {
-        deleteSurveyFormUseCase.delete(surveyFormId);
+        deleteSurveyFormUseCase.delete(
+                surveyFormId,
+                principal.getId(),
+                principal.getRole()
+        );
 
-        return ResponseEntity.noContent().build();
+        return ResponseEntity
+                .noContent()
+                .build();
     }
 
     @GetMapping("/{surveyFormId}/responses")
-    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR')"
+    )
     public ResponseEntity<SurveyResponseDetailResponse>
     getSurveyResponses(
             @PathVariable Long surveyFormId,
+
             @RequestParam(
                     required = false,
                     defaultValue = ""
             )
             String keyword,
+
             @RequestParam(
                     required = false,
                     defaultValue = "ALL"
             )
             SurveyResponseStatus responseStatus,
+
             @RequestParam(
                     required = false,
                     defaultValue = "0"
             )
             int page,
+
             @RequestParam(
                     required = false,
                     defaultValue = "20"
             )
-            int size
+            int size,
+
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
     ) {
         SurveyResponseDetailResult result =
                 getSurveyResponsesUseCase
@@ -176,7 +206,9 @@ public class SurveyFormController {
                                 keyword,
                                 responseStatus,
                                 page,
-                                size
+                                size,
+                                principal.getId(),
+                                principal.getRole()
                         );
 
         return ResponseEntity.ok(
