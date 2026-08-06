@@ -56,24 +56,11 @@ jobs:
             git reset --hard origin/deploy
             aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
 
-            # docker-compose-backend.yml이 참조하는 이미지 위치
+            # docker-compose-backend.yml이 참조하는 이미지 위치 (.env에도 있지만 pull 단계 전 로그인에 필요)
             export ECR_REGISTRY=${{ secrets.ECR_REGISTRY }}
             export ECR_REPOSITORY=${{ secrets.ECR_REPOSITORY }}
 
-            # RDS 접속 정보
-            export DB_HOST=${{ secrets.DB_HOST }}
-            export DB_NAME=${{ secrets.DB_NAME }}
-            export DB_USER=${{ secrets.DB_USER }}
-            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-
-            # 앱 필수 값 (없으면 secrets에 추가 등록 필요)
-            export JWT_SECRET=${{ secrets.JWT_SECRET }}
-            export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-            export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            export SENDBIRD_APP_ID=${{ secrets.SENDBIRD_APP_ID }}
-            export SENDBIRD_API_TOKEN=${{ secrets.SENDBIRD_API_TOKEN }}
-            export GOOGLE_SHEETS_ENABLED=${{ secrets.GOOGLE_SHEETS_ENABLED }}
-
+            # 나머지 값들은 EC2에 미리 준비해둔 .env 파일에서 읽음 (docker compose가 자동 인식)
             docker compose -f docker-compose-backend.yml down
             docker compose -f docker-compose-backend.yml pull
             docker compose -f docker-compose-backend.yml up -d
