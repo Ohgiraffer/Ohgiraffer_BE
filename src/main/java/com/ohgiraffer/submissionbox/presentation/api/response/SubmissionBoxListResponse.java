@@ -17,7 +17,9 @@ public record SubmissionBoxListResponse(
         int itemCount,
         SubmissionBoxStatus status,
         boolean acceptingSubmissions,
-        boolean lateSubmission
+        boolean lateSubmission,
+        Boolean submitted,
+        Long submissionId
 ) {
 
     public static SubmissionBoxListResponse from(
@@ -33,7 +35,9 @@ public record SubmissionBoxListResponse(
                 result.itemCount(),
                 result.status(),
                 result.acceptingSubmissions(),
-                result.lateSubmission()
+                result.lateSubmission(),
+                result.submitted(),
+                result.submissionId()
         );
     }
 }

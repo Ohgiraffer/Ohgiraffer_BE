@@ -66,11 +66,15 @@ public class SubmissionBoxController {
     @GetMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR', 'STUDENT')")
     public ResponseEntity<List<SubmissionBoxListResponse>>
-    getSubmissionBoxes() {
-
+    getSubmissionBoxes(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
         List<SubmissionBoxListResult> results =
                 getSubmissionBoxListUseCase
-                        .getSubmissionBoxes();
+                        .getSubmissionBoxes(
+                                principal.getId(),
+                                principal.getRole()
+                        );
 
         List<SubmissionBoxListResponse> responses =
                 results.stream()

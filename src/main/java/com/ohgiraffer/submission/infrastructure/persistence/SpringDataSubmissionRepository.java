@@ -2,6 +2,8 @@ package com.ohgiraffer.submission.infrastructure.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
+
 public interface SpringDataSubmissionRepository
         extends JpaRepository<SubmissionJpaEntity, Long> {
 
@@ -11,6 +13,18 @@ public interface SpringDataSubmissionRepository
     );
 
     boolean existsBySubmissionBoxIdAndTeamId(
+            Long submissionBoxId,
+            Long teamId
+    );
+
+    Optional<SubmissionJpaEntity>
+    findBySubmissionBoxIdAndOwnerUserId(
+            Long submissionBoxId,
+            Long ownerUserId
+    );
+
+    Optional<SubmissionJpaEntity>
+    findBySubmissionBoxIdAndTeamId(
             Long submissionBoxId,
             Long teamId
     );

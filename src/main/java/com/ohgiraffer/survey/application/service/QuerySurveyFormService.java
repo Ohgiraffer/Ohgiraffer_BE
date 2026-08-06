@@ -18,6 +18,8 @@ import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.model.UserStatus;
 import com.ohgiraffer.user.domain.repository.UserRepository;
+import com.ohgiraffer.survey.domain.model.SurveyFormStatus;
+import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -52,41 +54,85 @@ public class QuerySurveyFormService
     }
 
     @Override
-    public List<SurveyFormListResult> getSurveyForms() {
-        List<User> students =
+    public List<SurveyFormListResult> getSurveyForms(
+            Long userId,
+            String userEmail,
+            Role role
+    ) {
+        List<User> activeStudents =
                 findActiveStudents();
 
         Set<String> studentEmails =
-                students
-                        .stream()
+                activeStudents.stream()
                         .map(User::getEmail)
-                        .filter(email ->
-                                email != null
-                                        && !email.isBlank()
-                        )
                         .map(this::normalizeEmail)
+                        .filter(email -> !email.isBlank())
                         .collect(Collectors.toSet());
 
-        int targetCount =
-                students.size();
+        String normalizedUserEmail =
+                normalizeEmail(userEmail);
 
-        return surveyFormRepository
-                .findAll()
+        return surveyFormRepository.findAll()
                 .stream()
+                .filter(surveyForm ->
+                        canViewSurvey(
+                                surveyForm,
+                                role
+                        )
+                )
                 .map(surveyForm -> {
-                    int respondedCount =
-                            countStudentRespondents(
-                                    surveyForm.getGoogleFormId(),
-                                    studentEmails
+                    List<GoogleFormResponseInfo> responses =
+                            googleFormPort.getResponses(
+                                    surveyForm.getGoogleFormId()
                             );
+
+                    Set<String> respondentEmails =
+                            responses.stream()
+                                    .map(GoogleFormResponseInfo::respondentEmail)
+                                    .map(this::normalizeEmail)
+                                    .filter(email -> !email.isBlank())
+                                    .collect(Collectors.toSet());
+
+                    int respondedCount =
+                            (int) studentEmails.stream()
+                                    .filter(respondentEmails::contains)
+                                    .count();
+
+                    Boolean responded =
+                            role == Role.STUDENT
+                                    ? respondentEmails.contains(
+                                    normalizedUserEmail
+                            )
+                                    : null;
+
+                    String responseUrl =
+                            role == Role.STUDENT
+                                    ? surveyForm.getResponseUrl()
+                                    : null;
 
                     return SurveyFormListResult.from(
                             surveyForm,
                             respondedCount,
-                            targetCount
+                            studentEmails.size(),
+                            responded,
+                            responseUrl
                     );
                 })
                 .toList();
+    }
+
+    private boolean canViewSurvey(
+            SurveyForm surveyForm,
+            Role role
+    ) {
+        if (role != Role.STUDENT) {
+            return true;
+        }
+
+        return surveyForm.getStatus()
+                == SurveyFormStatus.PUBLISHED
+                && !LocalDateTime.now()
+                .isAfter(surveyForm.getDueAt());
     }
 
     @Override

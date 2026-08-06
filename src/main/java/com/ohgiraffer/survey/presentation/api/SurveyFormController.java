@@ -74,11 +74,17 @@ public class SurveyFormController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
-    public ResponseEntity<List<SurveyFormListResponse>> getSurveyForms() {
-
+    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR', 'STUDENT')")
+    public ResponseEntity<List<SurveyFormListResponse>>
+    getSurveyForms(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
         List<SurveyFormListResult> results =
-                getSurveyFormListUseCase.getSurveyForms();
+                getSurveyFormListUseCase.getSurveyForms(
+                        principal.getId(),
+                        principal.getUsername(),
+                        principal.getRole()
+                );
 
         List<SurveyFormListResponse> responses =
                 results.stream()

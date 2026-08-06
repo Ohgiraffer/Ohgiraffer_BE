@@ -13,13 +13,18 @@ public record SurveyFormListResult(
         SurveyFormStatus status,
         int respondedCount,
         int targetCount,
+        Boolean responded,
+        String responseUrl,
         Instant createdAt
+
 ) {
 
     public static SurveyFormListResult from(
             SurveyForm surveyForm,
             int respondedCount,
-            int targetCount
+            int targetCount,
+            Boolean responded,
+            String responseUrl
     ) {
         return new SurveyFormListResult(
                 surveyForm.getId(),
@@ -28,7 +33,23 @@ public record SurveyFormListResult(
                 surveyForm.getStatus(),
                 respondedCount,
                 targetCount,
+                responded,
+                responseUrl,
                 surveyForm.getCreatedAt()
+        );
+    }
+
+    public static SurveyFormListResult from(
+            SurveyForm surveyForm,
+            int respondedCount,
+            int targetCount
+    ) {
+        return from(
+                surveyForm,
+                respondedCount,
+                targetCount,
+                null,
+                null
         );
     }
 }
