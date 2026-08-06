@@ -2,9 +2,11 @@ package com.ohgiraffer.approval.infrastructure.persistence;
 
 import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface SpringDataApprovalRequestRepository
@@ -32,5 +34,22 @@ public interface SpringDataApprovalRequestRepository
             @Param("userId") Long userId,
             @Param("bootcampId") Long bootcampId,
             @Param("pendingStatus") ApprovalStatus pendingStatus
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        UPDATE ApprovalRequestJpaEntity approvalRequest
+        SET approvalRequest.status = :checkedStatus,
+            approvalRequest.approverId = :approverId,
+            approvalRequest.confirmedAt = :confirmedAt
+        WHERE approvalRequest.id = :approvalId
+          AND approvalRequest.status = :pendingStatus
+        """)
+    int checkPendingApproval(
+            @Param("approvalId") Long approvalId,
+            @Param("approverId") Long approverId,
+            @Param("confirmedAt") LocalDateTime confirmedAt,
+            @Param("pendingStatus") ApprovalStatus pendingStatus,
+            @Param("checkedStatus") ApprovalStatus checkedStatus
     );
 }

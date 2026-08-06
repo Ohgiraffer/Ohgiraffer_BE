@@ -64,30 +64,38 @@ public class CheckApprovalService implements CheckApprovalUseCase {
                 approvalRequest
         );
 
-        ApprovalStatus oldStatus =
-                approvalRequest.getStatus();
-
         LocalDateTime now =
                 LocalDateTime.now(
                         clock
                 );
 
-        approvalRequest.check(
-                loginUserId,
-                now
-        );
-
-        ApprovalRequest savedApprovalRequest =
-                approvalRequestRepository.save(
-                        approvalRequest
+        int updatedCount =
+                approvalRequestRepository.checkPendingApproval(
+                        approvalRequest.getId(),
+                        loginUserId,
+                        now
                 );
+
+        if (updatedCount == 0) {
+            throw new BusinessException(
+                    ErrorCode.APPROVAL_INVALID_STATUS
+            );
+        }
+
+        ApprovalRequest checkedApprovalRequest =
+                approvalRequestRepository.findById(
+                                approvalId
+                        )
+                        .orElseThrow(() -> new BusinessException(
+                                ErrorCode.APPROVAL_NOT_FOUND
+                        ));
 
         ApprovalHistory approvalHistory =
                 ApprovalHistory.statusChanged(
-                        savedApprovalRequest.getId(),
+                        checkedApprovalRequest.getId(),
                         loginUserId,
-                        oldStatus,
-                        savedApprovalRequest.getStatus(),
+                        ApprovalStatus.PENDING,
+                        checkedApprovalRequest.getStatus(),
                         "결재 확인",
                         now
                 );
@@ -97,7 +105,7 @@ public class CheckApprovalService implements CheckApprovalUseCase {
         );
 
         return CreateApprovalResult.from(
-                savedApprovalRequest
+                checkedApprovalRequest
         );
     }
 
