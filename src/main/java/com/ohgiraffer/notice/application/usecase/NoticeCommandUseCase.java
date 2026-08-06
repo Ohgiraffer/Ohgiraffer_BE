@@ -23,7 +23,7 @@ public interface NoticeCommandUseCase {
     void delete(Long noticeId, Long requesterId);
 
     /**
-     * 필수 공지를 확인 처리하고 갱신된 확인 현황을 돌려준다.
+     * 고정 공지를 확인 처리하고 갱신된 확인 현황을 돌려준다.
      *
      * <p>이미 확인했다면 새로 기록하지 않고 현재 현황만 돌려준다.
      *

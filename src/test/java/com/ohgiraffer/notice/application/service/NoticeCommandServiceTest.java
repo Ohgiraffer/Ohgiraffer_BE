@@ -126,8 +126,8 @@ class NoticeCommandServiceTest {
     }
 
     @Test
-    @DisplayName("필수 공지로 등록하면 확인 대상으로 저장된다")
-    void createMandatoryNotice() {
+    @DisplayName("고정 공지로 등록하면 확인 대상으로 저장된다")
+    void createPinnedNotice() {
         when(noticeCategoryRepository.existsById(CATEGORY_ID))
                 .thenReturn(true);
         when(noticeRepository.save(any(Notice.class)))
@@ -140,8 +140,7 @@ class NoticeCommandServiceTest {
         verify(noticeRepository).save(captor.capture());
 
         Notice passed = captor.getValue();
-        assertTrue(passed.isMandatory());
-        assertTrue(passed.requiresConfirmation());
+        assertTrue(passed.isPinned());
         assertEquals(false, passed.isVisibleToTrainee());
     }
 
@@ -226,8 +225,8 @@ class NoticeCommandServiceTest {
     }
 
     @Test
-    @DisplayName("필수 공지는 확인 처리하면 확인 기록을 남긴다")
-    void confirmMandatoryNotice() {
+    @DisplayName("고정 공지는 확인 처리하면 확인 기록을 남긴다")
+    void confirmPinnedNotice() {
         when(noticeRepository.findById(NOTICE_ID))
                 .thenReturn(Optional.of(stored(AUTHOR_ID, true)));
 
@@ -267,7 +266,7 @@ class NoticeCommandServiceTest {
     }
 
     @Test
-    @DisplayName("작성자가 아닌 사람도 필수 공지를 확인할 수 있다")
+    @DisplayName("작성자가 아닌 사람도 고정 공지를 확인할 수 있다")
     void confirmDoesNotRequireAuthor() {
         when(noticeRepository.findById(NOTICE_ID))
                 .thenReturn(Optional.of(stored(AUTHOR_ID, true)));
@@ -275,22 +274,6 @@ class NoticeCommandServiceTest {
         noticeCommandService.confirm(NOTICE_ID, ViewerRole.STAFF, AUTHOR_ID);
 
         verify(noticeConfirmationRepository).confirm(NOTICE_ID, AUTHOR_ID);
-    }
-
-    @Test
-    @DisplayName("일반 공지는 확인 처리할 수 없고 기록도 남기지 않는다")
-    void confirmFailsWhenNotMandatory() {
-        when(noticeRepository.findById(NOTICE_ID))
-                .thenReturn(Optional.of(stored(AUTHOR_ID, false)));
-
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> noticeCommandService.confirm(NOTICE_ID, ViewerRole.TRAINEE, OTHER_USER_ID)
-        );
-
-        assertEquals(ErrorCode.NOTICE_NOT_MANDATORY, exception.getErrorCode());
-        verify(noticeConfirmationRepository, never())
-                .confirm(any(), any());
     }
 
     @Test
@@ -341,24 +324,6 @@ class NoticeCommandServiceTest {
         verify(noticeConfirmationRepository).confirm(NOTICE_ID, OTHER_USER_ID);
     }
 
-    @Test
-    @DisplayName("훈련생이 못 보는 공지는 필수가 아니어도 404로 답해 성격을 감춘다")
-    void confirmHidesMandatoryFlagOfInvisibleNotice() {
-        when(noticeRepository.findById(NOTICE_ID))
-                .thenReturn(Optional.of(stored(AUTHOR_ID, false, false)));
-
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> noticeCommandService.confirm(
-                        NOTICE_ID, ViewerRole.TRAINEE, OTHER_USER_ID)
-        );
-
-        /*
-         * 400 NOTICE_NOT_MANDATORY 가 나가면 응답만으로 필수 공지가 아님을 알 수 있다.
-         */
-        assertEquals(ErrorCode.NOTICE_NOT_FOUND, exception.getErrorCode());
-    }
-
     private UpdateNoticeCommand updateCommand(
             Long editorId,
             Long categoryId,
@@ -379,13 +344,13 @@ class NoticeCommandServiceTest {
         return stored(authorId, false);
     }
 
-    private Notice stored(Long authorId, boolean mandatory) {
-        return stored(authorId, mandatory, true);
+    private Notice stored(Long authorId, boolean pinned) {
+        return stored(authorId, pinned, true);
     }
 
     private Notice stored(
             Long authorId,
-            boolean mandatory,
+            boolean pinned,
             boolean visibleToTrainee
     ) {
         Instant now = Instant.parse("2026-08-04T03:00:00Z");
@@ -396,7 +361,7 @@ class NoticeCommandServiceTest {
                 CATEGORY_ID,
                 TITLE,
                 CONTENT,
-                mandatory,
+                pinned,
                 visibleToTrainee,
                 now,
                 now
@@ -404,7 +369,7 @@ class NoticeCommandServiceTest {
     }
 
     private CreateNoticeCommand command(
-            boolean mandatory,
+            boolean pinned,
             boolean visibleToTrainee
     ) {
         return new CreateNoticeCommand(
@@ -412,7 +377,7 @@ class NoticeCommandServiceTest {
                 CATEGORY_ID,
                 TITLE,
                 CONTENT,
-                mandatory,
+                pinned,
                 visibleToTrainee
         );
     }
@@ -429,7 +394,7 @@ class NoticeCommandServiceTest {
                 notice.getCategoryId(),
                 notice.getTitle(),
                 notice.getContent(),
-                notice.isMandatory(),
+                notice.isPinned(),
                 notice.isVisibleToTrainee(),
                 now,
                 now

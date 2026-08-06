@@ -23,11 +23,11 @@ public record CreateNoticeRequest(
         String content,
 
         /*
-         * 요구사항상 "필수 여부 (선택)" 이라 생략할 수 있어야 한다.
+         * 요구사항상 "고정 여부 (선택)" 이라 생략할 수 있어야 한다.
          * record 는 원시 타입 필드가 JSON 에 없으면 역직렬화 자체가 실패하므로
          * 래퍼 타입으로 받아 null 을 기본값으로 해석한다. visibleToTrainee 도 동일.
          */
-        Boolean mandatory,
+        Boolean pinned,
 
         Boolean visibleToTrainee
 ) {
@@ -38,7 +38,7 @@ public record CreateNoticeRequest(
                 categoryId,
                 title,
                 content,
-                mandatory != null && mandatory,
+                pinned != null && pinned,
                 visibleToTrainee == null || visibleToTrainee
         );
     }

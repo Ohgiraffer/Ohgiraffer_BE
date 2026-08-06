@@ -38,7 +38,7 @@ public class NoticeJpaEntity extends BaseTimeEntity {
     private String content;
 
     @Column(name = "is_mandatory", nullable = false)
-    private boolean mandatory;
+    private boolean pinned;
 
     @Column(name = "is_visible_to_trainee", nullable = false)
     private boolean visibleToTrainee;
@@ -52,7 +52,7 @@ public class NoticeJpaEntity extends BaseTimeEntity {
             Long categoryId,
             String title,
             String content,
-            boolean mandatory,
+            boolean pinned,
             boolean visibleToTrainee
     ) {
         this.id = id;
@@ -60,7 +60,7 @@ public class NoticeJpaEntity extends BaseTimeEntity {
         this.categoryId = categoryId;
         this.title = title;
         this.content = content;
-        this.mandatory = mandatory;
+        this.pinned = pinned;
         this.visibleToTrainee = visibleToTrainee;
     }
 
@@ -71,7 +71,7 @@ public class NoticeJpaEntity extends BaseTimeEntity {
                 notice.getCategoryId(),
                 notice.getTitle(),
                 notice.getContent(),
-                notice.isMandatory(),
+                notice.isPinned(),
                 notice.isVisibleToTrainee()
         );
     }
@@ -84,7 +84,7 @@ public class NoticeJpaEntity extends BaseTimeEntity {
         this.categoryId = notice.getCategoryId();
         this.title = notice.getTitle();
         this.content = notice.getContent();
-        this.mandatory = notice.isMandatory();
+        this.pinned = notice.isPinned();
         this.visibleToTrainee = notice.isVisibleToTrainee();
     }
 
@@ -95,7 +95,7 @@ public class NoticeJpaEntity extends BaseTimeEntity {
                 categoryId,
                 title,
                 content,
-                mandatory,
+                pinned,
                 visibleToTrainee,
                 getCreatedAt(),
                 getUpdatedAt()

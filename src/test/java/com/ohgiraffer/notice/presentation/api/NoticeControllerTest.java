@@ -4,6 +4,7 @@ import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.notice.application.command.CreateNoticeCommand;
 import com.ohgiraffer.notice.application.query.NoticeConfirmationView;
+import com.ohgiraffer.notice.application.query.NoticeDashboardView;
 import com.ohgiraffer.notice.application.query.NoticeDetailView;
 import com.ohgiraffer.notice.application.query.NoticeSummaryView;
 import com.ohgiraffer.notice.application.usecase.NoticeCommandUseCase;
@@ -12,6 +13,7 @@ import com.ohgiraffer.notice.domain.model.Notice;
 import com.ohgiraffer.notice.domain.model.ViewerRole;
 import com.ohgiraffer.notice.presentation.api.request.CreateNoticeRequest;
 import com.ohgiraffer.notice.presentation.api.response.NoticeConfirmationResponse;
+import com.ohgiraffer.notice.presentation.api.response.NoticeDashboardResponse;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.domain.model.User;
@@ -167,6 +169,27 @@ class NoticeControllerTest {
         assertTrue(response.getBody().confirmedByMe());
         verify(noticeCommandUseCase)
                 .confirm(NOTICE_ID, ViewerRole.TRAINEE, LOGIN_USER_ID);
+    }
+
+    @Test
+    @DisplayName("대시보드 요약은 조회자 구분과 로그인 사용자를 함께 넘긴다")
+    void findDashboardSummaryPassesViewerAndUser() {
+        when(noticeQueryUseCase.findDashboardSummary(any(), any()))
+                .thenReturn(List.of(new NoticeDashboardView(
+                        NOTICE_ID,
+                        TITLE,
+                        true,
+                        Instant.parse("2026-08-04T03:00:00Z")
+                )));
+
+        ResponseEntity<List<NoticeDashboardResponse>> response =
+                noticeController.findDashboardSummary(principal(Role.STUDENT));
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(TITLE, response.getBody().get(0).title());
+        assertTrue(response.getBody().get(0).pinned());
+        verify(noticeQueryUseCase)
+                .findDashboardSummary(ViewerRole.TRAINEE, LOGIN_USER_ID);
     }
 
     private NoticeSummaryView summaryView() {

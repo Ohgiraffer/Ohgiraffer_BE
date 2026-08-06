@@ -17,7 +17,7 @@ public record NoticeSummaryView(
         String title,
         Long authorId,
         String authorName,
-        boolean mandatory,
+        boolean pinned,
         boolean confirmedByMe,
         Instant createdAt
 ) {
@@ -35,7 +35,7 @@ public record NoticeSummaryView(
                 notice.getTitle(),
                 notice.getAuthorId(),
                 authorName,
-                notice.isMandatory(),
+                notice.isPinned(),
                 confirmedByMe,
                 notice.getCreatedAt()
         );

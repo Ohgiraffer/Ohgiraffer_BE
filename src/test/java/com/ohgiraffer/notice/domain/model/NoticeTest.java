@@ -192,9 +192,9 @@ class NoticeTest {
     }
 
     @Test
-    @DisplayName("필수 공지에만 확인 체크박스를 노출한다")
-    void requiresConfirmationFollowsMandatory() {
-        Notice mandatory = Notice.create(
+    @DisplayName("고정 여부를 그대로 보존한다")
+    void keepsPinnedFlag() {
+        Notice pinned = Notice.create(
                 AUTHOR_ID,
                 CATEGORY_ID,
                 TITLE,
@@ -203,7 +203,7 @@ class NoticeTest {
                 true
         );
 
-        Notice optional = Notice.create(
+        Notice normal = Notice.create(
                 AUTHOR_ID,
                 CATEGORY_ID,
                 TITLE,
@@ -212,7 +212,11 @@ class NoticeTest {
                 true
         );
 
-        assertTrue(mandatory.requiresConfirmation());
-        assertFalse(optional.requiresConfirmation());
+        /*
+         * 고정 여부는 목록 상단 노출에만 쓰인다.
+         * 확인 체크박스는 고정 여부와 무관하게 모든 공지에 노출된다.
+         */
+        assertTrue(pinned.isPinned());
+        assertFalse(normal.isPinned());
     }
 }
