@@ -35,17 +35,37 @@ public class DownloadApprovalPdfService implements DownloadApprovalPdfUseCase {
 
         return new ApprovalPdfResult(
                 createFileName(
-                        approvalId
+                        pdfData
                 ),
                 pdfContent
         );
     }
 
     private String createFileName(
-            Long approvalId
+            LeavePdfData pdfData
     ) {
-        return "leave-approval-"
-                + approvalId
+        return "휴가신청서_"
+                + sanitizeFileName(
+                pdfData.requestedDate()
+        )
+                + "_"
+                + sanitizeFileName(
+                pdfData.studentName()
+        )
                 + ".pdf";
+    }
+
+    private String sanitizeFileName(
+            String value
+    ) {
+        if (value == null || value.isBlank()) {
+            return "미입력";
+        }
+
+        return value.strip()
+                .replaceAll(
+                        "[\\\\/:*?\"<>|]",
+                        "_"
+                );
     }
 }
