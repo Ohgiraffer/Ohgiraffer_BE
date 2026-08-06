@@ -1,5 +1,5 @@
 package com.ohgiraffer.bootcamp.application.port;
 
 public interface SetBootcampIdPort {
-    void assignBootcamp(Long userId, Long bootcampId);
+    boolean assignBootcampIfAbsent(Long userId, Long bootcampId);
 }

@@ -15,9 +15,8 @@ public class SetBootcampIdAdapter implements SetBootcampIdPort {
 
     @Override
     @Transactional
-    public void assignBootcamp(Long userId, Long bootcampId) {
-        UserJpaEntity user = springDataUserRepository.findById(userId)
-                .orElseThrow(() -> new IllegalStateException("존재하지 않는 유저입니다. userId=" + userId));
-        user.assignBootcamp(bootcampId);
+    public boolean assignBootcampIfAbsent(Long userId, Long bootcampId) {
+        int updatedRows = springDataUserRepository.assignBootcampIfAbsent(userId, bootcampId);
+        return updatedRows > 0;
     }
 }
