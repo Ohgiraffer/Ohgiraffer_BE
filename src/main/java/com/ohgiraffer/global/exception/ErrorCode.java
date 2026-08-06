@@ -10,6 +10,8 @@ public enum ErrorCode {
     TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "COMMON_004", "요청 파라미터 타입이 올바르지 않습니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON_005", "지원하지 않는 HTTP 메서드입니다."),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_006", "요청한 대상을 찾을 수 없습니다."),
+    FILE_STORAGE_UPLOAD_FAILED(HttpStatus.BAD_GATEWAY, "COMMON_007", "파일 업로드에 실패했습니다."),
+    FILE_STORAGE_DELETE_FAILED(HttpStatus.BAD_GATEWAY, "COMMON_008", "파일 삭제에 실패했습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_999", "서버 내부 오류가 발생했습니다."),
 
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_001", "인증이 필요합니다."),
@@ -71,6 +73,12 @@ public enum ErrorCode {
     SUBMISSION_ITEM_MISMATCH(HttpStatus.BAD_REQUEST, "SUBMISSION_008", "제출 항목이 제출함 설정과 일치하지 않습니다."),
     SUBMISSION_FILE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "SUBMISSION_009", "허용되지 않은 파일 형식입니다."),
     SUBMISSION_TEAM_NOT_FOUND(HttpStatus.BAD_REQUEST, "SUBMISSION_010", "현재 소속된 팀을 찾을 수 없습니다."),
+    SUBMISSION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SUBMISSION_011", "해당 제출함에 제출할 권한이 없습니다."),
+    SUBMISSION_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "SUBMISSION_012", "제출 파일의 크기가 허용 범위를 초과했습니다."),
+    SUBMISSION_FILE_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "SUBMISSION_013", "제출할 수 있는 파일 개수를 초과했습니다."),
+    SUBMISSION_FILE_NAME_TOO_LONG(HttpStatus.BAD_REQUEST, "SUBMISSION_014", "제출 파일명이 허용 길이를 초과했습니다."),
+    SUBMISSION_FILE_UPLOAD_FAILED(HttpStatus.BAD_GATEWAY, "SUBMISSION_015", "파일 저장소에 파일을 업로드하지 못했습니다."),
+    SUBMISSION_TEAM_DATA_INCONSISTENT(HttpStatus.INTERNAL_SERVER_ERROR, "SUBMISSION_016", "학생의 팀 소속 정보가 올바르지 않습니다."),
   
     BOOTCAMP_NOT_FOUND(HttpStatus.NOT_FOUND, "BOOTCAMP_001", "부트캠프를 찾을 수 없습니다."),
     INVALID_PERIOD_RANGE(HttpStatus.BAD_REQUEST, "BOOTCAMP_002", "단위기간 시작일이 종료일보다 늦을 수 없습니다."),

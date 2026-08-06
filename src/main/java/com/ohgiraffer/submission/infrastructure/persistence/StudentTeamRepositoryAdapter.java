@@ -27,8 +27,7 @@ public class StudentTeamRepositoryAdapter
 
         if (memberships.size() > 1) {
             throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "활성화된 소속 팀이 두 개 이상 존재합니다."
+                    ErrorCode.SUBMISSION_TEAM_DATA_INCONSISTENT
             );
         }
 

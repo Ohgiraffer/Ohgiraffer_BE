@@ -21,13 +21,7 @@ public class S3KeyGenerator {
             Long submittedBy,
             String originalFileName
     ) {
-        String safeFileName =
-                originalFileName == null
-                        ? "file"
-                        : originalFileName.replaceAll(
-                        "[^a-zA-Z0-9._-]",
-                        "_"
-                );
+        String extension = extractSafeExtension(originalFileName);
 
         return "submissions/"
                 + submissionBoxId
@@ -35,8 +29,39 @@ public class S3KeyGenerator {
                 + submittedBy
                 + "/"
                 + UUID.randomUUID()
-                + "_"
-                + safeFileName;
+                + extension;
+    }
+
+    private static String extractSafeExtension(
+            String originalFileName
+    ) {
+        if (originalFileName == null
+                || originalFileName.isBlank()) {
+            return "";
+        }
+
+        int dotIndex = originalFileName.lastIndexOf('.');
+
+        if (dotIndex < 0
+                || dotIndex == originalFileName.length() - 1) {
+            return "";
+        }
+
+        String extension = originalFileName
+                .substring(dotIndex + 1)
+                .toLowerCase(java.util.Locale.ROOT)
+                .replaceAll("[^a-z0-9]", "");
+
+        if (extension.isBlank()) {
+            return "";
+        }
+
+        // 비정상적으로 긴 확장자로 S3 키가 커지는 것을 방지
+        if (extension.length() > 20) {
+            extension = extension.substring(0, 20);
+        }
+
+        return "." + extension;
     }
 
 }

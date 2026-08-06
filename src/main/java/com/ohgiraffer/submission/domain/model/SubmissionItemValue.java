@@ -17,6 +17,8 @@ public final class SubmissionItemValue {
     private final String externalUrl;
     private final Instant createdAt;
     private final Instant updatedAt;
+    private static final int MAX_ORIGINAL_FILE_NAME_LENGTH = 255;
+    private static final int MAX_FILE_KEY_LENGTH = 500;
 
     private SubmissionItemValue(
             Long id,
@@ -50,7 +52,31 @@ public final class SubmissionItemValue {
             long fileSize
     ) {
         validateItemId(submissionBoxItemId);
+        validateFileValue(
+                fileKey,
+                originalFileName,
+                fileSize
+        );
 
+        return new SubmissionItemValue(
+                null,
+                null,
+                submissionBoxItemId,
+                fileKey,
+                originalFileName.trim(),
+                contentType,
+                fileSize,
+                null,
+                null,
+                null
+        );
+    }
+
+    private static void validateFileValue(
+            String fileKey,
+            String originalFileName,
+            long fileSize
+    ) {
         if (fileKey == null || fileKey.isBlank()) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
@@ -58,10 +84,25 @@ public final class SubmissionItemValue {
             );
         }
 
-        if (originalFileName == null || originalFileName.isBlank()) {
+        if (fileKey.length() > MAX_FILE_KEY_LENGTH) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "파일 저장 키는 500자 이하여야 합니다."
+            );
+        }
+
+        if (originalFileName == null
+                || originalFileName.isBlank()) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "원본 파일명이 필요합니다."
+            );
+        }
+
+        if (originalFileName.trim().length()
+                > MAX_ORIGINAL_FILE_NAME_LENGTH) {
+            throw new BusinessException(
+                    ErrorCode.SUBMISSION_FILE_NAME_TOO_LONG
             );
         }
 
@@ -71,19 +112,6 @@ public final class SubmissionItemValue {
                     "파일 크기가 올바르지 않습니다."
             );
         }
-
-        return new SubmissionItemValue(
-                null,
-                null,
-                submissionBoxItemId,
-                fileKey,
-                originalFileName,
-                contentType,
-                fileSize,
-                null,
-                null,
-                null
-        );
     }
 
     public static SubmissionItemValue createLink(
@@ -156,7 +184,15 @@ public final class SubmissionItemValue {
                     ErrorCode.INVALID_INPUT_VALUE,
                     "파일 또는 외부 링크 중 하나만 존재해야 합니다."
             );
+        } if (fileValue) {
+            validateFileValue(
+                    fileKey,
+                    originalFileName,
+                    fileSize == null ? -1 : fileSize
+            );
         }
+
+
 
         return new SubmissionItemValue(
                 id,
