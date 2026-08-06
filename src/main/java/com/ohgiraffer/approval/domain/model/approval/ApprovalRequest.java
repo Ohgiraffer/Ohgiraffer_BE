@@ -209,6 +209,24 @@ public class ApprovalRequest {
         this.processedAt = processedAt;
     }
 
+    public boolean isRequestedBy(
+            Long userId
+    ) {
+        return requesterId != null
+                && requesterId.equals(
+                userId
+        );
+    }
+
+    public boolean isApprovedBy(
+            Long userId
+    ) {
+        return approverId != null
+                && approverId.equals(
+                userId
+        );
+    }
+
     public byte[] getSignatureImageSnapshot() {
         return copyBytes(
                 signatureImageSnapshot

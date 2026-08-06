@@ -5,18 +5,14 @@ import com.ohgiraffer.approval.application.command.CreatePurchaseApprovalCommand
 import com.ohgiraffer.approval.application.query.ApprovalDetailResult;
 import com.ohgiraffer.approval.application.query.ApprovalListItemResult;
 import com.ohgiraffer.approval.application.query.ApprovalListScope;
-import com.ohgiraffer.approval.application.usecase.ApproveApprovalUseCase;
-import com.ohgiraffer.approval.application.usecase.CheckApprovalUseCase;
-import com.ohgiraffer.approval.application.usecase.CreateApprovalResult;
-import com.ohgiraffer.approval.application.usecase.CreateLeaveApprovalUseCase;
-import com.ohgiraffer.approval.application.usecase.CreatePurchaseApprovalUseCase;
-import com.ohgiraffer.approval.application.usecase.GetApprovalDetailUseCase;
-import com.ohgiraffer.approval.application.usecase.GetApprovalListUseCase;
-import com.ohgiraffer.approval.application.usecase.RejectApprovalUseCase;
+import com.ohgiraffer.approval.application.query.GetApprovalHistoriesQuery;
+import com.ohgiraffer.approval.application.result.ApprovalHistoryListResult;
+import com.ohgiraffer.approval.application.usecase.*;
 import com.ohgiraffer.approval.presentation.api.request.CreateLeaveApprovalRequest;
 import com.ohgiraffer.approval.presentation.api.request.CreatePurchaseApprovalRequest;
 import com.ohgiraffer.approval.presentation.api.request.RejectApprovalRequest;
 import com.ohgiraffer.approval.presentation.api.response.ApprovalDetailResponse;
+import com.ohgiraffer.approval.presentation.api.response.ApprovalHistoryListResponse;
 import com.ohgiraffer.approval.presentation.api.response.ApprovalListResponse;
 import com.ohgiraffer.approval.presentation.api.response.CreateApprovalResponse;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
@@ -47,6 +43,7 @@ public class ApprovalController {
     private final CheckApprovalUseCase checkApprovalUseCase;
     private final ApproveApprovalUseCase approveApprovalUseCase;
     private final RejectApprovalUseCase rejectApprovalUseCase;
+    private final GetApprovalHistoriesUseCase getApprovalHistoriesUseCase;
 
     public ApprovalController(
             CreateLeaveApprovalUseCase createLeaveApprovalUseCase,
@@ -55,7 +52,8 @@ public class ApprovalController {
             GetApprovalDetailUseCase getApprovalDetailUseCase,
             CheckApprovalUseCase checkApprovalUseCase,
             ApproveApprovalUseCase approveApprovalUseCase,
-            RejectApprovalUseCase rejectApprovalUseCase
+            RejectApprovalUseCase rejectApprovalUseCase,
+            GetApprovalHistoriesUseCase getApprovalHistoriesUseCase
     ) {
         this.createLeaveApprovalUseCase = createLeaveApprovalUseCase;
         this.createPurchaseApprovalUseCase = createPurchaseApprovalUseCase;
@@ -64,6 +62,7 @@ public class ApprovalController {
         this.checkApprovalUseCase = checkApprovalUseCase;
         this.approveApprovalUseCase = approveApprovalUseCase;
         this.rejectApprovalUseCase = rejectApprovalUseCase;
+        this.getApprovalHistoriesUseCase = getApprovalHistoriesUseCase;
     }
 
     @PostMapping("/leave")
@@ -223,6 +222,28 @@ public class ApprovalController {
 
         return ResponseEntity.ok(
                 CreateApprovalResponse.from(
+                        result
+                )
+        );
+    }
+
+    @GetMapping("/{approvalId}/histories")
+    @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<ApprovalHistoryListResponse> getApprovalHistories(
+            @PathVariable Long approvalId,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        ApprovalHistoryListResult result =
+                getApprovalHistoriesUseCase.getHistories(
+                        new GetApprovalHistoriesQuery(
+                                approvalId,
+                                principal.getId(),
+                                principal.getRole()
+                        )
+                );
+
+        return ResponseEntity.ok(
+                ApprovalHistoryListResponse.from(
                         result
                 )
         );
