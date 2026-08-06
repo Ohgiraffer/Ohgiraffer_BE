@@ -187,6 +187,34 @@ public final class Submission {
         }
     }
 
+    public Submission resubmit(
+            Long submittedBy,
+            LocalDateTime submittedAt,
+            List<SubmissionItemValue> itemValues
+    ) {
+        validate(
+                submissionBoxId,
+                ownerUserId,
+                teamId,
+                submittedBy,
+                submittedAt,
+                itemValues
+        );
+
+        return new Submission(
+                id,
+                submissionBoxId,
+                ownerUserId,
+                teamId,
+                submittedBy,
+                submittedAt,
+                false,
+                itemValues,
+                createdAt,
+                updatedAt
+        );
+    }
+
     public Long getId() {
         return id;
     }

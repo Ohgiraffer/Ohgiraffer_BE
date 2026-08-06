@@ -2,6 +2,8 @@ package com.ohgiraffer.submission.infrastructure.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,6 +37,17 @@ public interface SpringDataSubmissionRepository
     List<SubmissionJpaEntity>
     findAllBySubmissionBoxIdOrderBySubmittedAtAsc(
             Long submissionBoxId
+    );
+
+    @EntityGraph(attributePaths = "itemValues")
+    @Query("""
+        SELECT submission
+        FROM SubmissionJpaEntity submission
+        WHERE submission.id = :submissionId
+        """)
+    Optional<SubmissionJpaEntity> findDetailById(
+            @Param("submissionId")
+            Long submissionId
     );
 
 }

@@ -128,4 +128,13 @@ public class SubmissionRepositoryAdapter
                 .toList();
     }
 
+    @Override
+    public Optional<Submission> findById(
+            Long submissionId
+    ) {
+        return repository
+                .findDetailById(submissionId)
+                .map(SubmissionJpaEntity::toDomain);
+    }
+
 }

@@ -32,4 +32,8 @@ public interface SubmissionRepository {
     List<Submission> findAllBySubmissionBoxId(
             Long submissionBoxId
     );
+
+    Optional<Submission> findById(
+            Long submissionId
+    );
 }
