@@ -31,7 +31,7 @@ public enum ErrorCode {
     INVALID_PROFILE_IMAGE_TYPE(HttpStatus.BAD_REQUEST, "USER_005", "프로필 이미지는 JPG, PNG 형식만 업로드할 수 있습니다."),
     INVALID_USER_STATUS_TARGET(HttpStatus.BAD_REQUEST, "USER_006", "제적 또는 자퇴 상태로만 변경할 수 있습니다."),
     USER_ALREADY_INACTIVE(HttpStatus.CONFLICT, "USER_007", "이미 자퇴/제적 처리된 훈련생입니다."),
-    USER_ALREADY_COMPLETED(HttpStatus.CONFLICT, "USER_005", "이미 수료 완료된 훈련생은 자퇴/제적 처리할 수 없습니다."),
+    USER_ALREADY_COMPLETED(HttpStatus.CONFLICT, "USER_008", "이미 수료 완료된 훈련생은 자퇴/제적 처리할 수 없습니다."),
 
     GOOGLE_SHEET_INVALID_URL(HttpStatus.BAD_REQUEST, "SHEET_001", "올바른 Google 스프레드시트 URL이 아닙니다."),
     GOOGLE_SHEET_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SHEET_002", "Google 스프레드시트에 접근할 권한이 없습니다."),
