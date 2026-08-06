@@ -1,9 +1,11 @@
 package com.ohgiraffer.approval.infrastructure.persistence;
 
 import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
+import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
 import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -46,5 +48,36 @@ public class ApprovalRequestRepositoryAdapter
                 .map(
                         ApprovalRequestJpaEntity::toDomain
                 );
+    }
+
+    @Override
+    public List<ApprovalRequest> findByRequesterIdOrderByRequestedAtDesc(
+            Long requesterId
+    ) {
+        return repository
+                .findByRequesterIdOrderByRequestedAtDesc(
+                        requesterId
+                )
+                .stream()
+                .map(
+                        ApprovalRequestJpaEntity::toDomain
+                )
+                .toList();
+    }
+
+    @Override
+    public List<ApprovalRequest> findProcessingApprovals(
+            Long userId
+    ) {
+        return repository
+                .findProcessingApprovals(
+                        userId,
+                        ApprovalStatus.PENDING
+                )
+                .stream()
+                .map(
+                        ApprovalRequestJpaEntity::toDomain
+                )
+                .toList();
     }
 }
