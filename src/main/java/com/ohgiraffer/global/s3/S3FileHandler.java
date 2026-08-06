@@ -12,6 +12,7 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 @Component
@@ -34,8 +35,8 @@ public class S3FileHandler {
      * 파일을 S3에 업로드합니다.
      *
      * @param file 업로드할 파일
-     * @param key  S3에 저장할 객체 key
-     * @return 저장된 S3 객체 key
+     * @param key S3에 저장할 객체 키
+     * @return 저장된 S3 객체 키
      */
     public String upload(
             MultipartFile file,
@@ -43,19 +44,19 @@ public class S3FileHandler {
     ) {
         validateUploadRequest(file, key);
 
-        try {
-            PutObjectRequest request =
-                    PutObjectRequest.builder()
-                            .bucket(bucket)
-                            .key(key)
-                            .contentType(resolveContentType(file))
-                            .contentLength(file.getSize())
-                            .build();
+        PutObjectRequest request =
+                PutObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(key)
+                        .contentType(resolveContentType(file))
+                        .contentLength(file.getSize())
+                        .build();
 
+        try (InputStream inputStream = file.getInputStream()) {
             s3Client.putObject(
                     request,
                     RequestBody.fromInputStream(
-                            file.getInputStream(),
+                            inputStream,
                             file.getSize()
                     )
             );
@@ -81,7 +82,7 @@ public class S3FileHandler {
      *
      * key가 null이거나 공백이면 삭제 요청을 수행하지 않습니다.
      *
-     * @param key 삭제할 S3 객체 key
+     * @param key 삭제할 S3 객체 키
      */
     public void delete(String key) {
         if (key == null || key.isBlank()) {
