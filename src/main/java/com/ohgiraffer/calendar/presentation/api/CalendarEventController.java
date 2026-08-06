@@ -114,7 +114,10 @@ public class CalendarEventController {
             @ApiResponse(responseCode = "201", description = "등록 성공"),
             @ApiResponse(
                     responseCode = "400",
-                    description = "필수 값 누락, 형식 오류, 또는 종료가 시작보다 앞섬 (COMMON_001)",
+                    description = """
+                            필수 값 누락, 형식 오류, 종료가 시작보다 앞섬,
+                            또는 운영진이 개인 일정 유형을 보냄 (COMMON_001)
+                            """,
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
@@ -181,7 +184,7 @@ public class CalendarEventController {
     }
 
     /**
-     * 훈련생이 만든 일정은 항상 개인 일정이다.
+     * 훈련생이 만든 일정은 항상 개인 일정이고, 운영진은 공용 일정만 만들 수 있다.
      *
      * <p>요청 값을 그대로 믿지 않는 이유는 공지 작성자와 같다. 화면에 선택이 없더라도
      * API 는 직접 호출할 수 있으므로, 훈련생이 수업 일정을 만들지 못하게 서버가 정한다.
@@ -192,14 +195,25 @@ public class CalendarEventController {
     ) {
         requireAuthenticated(principal);
 
+        /*
+         * 훈련생 화면에는 유형 칸이 없어 값이 오지 않는다. 강제가 아니라 기본값을 채우는 것이라
+         * EventType.from 을 부르기 전에 정한다.
+         */
         if (principal.getRole() == Role.STUDENT) {
             return EventType.PERSONAL;
         }
 
         EventType eventType = EventType.from(request.eventType());
 
+        /*
+         * 운영진 화면의 유형 목록에는 개인 일정이 없다. 훈련생과 달리 운영진은 값을 직접 골라
+         * 보내므로, 조용히 바꿔 저장하면 요청과 다른 결과를 돌려주면서 아무 신호도 주지 않는다.
+         */
         if (eventType.isPersonal()) {
-            return EventType.PERSONAL;
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "개인 일정은 훈련생만 등록할 수 있습니다."
+            );
         }
 
         return eventType;
