@@ -64,6 +64,13 @@ public enum ErrorCode {
     SUBMISSION_BOX_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_001", "제출함을 찾을 수 없습니다."),
     SUBMISSION_BOX_HAS_SUBMISSIONS(HttpStatus.CONFLICT, "SUBMISSION_002", "제출물이 존재하는 제출함은 삭제할 수 없습니다."),
     SUBMISSION_BOX_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SUBMISSION_003", "해당 제출함을 수정하거나 삭제할 권한이 없습니다."),
+    SUBMISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_004", "제출물을 찾을 수 없습니다."),
+    SUBMISSION_ALREADY_EXISTS(HttpStatus.CONFLICT, "SUBMISSION_005", "이미 제출한 제출함입니다."),
+    SUBMISSION_NOT_STARTED(HttpStatus.BAD_REQUEST, "SUBMISSION_006", "아직 제출이 시작되지 않았습니다."),
+    SUBMISSION_DEADLINE_EXPIRED(HttpStatus.BAD_REQUEST, "SUBMISSION_007", "제출 마감 시간이 지났습니다."),
+    SUBMISSION_ITEM_MISMATCH(HttpStatus.BAD_REQUEST, "SUBMISSION_008", "제출 항목이 제출함 설정과 일치하지 않습니다."),
+    SUBMISSION_FILE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "SUBMISSION_009", "허용되지 않은 파일 형식입니다."),
+    SUBMISSION_TEAM_NOT_FOUND(HttpStatus.BAD_REQUEST, "SUBMISSION_010", "현재 소속된 팀을 찾을 수 없습니다."),
   
     BOOTCAMP_NOT_FOUND(HttpStatus.NOT_FOUND, "BOOTCAMP_001", "부트캠프를 찾을 수 없습니다."),
     INVALID_PERIOD_RANGE(HttpStatus.BAD_REQUEST, "BOOTCAMP_002", "단위기간 시작일이 종료일보다 늦을 수 없습니다."),

@@ -16,4 +16,27 @@ public class S3KeyGenerator {
         return "chatAttachments/" + channelId + "/" + UUID.randomUUID() + "_" + safeFileName;
     }
 
+    public static String submissionFileKey(
+            Long submissionBoxId,
+            Long submittedBy,
+            String originalFileName
+    ) {
+        String safeFileName =
+                originalFileName == null
+                        ? "file"
+                        : originalFileName.replaceAll(
+                        "[^a-zA-Z0-9._-]",
+                        "_"
+                );
+
+        return "submissions/"
+                + submissionBoxId
+                + "/"
+                + submittedBy
+                + "/"
+                + UUID.randomUUID()
+                + "_"
+                + safeFileName;
+    }
+
 }
