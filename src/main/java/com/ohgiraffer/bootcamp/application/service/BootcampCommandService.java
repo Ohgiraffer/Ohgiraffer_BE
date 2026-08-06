@@ -42,10 +42,13 @@ public class BootcampCommandService implements BootcampCommandUsecase {
 
     @Override
     public Long register(Long userId, String orgName, String proName, LocalDate startDate, LocalDate endDate) {
+        getUserBootcampIdPort.findBootcampIdByUserId(userId)
+                .ifPresent(existingBootcampId -> {
+                    throw new BusinessException(ErrorCode.BOOTCAMP_ALREADY_REGISTERED);
+                });
+
         Bootcamp saved = bootcampRepository.save(Bootcamp.create(orgName, proName, startDate, endDate));
-
         setBootcampIdPort.assignBootcamp(userId, saved.getId());
-
         log.info("[register] 부트캠프 등록 완료 | bootcampId={}, orgName={}, userId={}", saved.getId(), saved.getOrgName(), userId);
 
         return saved.getId();
