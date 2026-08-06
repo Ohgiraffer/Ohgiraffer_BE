@@ -1,19 +1,18 @@
 package com.ohgiraffer.approval.domain.model.approval;
 
-import lombok.AccessLevel;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
 
 @Getter
-@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class ApprovalRequest {
 
     private final Long id;
     private final Long requesterId;
-    private final Long approverId;
+    private Long approverId;
     private final ApprovalType requestType;
     private ApprovalStatus status;
     private final String title;
@@ -26,9 +25,34 @@ public class ApprovalRequest {
     private final byte[] signatureImageSnapshot;
     private final String signatureFileTypeSnapshot;
 
-    public static ApprovalRequest createLeave(
+    private ApprovalRequest(
+            Long id,
             Long requesterId,
             Long approverId,
+            ApprovalType requestType,
+            String title,
+            String reason,
+            LocalDateTime requestedAt,
+            Long signatureId,
+            byte[] signatureImageSnapshot,
+            String signatureFileTypeSnapshot
+    ) {
+        this.id = id;
+        this.requesterId = requesterId;
+        this.approverId = approverId;
+        this.requestType = requestType;
+        this.title = title;
+        this.reason = reason;
+        this.requestedAt = requestedAt;
+        this.signatureId = signatureId;
+        this.signatureImageSnapshot = copyBytes(
+                signatureImageSnapshot
+        );
+        this.signatureFileTypeSnapshot = signatureFileTypeSnapshot;
+    }
+
+    public static ApprovalRequest createLeave(
+            Long requesterId,
             Long signatureId,
             byte[] signatureImageSnapshot,
             String signatureFileTypeSnapshot,
@@ -38,13 +62,13 @@ public class ApprovalRequest {
                 new ApprovalRequest(
                         null,
                         requesterId,
-                        approverId,
+                        null,
                         ApprovalType.LEAVE,
                         "휴가 신청",
                         null,
                         requestedAt,
                         signatureId,
-                        copyBytes(signatureImageSnapshot),
+                        signatureImageSnapshot,
                         signatureFileTypeSnapshot
                 );
 
@@ -55,7 +79,6 @@ public class ApprovalRequest {
 
     public static ApprovalRequest createPurchase(
             Long requesterId,
-            Long approverId,
             String reason,
             Long signatureId,
             byte[] signatureImageSnapshot,
@@ -66,13 +89,13 @@ public class ApprovalRequest {
                 new ApprovalRequest(
                         null,
                         requesterId,
-                        approverId,
+                        null,
                         ApprovalType.PURCHASE,
                         "구매 요청",
                         reason,
                         requestedAt,
                         signatureId,
-                        copyBytes(signatureImageSnapshot),
+                        signatureImageSnapshot,
                         signatureFileTypeSnapshot
                 );
 
@@ -107,7 +130,7 @@ public class ApprovalRequest {
                         reason,
                         requestedAt,
                         signatureId,
-                        copyBytes(signatureImageSnapshot),
+                        signatureImageSnapshot,
                         signatureFileTypeSnapshot
                 );
 
@@ -119,8 +142,77 @@ public class ApprovalRequest {
         return approvalRequest;
     }
 
+    public void check(
+            Long approverId,
+            LocalDateTime confirmedAt
+    ) {
+        if (this.status != ApprovalStatus.PENDING) {
+            throw new BusinessException(
+                    ErrorCode.APPROVAL_INVALID_STATUS
+            );
+        }
+
+        if (approverId == null || confirmedAt == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+
+        this.approverId = approverId;
+        this.status = ApprovalStatus.CHECKED;
+        this.confirmedAt = confirmedAt;
+    }
+
+    public void approve(
+            LocalDateTime processedAt
+    ) {
+        if (this.status != ApprovalStatus.CHECKED) {
+            throw new BusinessException(
+                    ErrorCode.APPROVAL_INVALID_STATUS
+            );
+        }
+
+        if (processedAt == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+
+        this.status = ApprovalStatus.APPROVED;
+        this.processedAt = processedAt;
+    }
+
+    public void reject(
+            String rejectionReason,
+            LocalDateTime processedAt
+    ) {
+        if (this.status != ApprovalStatus.CHECKED) {
+            throw new BusinessException(
+                    ErrorCode.APPROVAL_INVALID_STATUS
+            );
+        }
+
+        if (rejectionReason == null || rejectionReason.isBlank()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+
+        if (processedAt == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+
+        this.status = ApprovalStatus.REJECTED;
+        this.rejectionReason = rejectionReason.strip();
+        this.processedAt = processedAt;
+    }
+
     public byte[] getSignatureImageSnapshot() {
-        return copyBytes(signatureImageSnapshot);
+        return copyBytes(
+                signatureImageSnapshot
+        );
     }
 
     private static byte[] copyBytes(

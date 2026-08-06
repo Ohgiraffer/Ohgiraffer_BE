@@ -14,7 +14,6 @@ import com.ohgiraffer.approval.domain.repository.BudgetCategoryRepository;
 import com.ohgiraffer.approval.domain.repository.UserSignatureRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
-import com.ohgiraffer.user.domain.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +38,6 @@ public class CreatePurchaseApprovalService
     private final ApprovalHistoryRepository approvalHistoryRepository;
     private final UserSignatureRepository userSignatureRepository;
     private final BudgetCategoryRepository budgetCategoryRepository;
-    private final UserRepository userRepository;
     private final Clock clock;
 
     public CreatePurchaseApprovalService(
@@ -48,7 +46,6 @@ public class CreatePurchaseApprovalService
             ApprovalHistoryRepository approvalHistoryRepository,
             UserSignatureRepository userSignatureRepository,
             BudgetCategoryRepository budgetCategoryRepository,
-            UserRepository userRepository,
             Clock clock
     ) {
         this.approvalRequestRepository = approvalRequestRepository;
@@ -56,7 +53,6 @@ public class CreatePurchaseApprovalService
         this.approvalHistoryRepository = approvalHistoryRepository;
         this.userSignatureRepository = userSignatureRepository;
         this.budgetCategoryRepository = budgetCategoryRepository;
-        this.userRepository = userRepository;
         this.clock = clock;
     }
 
@@ -72,10 +68,6 @@ public class CreatePurchaseApprovalService
 
         validateCommand(
                 command
-        );
-
-        validateApproverExists(
-                command.approverId()
         );
 
         validateBudgetCategoryExists(
@@ -96,7 +88,6 @@ public class CreatePurchaseApprovalService
         ApprovalRequest approvalRequest =
                 ApprovalRequest.createPurchase(
                         command.requesterId(),
-                        command.approverId(),
                         command.reason().strip(),
                         userSignature.getId(),
                         userSignature.getSignatureImage(),
@@ -152,10 +143,6 @@ public class CreatePurchaseApprovalService
                 command.requesterId()
         );
 
-        validateApproverId(
-                command.approverId()
-        );
-
         validateBudgetCategoryId(
                 command.budgetCategoryId()
         );
@@ -180,17 +167,6 @@ public class CreatePurchaseApprovalService
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "신청자 아이디는 필수입니다."
-            );
-        }
-    }
-
-    private void validateApproverId(
-            Long approverId
-    ) {
-        if (approverId == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "결재자 아이디는 필수입니다."
             );
         }
     }
@@ -281,24 +257,6 @@ public class CreatePurchaseApprovalService
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "구매 요청 금액의 정수부가 허용 범위를 초과했습니다."
-            );
-        }
-    }
-
-    private void validateApproverExists(
-            Long approverId
-    ) {
-        boolean exists =
-                userRepository
-                        .findById(
-                                approverId
-                        )
-                        .isPresent();
-
-        if (!exists) {
-            throw new BusinessException(
-                    ErrorCode.RESOURCE_NOT_FOUND,
-                    "결재자를 찾을 수 없습니다."
             );
         }
     }
