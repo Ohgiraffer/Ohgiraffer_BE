@@ -1,0 +1,181 @@
+### 사용법
+# /calendar-events 는 인증이 필요하다. 없으면 401 이다.
+#
+# 토큰은 같은 폴더의 http-client.env.json 에 넣어 두고 쓴다.
+# (토큰이 담기므로 커밋하지 않는다)
+#   {
+#     "local": {
+#       "accessToken": "강사 또는 매니저 JWT",
+#       "traineeAccessToken": "훈련생 JWT"
+#     }
+#   }
+#
+# 로그인 API 가 아직 없어 토큰을 발급받을 수 없다.
+
+###############################################
+# 일정 등록
+###############################################
+
+### 성공 - 운영진이 시각 있는 수업 일정 등록 (201)
+POST http://localhost:8080/calendar-events
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "알고리즘 특강",
+  "eventType": "CLASS",
+  "startDate": "2026-08-10",
+  "startTime": "10:00",
+  "endDate": "2026-08-10",
+  "endTime": "12:00",
+  "location": "623호"
+}
+
+### 성공 - 운영진이 종일 행사 등록 (201)
+# 시각을 모두 비우면 allDay 가 true 로 저장된다.
+POST http://localhost:8080/calendar-events
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "해커톤",
+  "eventType": "EVENT",
+  "startDate": "2026-08-24",
+  "endDate": "2026-08-26"
+}
+
+### 성공 - 운영진이 알림 발송을 체크하고 등록 (201)
+# notifyTrainees 는 지금 받아만 두고 발송하지 않는다.
+POST http://localhost:8080/calendar-events
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "중간 발표",
+  "eventType": "PRESENTATION",
+  "startDate": "2026-08-17",
+  "startTime": "14:00",
+  "endDate": "2026-08-17",
+  "endTime": "17:00",
+  "notifyTrainees": true
+}
+
+### 성공 - 훈련생이 개인 일정 등록 (201)
+# 훈련생 화면에는 유형 선택이 없다. 응답의 eventType 이 PERSONAL 인지 확인할 것.
+POST http://localhost:8080/calendar-events
+Authorization: Bearer {{traineeAccessToken}}
+Content-Type: application/json
+
+{
+  "title": "개인 면담",
+  "startDate": "2026-08-10",
+  "startTime": "15:00",
+  "endDate": "2026-08-10",
+  "endTime": "16:00"
+}
+
+### 훈련생이 수업 유형을 보내도 개인 일정으로 저장된다 (201)
+# 화면엔 없지만 API 는 직접 호출할 수 있으므로 서버가 막는다.
+# 응답 eventType 이 CLASS 가 아니라 PERSONAL 이어야 한다.
+POST http://localhost:8080/calendar-events
+Authorization: Bearer {{traineeAccessToken}}
+Content-Type: application/json
+
+{
+  "title": "훈련생이 만든 가짜 수업",
+  "eventType": "CLASS",
+  "startDate": "2026-08-11",
+  "endDate": "2026-08-11"
+}
+
+### 실패 - 일정명 누락 (400 COMMON_001)
+POST http://localhost:8080/calendar-events
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "   ",
+  "eventType": "CLASS",
+  "startDate": "2026-08-10",
+  "endDate": "2026-08-10"
+}
+
+### 실패 - 종료가 시작보다 앞섬 (400 COMMON_001)
+POST http://localhost:8080/calendar-events
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "거꾸로 일정",
+  "eventType": "CLASS",
+  "startDate": "2026-08-20",
+  "endDate": "2026-08-10"
+}
+
+### 실패 - 없는 유형 (400 COMMON_001)
+POST http://localhost:8080/calendar-events
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "유형 오타",
+  "eventType": "MEETING",
+  "startDate": "2026-08-10",
+  "endDate": "2026-08-10"
+}
+
+###############################################
+# 월간 조회
+# 화면의 연월 좌우 화살표가 호출한다.
+###############################################
+
+### 월간 캘린더 조회 (훈련생)
+# 내 개인 일정 + 공용 일정이 내려온다. 남의 개인 일정은 빠진다.
+GET http://localhost:8080/calendar-events?year=2026&month=8
+Authorization: Bearer {{traineeAccessToken}}
+
+### 월간 캘린더 조회 (운영진)
+# 운영진도 남의 개인 일정은 보이지 않는다. 공용 일정 + 본인 개인 일정만.
+GET http://localhost:8080/calendar-events?year=2026&month=8
+Authorization: Bearer {{accessToken}}
+
+### 여러 날에 걸친 일정 확인
+# 8/24~8/26 해커톤을 등록한 뒤 8월을 조회하면 나와야 한다.
+# 시작이 지난달이어도 이번 달에 걸치면 나오는지도 같이 본다.
+GET http://localhost:8080/calendar-events?year=2026&month=8
+Authorization: Bearer {{accessToken}}
+
+### 윤년 2월 말일 확인
+GET http://localhost:8080/calendar-events?year=2028&month=2
+Authorization: Bearer {{accessToken}}
+
+### 실패 - 월 범위 벗어남 (400 COMMON_001)
+GET http://localhost:8080/calendar-events?year=2026&month=13
+Authorization: Bearer {{accessToken}}
+
+### 실패 - 연도 범위 벗어남 (400 COMMON_001)
+GET http://localhost:8080/calendar-events?year=1000&month=8
+Authorization: Bearer {{accessToken}}
+
+###############################################
+# 일정 삭제
+# 상세 모달에서 여러 건을 골랐다면 건마다 호출한다.
+###############################################
+
+### 성공 - 내가 등록한 일정 삭제 (204)
+DELETE http://localhost:8080/calendar-events/1
+Authorization: Bearer {{accessToken}}
+
+### 실패 - 남이 등록한 공용 일정 삭제 시도 (403 CALENDAR_002)
+# 운영진끼리도 남의 일정은 지울 수 없다.
+DELETE http://localhost:8080/calendar-events/2
+Authorization: Bearer {{traineeAccessToken}}
+
+### 실패 - 남의 개인 일정 삭제 시도 (404 CALENDAR_001)
+# 403 이 아니라 404 다. 403 이면 그 번호에 남의 개인 일정이 있다는 게 드러난다.
+DELETE http://localhost:8080/calendar-events/3
+Authorization: Bearer {{accessToken}}
+
+### 실패 - 없는 일정 삭제 (404 CALENDAR_001)
+DELETE http://localhost:8080/calendar-events/99999
+Authorization: Bearer {{accessToken}}
