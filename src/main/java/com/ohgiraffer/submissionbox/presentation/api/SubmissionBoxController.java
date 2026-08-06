@@ -85,14 +85,20 @@ public class SubmissionBoxController {
     }
 
     @GetMapping("/{submissionBoxId}")
-    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR', 'STUDENT')")
+    @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<SubmissionBoxDetailResponse>
     getSubmissionBox(
-            @PathVariable Long submissionBoxId
+            @PathVariable Long submissionBoxId,
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
     ) {
         SubmissionBoxDetailResult result =
                 getSubmissionBoxDetailUseCase
-                        .getSubmissionBox(submissionBoxId);
+                        .getSubmissionBox(
+                                submissionBoxId,
+                                principal.getId(),
+                                principal.getRole()
+                        );
 
         return ResponseEntity.ok(
                 SubmissionBoxDetailResponse.from(result)

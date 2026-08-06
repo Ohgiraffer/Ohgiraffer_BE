@@ -9,6 +9,7 @@ import com.ohgiraffer.global.exception.ErrorCode;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Optional;
+import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
@@ -113,4 +114,18 @@ public class SubmissionRepositoryAdapter
                 )
                 .map(SubmissionJpaEntity::toDomain);
     }
+
+    @Override
+    public List<Submission> findAllBySubmissionBoxId(
+            Long submissionBoxId
+    ) {
+        return repository
+                .findAllBySubmissionBoxIdOrderBySubmittedAtAsc(
+                        submissionBoxId
+                )
+                .stream()
+                .map(SubmissionJpaEntity::toDomain)
+                .toList();
+    }
+
 }

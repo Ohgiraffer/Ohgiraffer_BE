@@ -18,16 +18,41 @@ public record SubmissionBoxDetailResult(
         SubmissionBoxStatus status,
         boolean acceptingSubmissions,
         boolean lateSubmission,
-        List<SubmissionBoxItemResult> items
+        int submittedCount,
+        Integer targetCount,
+        Long mySubmissionId,
+        boolean canSubmit,
+        boolean canEdit,
+        List<SubmissionBoxItemResult> items,
+        List<SubmissionStatusResult> submissions
 ) {
 
     public SubmissionBoxDetailResult {
         items = List.copyOf(items);
+        submissions = List.copyOf(submissions);
     }
 
     public static SubmissionBoxDetailResult from(
             SubmissionBox submissionBox,
             LocalDateTime now
+    ) {
+        return from(
+                submissionBox,
+                now,
+                null,
+                null,
+                false,
+                List.of()
+        );
+    }
+
+    public static SubmissionBoxDetailResult from(
+            SubmissionBox submissionBox,
+            LocalDateTime now,
+            Integer targetCount,
+            Long mySubmissionId,
+            boolean eligibleToSubmit,
+            List<SubmissionStatusResult> submissions
     ) {
         SubmissionBoxStatus status =
                 calculateStatus(submissionBox, now);
@@ -44,6 +69,21 @@ public record SubmissionBoxDetailResult(
                         .map(SubmissionBoxItemResult::from)
                         .toList();
 
+        int submittedCount =
+                (int) submissions.stream()
+                        .filter(SubmissionStatusResult::submitted)
+                        .count();
+
+        boolean canSubmit =
+                eligibleToSubmit
+                        && acceptingSubmissions
+                        && mySubmissionId == null;
+
+        boolean canEdit =
+                eligibleToSubmit
+                        && isEditable(submissionBox, now)
+                        && mySubmissionId != null;
+
         return new SubmissionBoxDetailResult(
                 submissionBox.getId(),
                 submissionBox.getProjectName(),
@@ -55,7 +95,13 @@ public record SubmissionBoxDetailResult(
                 status,
                 acceptingSubmissions,
                 lateSubmission,
-                itemResults
+                submittedCount,
+                targetCount,
+                mySubmissionId,
+                canSubmit,
+                canEdit,
+                itemResults,
+                submissions
         );
     }
 
@@ -88,5 +134,18 @@ public record SubmissionBoxDetailResult(
 
         return submissionBox.getLatePolicy()
                 == LatePolicy.ALLOW;
+    }
+
+    private static boolean isEditable(
+            SubmissionBox submissionBox,
+            LocalDateTime now
+    ) {
+        if (now.isBefore(submissionBox.getStartAt())) {
+            return false;
+        }
+
+        return !now.isAfter(
+                submissionBox.getDueAt()
+        );
     }
 }
