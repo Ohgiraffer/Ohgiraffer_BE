@@ -24,4 +24,6 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, L
     @Modifying(clearAutomatically = true)
     @Query("UPDATE UserJpaEntity u SET u.bootcampId = :bootcampId WHERE u.id = :userId AND u.bootcampId IS NULL")
     int assignBootcampIfAbsent(@Param("userId") Long userId, @Param("bootcampId") Long bootcampId);
+
+    boolean existsByEmail(String email);
 }
