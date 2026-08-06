@@ -146,13 +146,19 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
         log.info("[Chat] 메시지 수정 완료 | channelId={}, messageId={}", command.channelId(), command.sendbirdMessageId());
     }
 
-    // null/blank/"null" 문자열/http(s) 형식 아닌 값은 전부 null(첨부파일 없음/제거)로 통일
-    // SendbirdApiAdapter의 동일 로직과 별개 계층이라 여기도 방어적으로 한 번 더 검증
+    // null/blank/"null" 문자열/host 없는 반쪽 URL(예: "https://")은 전부 null(첨부파일 없음/제거)로 통일
     private String normalizeAttachmentUrl(String attachmentUrl) {
-        boolean isValid = attachmentUrl != null
-                && !attachmentUrl.isBlank()
-                && (attachmentUrl.startsWith("http://") || attachmentUrl.startsWith("https://"));
-        return isValid ? attachmentUrl : null;
+        if (attachmentUrl == null || attachmentUrl.isBlank()) {
+            return null;
+        }
+        try {
+            java.net.URI uri = new java.net.URI(attachmentUrl);
+            boolean validScheme = "http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme());
+            boolean validHost = uri.getHost() != null && !uri.getHost().isBlank();
+            return (validScheme && validHost) ? attachmentUrl : null;
+        } catch (java.net.URISyntaxException e) {
+            return null;
+        }
     }
 
     // 메시지/답글 삭제 - 본인 확인 + 중복 삭제 방지 검증 후 Sendbird 반영, 성공하면 미러링도 소프트삭제

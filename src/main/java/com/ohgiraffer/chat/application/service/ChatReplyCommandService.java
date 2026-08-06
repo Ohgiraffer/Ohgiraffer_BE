@@ -57,6 +57,12 @@ public class ChatReplyCommandService implements ChatReplyCommandUseCase {
                 .findBySendbirdMessageId(command.parentSendbirdMessageId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
+        // parentMessage가 요청한 channelId와 다른 채널 소속이면 차단
+        // (다른 채널의 멤버십 검증을 우회해서 엉뚱한 채널 메시지에 답글 다는 것 방지)
+        if (!parentMessage.getChannelId().equals(command.channelId())) {
+            throw new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND);
+        }
+
         if (parentMessage.isDeleted()) {
             throw new BusinessException(ErrorCode.CHAT_MESSAGE_ALREADY_DELETED);
         }

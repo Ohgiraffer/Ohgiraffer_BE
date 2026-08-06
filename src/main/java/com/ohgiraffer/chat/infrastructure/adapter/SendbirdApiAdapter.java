@@ -145,11 +145,24 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     // 채팅방 생성 - userIds 1명이면 1:1(is_distinct=true), 2명 이상이면 그룹
     @Override
     public String createChannel(List<Long> userIds, String name) {
+
+        return doCreateChannel(userIds, name, userIds.size() <= 2);
+
+    }
+
+    // 팀 채팅방 자동 생성 - 이름 규칙("team-{teamId}")만 다르고 나머지는 일반 채널 생성과 동일해서 재사용
+    @Override
+    public String createTeamChannel(Long teamId, List<Long> memberUserIds) {
+        // 팀 채팅방은 이름 규칙만 다르고 나머지는 일반 채널 생성과 동일
+        return doCreateChannel(memberUserIds, "team-" + teamId, false);
+    }
+
+    // 채널 생성 공통 로직 - isDistinct는 호출부(createChannel/createTeamChannel)에서 결정해서 넘김
+    private String doCreateChannel(List<Long> userIds, String name, boolean isDistinct) {
         Map<String, Object> body = new HashMap<>();
         body.put("user_ids", userIds.stream().map(String::valueOf).toList());
-        body.put("nickname", name == null ? "" : name);
-        // 본인 포함 전체 인원 기준으로 변경
-        body.put("is_distinct", userIds.size() <= 2);
+        body.put("name", name == null ? "" : name);
+        body.put("is_distinct", isDistinct);
 
         try {
             Map<String, Object> response = restClient.post()
@@ -162,13 +175,6 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         } catch (RestClientException e) {
             throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 채널 생성 실패");
         }
-    }
-
-    // 팀 채팅방 자동 생성 - 이름 규칙("team-{teamId}")만 다르고 나머지는 일반 채널 생성과 동일해서 재사용
-    @Override
-    public String createTeamChannel(Long teamId, List<Long> memberUserIds) {
-        // 팀 채팅방은 이름 규칙만 다르고 나머지는 일반 채널 생성과 동일
-        return createChannel(memberUserIds, "team-" + teamId);
     }
 
     // 팀변경 시 채널 멤버 초대/제외 반영 - 초대(invite)와 제외(leave)를 각각 별도 API 호출로 처리
@@ -250,14 +256,19 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
-    // null/빈 문자열/"null" 같은 무의미한 문자열/URL 형식 아닌 값은 전부 null로 통일
-    // "값 없음"을 나타내는 표현이 여러 개(null, "", "null") 존재하지 않도록 여기서 하나로 정규화
-    // isValidAttachmentUrl은 이 메서드로 통합, 별도로 남겨두지 않음
+    // null/빈 문자열/"null" 같은 무의미한 문자열/host 없는 반쪽 URL(예: "https://")은 전부 null로 통일
     private String normalizeAttachmentUrl(String attachmentUrl) {
-        boolean isValid = attachmentUrl != null
-                && !attachmentUrl.isBlank()
-                && (attachmentUrl.startsWith("http://") || attachmentUrl.startsWith("https://"));
-        return isValid ? attachmentUrl : null;
+        if (attachmentUrl == null || attachmentUrl.isBlank()) {
+            return null;
+        }
+        try {
+            java.net.URI uri = new java.net.URI(attachmentUrl);
+            boolean validScheme = "http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme());
+            boolean validHost = uri.getHost() != null && !uri.getHost().isBlank();
+            return (validScheme && validHost) ? attachmentUrl : null;
+        } catch (java.net.URISyntaxException e) {
+            return null;
+        }
     }
 
     // 메시지 본문 정규화. null/blank/"null","undefined" 같은 플레이스홀더 문자열은 전부 null(값 없음)로 통일
@@ -296,7 +307,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
                     .retrieve()
                     .body(Map.class);
 
-            log.info("[updateMessage] Sendbird 응답={}", response);
+            log.info("[updateMessage] Sendbird 응답 수신 완료 | messageId={}, status=success", sendbirdMessageId);
         } catch (HttpClientErrorException e) {
             throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR,
                     "Sendbird 메시지 수정 실패 (status=" + e.getStatusCode()
