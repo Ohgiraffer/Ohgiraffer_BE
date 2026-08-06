@@ -44,10 +44,11 @@ public class BootcampController {
     @PostMapping("/info")
     @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<BootcampInfoResponse> register(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
             @Valid @RequestBody BootcampInfoRequest request
     ) {
         Long bootcampId = bootcampCommandUsecase.register(
-                request.orgName(), request.proName(), request.startDate(), request.endDate());
+                principal.getId(), request.orgName(), request.proName(), request.startDate(), request.endDate());
         return ResponseEntity.status(HttpStatus.CREATED).body(new BootcampInfoResponse(bootcampId));
     }
 
