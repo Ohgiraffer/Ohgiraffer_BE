@@ -46,3 +46,5 @@ secrets/
 **/*oauth-client*.json
 **/forms-tokens/
 .env
+*.env
+.env.*
