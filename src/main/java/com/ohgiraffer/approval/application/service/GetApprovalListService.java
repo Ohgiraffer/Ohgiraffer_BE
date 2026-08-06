@@ -20,10 +20,11 @@ import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,25 +49,70 @@ public class GetApprovalListService implements GetApprovalListUseCase {
                 scope
         );
 
+        Long loginUserBootcampId = findLoginUserBootcampId(
+                loginUserId
+        );
+
         List<ApprovalRequest> approvalRequests = findApprovalRequests(
                 loginUserId,
+                loginUserBootcampId,
                 scope
         );
 
-        Map<Long, BudgetCategory> budgetCategoryById = budgetCategoryRepository.findAll()
-                .stream()
-                .collect(
-                        Collectors.toMap(
-                                BudgetCategory::getId,
-                                category -> category
+        if (approvalRequests.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> approvalIds = approvalRequests.stream()
+                .map(
+                        ApprovalRequest::getId
+                )
+                .toList();
+
+        Map<Long, ApprovalLeaveDetail> leaveDetailByApprovalId =
+                approvalLeaveDetailRepository.findByApprovalIdIn(
+                                approvalIds
                         )
-                );
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        ApprovalLeaveDetail::getApprovalId,
+                                        Function.identity()
+                                )
+                        );
+
+        Map<Long, ApprovalPurchaseDetail> purchaseDetailByApprovalId =
+                approvalPurchaseDetailRepository.findByApprovalIdIn(
+                                approvalIds
+                        )
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        ApprovalPurchaseDetail::getApprovalId,
+                                        Function.identity()
+                                )
+                        );
+
+        Map<Long, BudgetCategory> budgetCategoryById = findBudgetCategories(
+                purchaseDetailByApprovalId
+        );
+
+        Map<Long, String> userNameById = findUserNames(
+                approvalRequests
+        );
 
         return approvalRequests.stream()
                 .map(
                         approvalRequest -> toListItemResult(
                                 approvalRequest,
-                                budgetCategoryById
+                                leaveDetailByApprovalId.get(
+                                        approvalRequest.getId()
+                                ),
+                                purchaseDetailByApprovalId.get(
+                                        approvalRequest.getId()
+                                ),
+                                budgetCategoryById,
+                                userNameById
                         )
                 )
                 .toList();
@@ -99,8 +145,20 @@ public class GetApprovalListService implements GetApprovalListUseCase {
         return role == Role.INSTRUCTOR || role == Role.MANAGER;
     }
 
+    private Long findLoginUserBootcampId(
+            Long loginUserId
+    ) {
+        return userRepository.findBootcampIdByUserId(
+                        loginUserId
+                )
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.USER_NOT_FOUND
+                ));
+    }
+
     private List<ApprovalRequest> findApprovalRequests(
             Long loginUserId,
+            Long loginUserBootcampId,
             ApprovalListScope scope
     ) {
         if (scope == ApprovalListScope.REQUESTED) {
@@ -111,7 +169,8 @@ public class GetApprovalListService implements GetApprovalListUseCase {
 
         if (scope == ApprovalListScope.PROCESSING) {
             return approvalRequestRepository.findProcessingApprovals(
-                    loginUserId
+                    loginUserId,
+                    loginUserBootcampId
             );
         }
 
@@ -120,43 +179,83 @@ public class GetApprovalListService implements GetApprovalListUseCase {
         );
     }
 
-    private ApprovalListItemResult toListItemResult(
-            ApprovalRequest approvalRequest,
-            Map<Long, BudgetCategory> budgetCategoryById
+    private Map<Long, BudgetCategory> findBudgetCategories(
+            Map<Long, ApprovalPurchaseDetail> purchaseDetailByApprovalId
     ) {
-        String budgetCategoryName = null;
-        BigDecimal amount = null;
-        LocalDate startDate = null;
-        LocalDate endDate = null;
+        List<Long> budgetCategoryIds = purchaseDetailByApprovalId.values()
+                .stream()
+                .map(
+                        ApprovalPurchaseDetail::getBudgetCategoryId
+                )
+                .distinct()
+                .toList();
 
-        if (approvalRequest.getRequestType() == ApprovalType.LEAVE) {
-            ApprovalLeaveDetail leaveDetail = approvalLeaveDetailRepository.findByApprovalId(
-                            approvalRequest.getId()
-                    )
-                    .orElse(null);
+        if (budgetCategoryIds.isEmpty()) {
+            return Map.of();
+        }
 
-            if (leaveDetail != null) {
-                startDate = leaveDetail.getStartDate();
-                endDate = leaveDetail.getEndDate();
+        return budgetCategoryRepository.findByIdIn(
+                        budgetCategoryIds
+                )
+                .stream()
+                .collect(
+                        Collectors.toMap(
+                                BudgetCategory::getId,
+                                Function.identity()
+                        )
+                );
+    }
+
+    private Map<Long, String> findUserNames(
+            List<ApprovalRequest> approvalRequests
+    ) {
+        Set<Long> userIds = new LinkedHashSet<>();
+
+        for (ApprovalRequest approvalRequest : approvalRequests) {
+            userIds.add(
+                    approvalRequest.getRequesterId()
+            );
+
+            if (approvalRequest.getApproverId() != null) {
+                userIds.add(
+                        approvalRequest.getApproverId()
+                );
             }
         }
 
-        if (approvalRequest.getRequestType() == ApprovalType.PURCHASE) {
-            ApprovalPurchaseDetail purchaseDetail = approvalPurchaseDetailRepository.findByApprovalId(
-                            approvalRequest.getId()
-                    )
-                    .orElse(null);
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
 
-            if (purchaseDetail != null) {
-                amount = purchaseDetail.getAmount();
-
-                BudgetCategory budgetCategory = budgetCategoryById.get(
-                        purchaseDetail.getBudgetCategoryId()
+        return userRepository.findByIdIn(
+                        userIds.stream()
+                                .toList()
+                )
+                .stream()
+                .collect(
+                        Collectors.toMap(
+                                User::getId,
+                                User::getName
+                        )
                 );
+    }
 
-                if (budgetCategory != null) {
-                    budgetCategoryName = budgetCategory.getName();
-                }
+    private ApprovalListItemResult toListItemResult(
+            ApprovalRequest approvalRequest,
+            ApprovalLeaveDetail leaveDetail,
+            ApprovalPurchaseDetail purchaseDetail,
+            Map<Long, BudgetCategory> budgetCategoryById,
+            Map<Long, String> userNameById
+    ) {
+        String budgetCategoryName = null;
+
+        if (purchaseDetail != null) {
+            BudgetCategory budgetCategory = budgetCategoryById.get(
+                    purchaseDetail.getBudgetCategoryId()
+            );
+
+            if (budgetCategory != null) {
+                budgetCategoryName = budgetCategory.getName();
             }
         }
 
@@ -166,45 +265,22 @@ public class GetApprovalListService implements GetApprovalListUseCase {
                 approvalRequest.getStatus(),
                 approvalRequest.getTitle(),
                 approvalRequest.getRequesterId(),
-                findUserName(
-                        approvalRequest.getRequesterId()
+                userNameById.getOrDefault(
+                        approvalRequest.getRequesterId(),
+                        ""
                 ),
                 approvalRequest.getApproverId(),
-                findUserNameOrNull(
-                        approvalRequest.getApproverId()
+                approvalRequest.getApproverId() == null
+                        ? null
+                        : userNameById.getOrDefault(
+                        approvalRequest.getApproverId(),
+                        ""
                 ),
                 budgetCategoryName,
-                amount,
-                startDate,
-                endDate,
+                purchaseDetail == null ? null : purchaseDetail.getAmount(),
+                leaveDetail == null ? null : leaveDetail.getStartDate(),
+                leaveDetail == null ? null : leaveDetail.getEndDate(),
                 approvalRequest.getRequestedAt()
-        );
-    }
-
-    private String findUserName(
-            Long userId
-    ) {
-        return userRepository
-                .findById(
-                        userId
-                )
-                .map(
-                        User::getName
-                )
-                .orElse(
-                        ""
-                );
-    }
-
-    private String findUserNameOrNull(
-            Long userId
-    ) {
-        if (userId == null) {
-            return null;
-        }
-
-        return findUserName(
-                userId
         );
     }
 }

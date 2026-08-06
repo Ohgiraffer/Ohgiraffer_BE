@@ -67,11 +67,13 @@ public class ApprovalRequestRepositoryAdapter
 
     @Override
     public List<ApprovalRequest> findProcessingApprovals(
-            Long userId
+            Long userId,
+            Long bootcampId
     ) {
         return repository
                 .findProcessingApprovals(
                         userId,
+                        bootcampId,
                         ApprovalStatus.PENDING
                 )
                 .stream()

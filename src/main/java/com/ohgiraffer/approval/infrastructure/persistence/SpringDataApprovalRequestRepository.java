@@ -17,12 +17,20 @@ public interface SpringDataApprovalRequestRepository
     @Query("""
             SELECT approvalRequest
             FROM ApprovalRequestJpaEntity approvalRequest
-            WHERE approvalRequest.status = :pendingStatus
-               OR approvalRequest.approverId = :userId
+            WHERE approvalRequest.approverId = :userId
+               OR (
+                    approvalRequest.status = :pendingStatus
+                    AND approvalRequest.requesterId IN (
+                        SELECT user.id
+                        FROM UserJpaEntity user
+                        WHERE user.bootcampId = :bootcampId
+                    )
+               )
             ORDER BY approvalRequest.requestedAt DESC
             """)
     List<ApprovalRequestJpaEntity> findProcessingApprovals(
             @Param("userId") Long userId,
+            @Param("bootcampId") Long bootcampId,
             @Param("pendingStatus") ApprovalStatus pendingStatus
     );
 }

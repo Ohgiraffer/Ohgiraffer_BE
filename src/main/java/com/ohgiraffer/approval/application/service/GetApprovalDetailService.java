@@ -145,6 +145,10 @@ public class GetApprovalDetailService implements GetApprovalDetailUseCase {
         if (approvalRequest.getStatus() == ApprovalStatus.PENDING
                 && canProcessApproval(
                 loginUserRole
+        )
+                && isSameBootcamp(
+                loginUserId,
+                approvalRequest.getRequesterId()
         )) {
             return;
         }
@@ -158,6 +162,34 @@ public class GetApprovalDetailService implements GetApprovalDetailUseCase {
             Role role
     ) {
         return role == Role.INSTRUCTOR || role == Role.MANAGER;
+    }
+
+    private boolean isSameBootcamp(
+            Long loginUserId,
+            Long requesterId
+    ) {
+        Long loginUserBootcampId = findBootcampId(
+                loginUserId
+        );
+
+        Long requesterBootcampId = findBootcampId(
+                requesterId
+        );
+
+        return loginUserBootcampId.equals(
+                requesterBootcampId
+        );
+    }
+
+    private Long findBootcampId(
+            Long userId
+    ) {
+        return userRepository.findBootcampIdByUserId(
+                        userId
+                )
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.USER_NOT_FOUND
+                ));
     }
 
     private String findUserName(

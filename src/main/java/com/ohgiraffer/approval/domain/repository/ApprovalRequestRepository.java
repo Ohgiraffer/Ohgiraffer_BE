@@ -20,6 +20,7 @@ public interface ApprovalRequestRepository {
     );
 
     List<ApprovalRequest> findProcessingApprovals(
-            Long userId
+            Long userId,
+            Long bootcampId
     );
 }

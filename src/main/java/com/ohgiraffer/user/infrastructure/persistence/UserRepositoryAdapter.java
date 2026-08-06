@@ -29,6 +29,23 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public List<User> findByIdIn(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {return List.of();}
+
+        return springDataUserRepository.findByIdIn(userIds)
+                .stream()
+                .map(UserJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public Optional<Long> findBootcampIdByUserId(Long userId) {
+        return springDataUserRepository.findBootcampIdByUserId(
+                userId
+        );
+    }
+
+    @Override
     public void save(User user) {
         UserJpaEntity entity = UserJpaEntity.fromDomain(user);
         springDataUserRepository.save(entity);

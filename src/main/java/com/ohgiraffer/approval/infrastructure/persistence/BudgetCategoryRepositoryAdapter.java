@@ -50,6 +50,25 @@ public class BudgetCategoryRepositoryAdapter
     }
 
     @Override
+    public List<BudgetCategory> findByIdIn(
+            List<Long> ids
+    ) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        return repository
+                .findByIdIn(
+                        ids
+                )
+                .stream()
+                .map(
+                        BudgetCategoryJpaEntity::toDomain
+                )
+                .toList();
+    }
+
+    @Override
     public Optional<BudgetCategory> findByName(
             String name
     ) {

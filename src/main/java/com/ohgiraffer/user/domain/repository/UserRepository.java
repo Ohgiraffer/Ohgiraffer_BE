@@ -12,6 +12,10 @@ public interface UserRepository {
 
     Optional<User> findById(Long userId);
 
+    List<User> findByIdIn(List<Long> userIds);
+
+    Optional<Long> findBootcampIdByUserId(Long userId);
+
     void save(User user);
     List<User> findAllByRoleAndStatus(Role role, UserStatus status);
 }
