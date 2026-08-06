@@ -16,7 +16,7 @@ import java.time.ZoneId;
 public record CreateNoticeResponse(
         Long noticeId,
         String title,
-        boolean mandatory,
+        boolean pinned,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -27,7 +27,7 @@ public record CreateNoticeResponse(
         return new CreateNoticeResponse(
                 notice.getId(),
                 notice.getTitle(),
-                notice.isMandatory(),
+                notice.isPinned(),
                 toKst(notice.getCreatedAt()),
                 toKst(notice.getUpdatedAt())
         );

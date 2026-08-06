@@ -8,6 +8,7 @@ import com.ohgiraffer.notice.domain.repository.NoticeRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -84,6 +85,23 @@ public class NoticeRepositoryAdapter implements NoticeRepository {
     public List<Notice> findAllVisible(ViewerRole viewer, Long categoryId) {
         return springDataNoticeRepository
                 .findAllVisible(categoryId, traineeVisibilityFilter(viewer))
+                .stream()
+                .map(NoticeJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Notice> findDashboardSummary(
+            ViewerRole viewer,
+            Long userId,
+            Instant since
+    ) {
+        return springDataNoticeRepository
+                .findDashboardSummary(
+                        traineeVisibilityFilter(viewer),
+                        userId,
+                        since
+                )
                 .stream()
                 .map(NoticeJpaEntity::toDomain)
                 .toList();

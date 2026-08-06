@@ -10,8 +10,8 @@ import java.time.Instant;
  *
  * <p>JPA와 무관한 순수 객체다. 영속화는 infrastructure 계층의 JpaEntity가 담당한다.
  *
- * <p>확인 방식은 별도 속성으로 두지 않는다. 화면 설계상 필수 공지에만 확인 체크박스가
- * 노출되므로 {@code mandatory} 하나로 판정한다.
+ * <p>{@code pinned} 는 목록에서 상단에 고정해 보여줄지를 뜻한다.
+ * 확인 체크박스는 고정 여부와 무관하게 모든 공지에 노출된다.
  */
 public class Notice {
 
@@ -22,7 +22,7 @@ public class Notice {
     private final Long categoryId;
     private final String title;
     private final String content;
-    private final boolean mandatory;
+    private final boolean pinned;
     private final boolean visibleToTrainee;
     private final Instant createdAt;
     private final Instant updatedAt;
@@ -33,7 +33,7 @@ public class Notice {
             Long categoryId,
             String title,
             String content,
-            boolean mandatory,
+            boolean pinned,
             boolean visibleToTrainee,
             Instant createdAt,
             Instant updatedAt
@@ -43,7 +43,7 @@ public class Notice {
         this.categoryId = categoryId;
         this.title = title;
         this.content = content;
-        this.mandatory = mandatory;
+        this.pinned = pinned;
         this.visibleToTrainee = visibleToTrainee;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -57,7 +57,7 @@ public class Notice {
             Long categoryId,
             String title,
             String content,
-            boolean mandatory,
+            boolean pinned,
             boolean visibleToTrainee
     ) {
         validateAuthorId(authorId);
@@ -71,7 +71,7 @@ public class Notice {
                 categoryId,
                 title.trim(),
                 content,
-                mandatory,
+                pinned,
                 visibleToTrainee,
                 null,
                 null
@@ -87,7 +87,7 @@ public class Notice {
             Long categoryId,
             String title,
             String content,
-            boolean mandatory,
+            boolean pinned,
             boolean visibleToTrainee,
             Instant createdAt,
             Instant updatedAt
@@ -98,7 +98,7 @@ public class Notice {
                 categoryId,
                 title,
                 content,
-                mandatory,
+                pinned,
                 visibleToTrainee,
                 createdAt,
                 updatedAt
@@ -115,7 +115,7 @@ public class Notice {
             Long categoryId,
             String title,
             String content,
-            boolean mandatory,
+            boolean pinned,
             boolean visibleToTrainee
     ) {
         validateCategoryId(categoryId);
@@ -128,7 +128,7 @@ public class Notice {
                 categoryId,
                 title.trim(),
                 content,
-                mandatory,
+                pinned,
                 visibleToTrainee,
                 createdAt,
                 updatedAt
@@ -140,13 +140,6 @@ public class Notice {
      */
     public boolean isAuthoredBy(Long userId) {
         return authorId.equals(userId);
-    }
-
-    /**
-     * 훈련생에게 확인 체크박스를 노출해야 하는지 여부.
-     */
-    public boolean requiresConfirmation() {
-        return mandatory;
     }
 
     /**
@@ -225,8 +218,8 @@ public class Notice {
         return content;
     }
 
-    public boolean isMandatory() {
-        return mandatory;
+    public boolean isPinned() {
+        return pinned;
     }
 
     public boolean isVisibleToTrainee() {
