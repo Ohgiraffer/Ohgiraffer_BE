@@ -9,6 +9,7 @@ public record LeavePdfData(
         Integer leaveDays,
         String requestedDate,
         String approverName,
-        String signatureImage
+        String requesterSignatureImage,
+        String approverSignatureImage
 ) {
 }

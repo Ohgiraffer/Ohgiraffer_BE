@@ -142,8 +142,12 @@ public class OpenHtmlApprovalPdfAdapter implements GenerateApprovalPdfPort {
                 data.approverName()
         );
         context.setVariable(
-                "signatureImage",
-                data.signatureImage()
+                "requesterSignatureImage",
+                data.requesterSignatureImage()
+        );
+        context.setVariable(
+                "approverSignatureImage",
+                data.approverSignatureImage()
         );
 
         return context;

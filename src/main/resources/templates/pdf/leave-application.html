@@ -38,14 +38,6 @@
             margin: 0;
         }
 
-        .medium {
-            font-family: 'Noto Sans KR Medium', sans-serif;
-        }
-
-        .bold {
-            font-family: 'Noto Sans KR Bold', sans-serif;
-        }
-
         .title {
             text-align: center;
             font-family: 'Noto Sans KR Bold', sans-serif;
@@ -84,15 +76,15 @@
             font-family: 'Noto Sans KR Bold', sans-serif;
         }
 
-        .request-table {
-            width: 280px;
+        .signature-table {
+            width: 320px;
             margin-left: auto;
             margin-top: 50px;
             border-collapse: collapse;
         }
 
-        .request-table th {
-            width: 80px;
+        .signature-table th {
+            width: 90px;
             text-align: left;
             font-family: 'Noto Sans KR Bold', sans-serif;
             padding: 6px 0;
@@ -100,7 +92,7 @@
             white-space: nowrap;
         }
 
-        .request-table td {
+        .signature-table td {
             padding: 6px 0;
             vertical-align: middle;
         }
@@ -112,13 +104,8 @@
             margin-left: 8px;
         }
 
-        .approver {
+        .approver-section {
             margin-top: 80px;
-            font-family: 'Noto Sans KR Bold', sans-serif;
-        }
-
-        .placeholder {
-            color: #999999;
         }
     </style>
 </head>
@@ -156,7 +143,7 @@
     <p>휴가를 신청합니다.</p>
 </div>
 
-<table class="request-table">
+<table class="signature-table">
     <tr>
         <th>신청일 :</th>
         <td th:text="${requestedDate}">2026.07.01</td>
@@ -167,17 +154,24 @@
             <span th:text="${studentName}">김훈련</span>
             <img
                     class="signature-image"
-                    th:if="${signatureImage != null}"
-                    th:src="${signatureImage}"
+                    th:if="${requesterSignatureImage != null}"
+                    th:src="${requesterSignatureImage}"
                     alt="신청자 서명"
             />
         </td>
     </tr>
+    <tr>
+        <th>확인자 :</th>
+        <td>
+            <span th:text="${approverName}">매니저</span>
+            <img
+                    class="signature-image"
+                    th:if="${approverSignatureImage != null}"
+                    th:src="${approverSignatureImage}"
+                    alt="확인자 서명"
+            />
+        </td>
+    </tr>
 </table>
-
-<div class="approver">
-    확인자 :
-    <span th:text="${approverName}">매니저</span>
-</div>
 </body>
 </html>
