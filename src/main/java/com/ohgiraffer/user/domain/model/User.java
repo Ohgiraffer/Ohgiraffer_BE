@@ -99,6 +99,9 @@ public class User {
 
     // 훈련생 자퇴 or 제적 처리
     public void dismiss(UserStatus newStatus) {
+        if (this.status == UserStatus.COMPLETED) {
+            throw new BusinessException(ErrorCode.USER_ALREADY_COMPLETED);
+        }
         if (this.status != UserStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.USER_ALREADY_INACTIVE);
         }

@@ -123,12 +123,11 @@ public class UserController {
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @PreAuthorize("hasRole('MANAGER')")
-    @PatchMapping("/{userId}/status")
+    @PatchMapping("/status")
     public ResponseEntity<Void> changeUserStatus(
-            @PathVariable Long userId,
             @Valid @RequestBody UserStatusChangeRequest request
     ) {
-        userCommandUsecase.changeUserStatus(userId, request.status());
+        userCommandUsecase.changeUserStatus(request.userId(), request.status());
         return ResponseEntity.ok().build();
     }
 }
