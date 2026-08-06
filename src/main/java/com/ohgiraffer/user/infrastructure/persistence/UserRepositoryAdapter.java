@@ -53,7 +53,7 @@ public class UserRepositoryAdapter implements UserRepository {
         List<UserJpaEntity> entities = users.stream()
                 .map(UserJpaEntity::fromDomain)
                 .toList();
-        springDataUserRepository.saveAll(entities);
+        springDataUserRepository.saveAllAndFlush(entities);
     }
 
     @Override

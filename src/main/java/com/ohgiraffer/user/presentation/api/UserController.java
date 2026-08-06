@@ -147,9 +147,9 @@ public class UserController {
         return ResponseEntity.ok(userQueryUsecase.checkSheetConnection(request.spreadsheetUrl()));
     }
 
-    @Operation(summary = "구글시트 사용자 일괄 등록 확정", description = "미리보기에서 선택된 사용자 목록을 실제로 등록합니다.")
+    @Operation(summary = "구글시트 사용자 일괄 등록 확정", description = "사용자를 목록에 실제로 등록합니다.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "등록 성공(일부 스킵 가능)"),
+            @ApiResponse(responseCode = "200", description = "등록 성공"),
             @ApiResponse(responseCode = "400", description = "요청 목록이 비어있음"),
             @ApiResponse(responseCode = "401", description = "인증되지 않음"),
             @ApiResponse(responseCode = "403", description = "권한 없음"),
