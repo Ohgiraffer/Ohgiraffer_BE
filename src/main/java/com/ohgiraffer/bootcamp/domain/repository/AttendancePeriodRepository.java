@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface AttendancePeriodRepository {
     List<AttendancePeriod> saveAll(List<AttendancePeriod> periods);
+    List<AttendancePeriod> findAllByBootcampId(Long bootcampId);
+    void deleteAllByBootcampId(Long bootcampId);
 }

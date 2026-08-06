@@ -1,13 +1,19 @@
 package com.ohgiraffer.bootcamp.application.service;
 
+import com.ohgiraffer.bootcamp.application.command.PeriodCommand;
+import com.ohgiraffer.bootcamp.application.policy.AttendancePeriodChangeLogPolicy;
 import com.ohgiraffer.bootcamp.application.policy.AttendancePeriodPolicy;
+import com.ohgiraffer.bootcamp.application.policy.BootcampInfoChangeLogPolicy;
+import com.ohgiraffer.bootcamp.application.port.GetUserBootcampIdPort;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampCommandUsecase;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePeriod;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePolicy;
 import com.ohgiraffer.bootcamp.domain.model.Bootcamp;
+import com.ohgiraffer.bootcamp.domain.model.SettingChangeLog;
 import com.ohgiraffer.bootcamp.domain.repository.AttendancePeriodRepository;
 import com.ohgiraffer.bootcamp.domain.repository.AttendancePolicyRepository;
 import com.ohgiraffer.bootcamp.domain.repository.BootcampRepository;
+import com.ohgiraffer.bootcamp.domain.repository.SettingChangeLogRepository;
 import com.ohgiraffer.bootcamp.presentation.api.request.BootcampPolicyRequest;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
@@ -29,7 +35,8 @@ public class BootcampCommandService implements BootcampCommandUsecase {
     private final BootcampRepository bootcampRepository;
     private final AttendancePeriodRepository attendancePeriodRepository;
     private final AttendancePolicyRepository attendancePolicyRepository;
-
+    private final GetUserBootcampIdPort getUserBootcampIdPort;
+    private final SettingChangeLogRepository settingChangeLogRepository;
 
     @Override
     public Long register(String orgName, String proName, LocalDate startDate, LocalDate endDate) {
@@ -71,5 +78,38 @@ public class BootcampCommandService implements BootcampCommandUsecase {
         ));
 
         log.info("[savePolicy] 출결 정책 저장 완료 | bootcampId={}", request.bootcampId());
+    }
+
+    @Override
+    public void updateSettings(Long userId, String orgName, String proName,
+                               LocalDate startDate, LocalDate endDate,
+                               List<PeriodCommand> periods) {
+        Long bootcampId = getUserBootcampIdPort.findBootcampIdByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+
+        Bootcamp bootcamp = bootcampRepository.findById(bootcampId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+
+        List<AttendancePeriod> oldPeriods = attendancePeriodRepository.findAllByBootcampId(bootcampId);
+
+        List<SettingChangeLog> logs = new ArrayList<>();
+        logs.addAll(BootcampInfoChangeLogPolicy.diff(bootcampId, userId, bootcamp, orgName, proName, startDate, endDate));
+        logs.addAll(AttendancePeriodChangeLogPolicy.diff(bootcampId, userId, oldPeriods, periods));
+
+        bootcamp.changeInfo(orgName, proName, startDate, endDate);
+        bootcampRepository.save(bootcamp);
+
+        List<AttendancePeriod> newPeriods = periods.stream()
+                .map(p -> AttendancePeriod.create(p.periodNo(), p.periodStart(), p.periodEnd(), bootcampId))
+                .toList();
+        AttendancePeriodPolicy.validate(newPeriods);
+
+        attendancePeriodRepository.deleteAllByBootcampId(bootcampId);
+        attendancePeriodRepository.saveAll(newPeriods);
+
+        settingChangeLogRepository.saveAll(logs);
+
+        log.info("[updateSettings] 부트캠프 설정 일괄 수정 완료 | userId={}, bootcampId={}, changedFieldCount={}",
+                userId, bootcampId, logs.size());
     }
 }

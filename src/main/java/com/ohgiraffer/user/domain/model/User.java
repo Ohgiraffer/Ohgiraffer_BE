@@ -18,6 +18,7 @@ public class User {
     private final LocalDate joinDate;
     private LocalDate leaveDate;
     private UserStatus status;
+    private Long bootcampId;
 
     public User(
             Long id,
@@ -31,7 +32,8 @@ public class User {
             boolean notificationOn,
             LocalDate joinDate,
             LocalDate leaveDate,
-            UserStatus status
+            UserStatus status,
+            Long bootcampId
     ) {
         this.id = id;
         this.name = name;
@@ -45,31 +47,32 @@ public class User {
         this.joinDate = joinDate;
         this.leaveDate = leaveDate;
         this.status = status;
+        this.bootcampId=bootcampId;
     }
 
     // 신규 회원 추가
-    public static User create(
-            String name,
-            String phone,
-            String email,
-            Role role,
-            String password
-    ) {
-        return new User(
-                null,
-                name,
-                phone,
-                email,
-                role,
-                null,
-                password,
-                true,
-                true,
-                LocalDate.now(),
-                null,
-                UserStatus.ACTIVE
-        );
-    }
+//    public static User create(
+//            String name,
+//            String phone,
+//            String email,
+//            Role role,
+//            String password
+//    ) {
+//        return new User(
+//                null,
+//                name,
+//                phone,
+//                email,
+//                role,
+//                null,
+//                password,
+//                true,
+//                true,
+//                LocalDate.now(),
+//                null,
+//                UserStatus.ACTIVE
+//        );
+//    }
 
     // 비밀번호 변경
     public void changePassword(String encodedPassword) {

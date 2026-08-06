@@ -1,10 +1,12 @@
 package com.ohgiraffer.bootcamp.domain.model;
 
+import com.ohgiraffer.bootcamp.application.policy.AttendancePeriodPolicy;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.Getter;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 public class Bootcamp {
