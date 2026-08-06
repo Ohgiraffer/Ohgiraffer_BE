@@ -24,8 +24,8 @@ public class SettingChangeLogRepositoryAdapter implements SettingChangeLogReposi
     }
 
     @Override
-    public List<SettingChangeLog> findAllByOrderByChangedAtDesc() {
-        return springDataSettingChangeLogRepository.findAllByOrderByChangedAtDesc().stream()
+    public List<SettingChangeLog> findAllByBootcampIdOrderByChangedAtDesc(Long bootcampId) {
+        return springDataSettingChangeLogRepository.findAllByBootcampIdOrderByChangedAtDesc(bootcampId).stream()
                 .map(SettingChangeLogJpaEntity::toDomain)
                 .toList();
     }

@@ -93,8 +93,8 @@ public class BootcampCommandService implements BootcampCommandUsecase {
         List<AttendancePeriod> oldPeriods = attendancePeriodRepository.findAllByBootcampId(bootcampId);
 
         List<SettingChangeLog> logs = new ArrayList<>();
-        logs.addAll(BootcampInfoChangeLogPolicy.diff(userId, bootcamp, orgName, proName, startDate, endDate));
-        logs.addAll(AttendancePeriodChangeLogPolicy.diff(userId, oldPeriods, periods));
+        logs.addAll(BootcampInfoChangeLogPolicy.diff(bootcampId, userId, bootcamp, orgName, proName, startDate, endDate));
+        logs.addAll(AttendancePeriodChangeLogPolicy.diff(bootcampId, userId, oldPeriods, periods));
 
         bootcamp.changeInfo(orgName, proName, startDate, endDate);
         bootcampRepository.save(bootcamp);

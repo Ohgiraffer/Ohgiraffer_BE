@@ -19,6 +19,9 @@ public class SettingChangeLogJpaEntity {
     @Column(name = "setting_log_id")
     private Long id;
 
+    @Column(name = "bootcamp_id", nullable = false)
+    private Long bootcampId;
+
     @Column(name = "changed_by")
     private Long changedBy;
 
@@ -34,7 +37,9 @@ public class SettingChangeLogJpaEntity {
     @Column(name = "changed_at", nullable = false)
     private LocalDateTime changedAt;
 
-    private SettingChangeLogJpaEntity(Long changedBy, String changedField, String oldValue, String newValue) {
+    private SettingChangeLogJpaEntity(Long bootcampId, Long changedBy, String changedField,
+                                      String oldValue, String newValue) {
+        this.bootcampId = bootcampId;
         this.changedBy = changedBy;
         this.changedField = changedField;
         this.oldValue = oldValue;
@@ -50,10 +55,10 @@ public class SettingChangeLogJpaEntity {
 
     public static SettingChangeLogJpaEntity fromDomain(SettingChangeLog log) {
         return new SettingChangeLogJpaEntity(
-                log.getChangedBy(), log.getChangedField(), log.getOldValue(), log.getNewValue());
+                log.getBootcampId(), log.getChangedBy(), log.getChangedField(), log.getOldValue(), log.getNewValue());
     }
 
     public SettingChangeLog toDomain() {
-        return SettingChangeLog.reconstruct(id, changedBy, changedField, oldValue, newValue, changedAt);
+        return SettingChangeLog.reconstruct(id, bootcampId, changedBy, changedField, oldValue, newValue, changedAt);
     }
 }

@@ -29,7 +29,7 @@ public class BootcampQueryService implements BootcampQueryUsecase {
 
     private final BootcampRepository bootcampRepository;
     private final AttendancePeriodRepository attendancePeriodRepository;
-    private final GetUserBootcampIdPort getUserBootcampIdPort ;
+    private final GetUserBootcampIdPort getUserBootcampIdPort;
     private final SettingChangeLogRepository settingChangeLogRepository;
     private final GetUserNamesPort getUserNamesPort;
 
@@ -55,8 +55,11 @@ public class BootcampQueryService implements BootcampQueryUsecase {
     }
 
     @Override
-    public SettingChangeLogResponse getSettingChangeLogs() {
-        List<SettingChangeLog> logs = settingChangeLogRepository.findAllByOrderByChangedAtDesc();
+    public SettingChangeLogResponse getSettingChangeLogs(Long userId) {
+        Long bootcampId = getUserBootcampIdPort.findBootcampIdByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+
+        List<SettingChangeLog> logs = settingChangeLogRepository.findAllByBootcampIdOrderByChangedAtDesc(bootcampId);
 
         List<Long> userIds = logs.stream()
                 .map(SettingChangeLog::getChangedBy)

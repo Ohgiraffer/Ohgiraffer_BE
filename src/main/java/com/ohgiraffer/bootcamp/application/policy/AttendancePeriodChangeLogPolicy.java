@@ -12,7 +12,8 @@ import java.util.stream.Collectors;
 public class AttendancePeriodChangeLogPolicy {
     private AttendancePeriodChangeLogPolicy() {}
 
-    public static List<SettingChangeLog> diff(Long userId, List<AttendancePeriod> oldPeriods,
+    public static List<SettingChangeLog> diff(Long bootcampId, Long userId,
+                                              List<AttendancePeriod> oldPeriods,
                                               List<PeriodCommand> newPeriods) {
         List<SettingChangeLog> logs = new ArrayList<>();
 
@@ -25,11 +26,11 @@ public class AttendancePeriodChangeLogPolicy {
             String endField = p.periodNo() + "단위기간 종료일";
 
             if (old == null) {
-                logs.addAll(SettingChangePolicy.diff(userId, startField, null, p.periodStart()));
-                logs.addAll(SettingChangePolicy.diff(userId, endField, null, p.periodEnd()));
+                logs.addAll(SettingChangePolicy.diff(bootcampId, userId, startField, null, p.periodStart()));
+                logs.addAll(SettingChangePolicy.diff(bootcampId, userId, endField, null, p.periodEnd()));
             } else {
-                logs.addAll(SettingChangePolicy.diff(userId, startField, old.getPeriodStart(), p.periodStart()));
-                logs.addAll(SettingChangePolicy.diff(userId, endField, old.getPeriodEnd(), p.periodEnd()));
+                logs.addAll(SettingChangePolicy.diff(bootcampId, userId, startField, old.getPeriodStart(), p.periodStart()));
+                logs.addAll(SettingChangePolicy.diff(bootcampId, userId, endField, old.getPeriodEnd(), p.periodEnd()));
             }
         }
 
@@ -37,7 +38,7 @@ public class AttendancePeriodChangeLogPolicy {
             boolean stillExists = newPeriods.stream().anyMatch(p -> p.periodNo().equals(old.getPeriodNo()));
             if (!stillExists) {
                 logs.add(SettingChangeLog.create(
-                        userId, old.getPeriodNo() + "단위기간 삭제",
+                        bootcampId, userId, old.getPeriodNo() + "단위기간 삭제",
                         old.getPeriodStart() + " ~ " + old.getPeriodEnd(), null));
             }
         }

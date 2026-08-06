@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface SpringDataAttendancePeriodRepository extends JpaRepository<AttendancePeriodJpaEntity, Long> {
-    List<AttendancePeriodJpaEntity> findAllByBootcampId(Long bootcampId);
-
+    List<AttendancePeriodJpaEntity> findAllByBootcampIdOrderByPeriodNo(Long bootcampId);
     void deleteAllByBootcampId(Long bootcampId);
 }

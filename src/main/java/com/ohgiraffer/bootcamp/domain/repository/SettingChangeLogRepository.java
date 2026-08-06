@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface SettingChangeLogRepository {
     List<SettingChangeLog> saveAll(List<SettingChangeLog> logs);
-    List<SettingChangeLog> findAllByOrderByChangedAtDesc();
+    List<SettingChangeLog> findAllByBootcampIdOrderByChangedAtDesc(Long bootcampId);
 }

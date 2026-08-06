@@ -10,11 +10,12 @@ public class SettingChangePolicy {
 
     private SettingChangePolicy() {}
 
-    public static List<SettingChangeLog> diff(Long changedBy, String field, Object oldValue, Object newValue) {
+    public static List<SettingChangeLog> diff(Long bootcampId, Long changedBy, String field,
+                                              Object oldValue, Object newValue) {
         List<SettingChangeLog> logs = new ArrayList<>();
         if (!Objects.equals(oldValue, newValue)) {
             logs.add(SettingChangeLog.create(
-                    changedBy, field,
+                    bootcampId, changedBy, field,
                     oldValue == null ? null : oldValue.toString(),
                     newValue == null ? null : newValue.toString()
             ));

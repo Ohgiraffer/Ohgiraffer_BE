@@ -24,7 +24,7 @@ public class AttendancePeriodRepositoryAdapter implements AttendancePeriodReposi
     }
     @Override
     public List<AttendancePeriod> findAllByBootcampId(Long bootcampId) {
-        return springDataAttendancePeriodRepository.findAllByBootcampId(bootcampId).stream()
+        return springDataAttendancePeriodRepository.findAllByBootcampIdOrderByPeriodNo(bootcampId).stream()
                 .map(AttendancePeriodJpaEntity::toDomain)
                 .toList();
     }

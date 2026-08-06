@@ -5,5 +5,5 @@ import com.ohgiraffer.bootcamp.presentation.api.response.SettingChangeLogRespons
 
 public interface BootcampQueryUsecase {
     BootcampSettingsResponse getSettings(Long userId);
-    SettingChangeLogResponse getSettingChangeLogs();
+    SettingChangeLogResponse getSettingChangeLogs(Long userId);
 }
