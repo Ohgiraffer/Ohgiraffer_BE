@@ -61,9 +61,13 @@ public class UserQueryService implements UserQueryUsecase {
 
         // gid가 URL에 있으면 그 탭을 찾고 없으면 첫 번째 탭 사용
         GoogleSheetsClient.SheetInfo targetSheet = requestedGid
-                .flatMap(gid -> sheetInfos.stream()
+                .map(gid -> sheetInfos.stream()
                         .filter(info -> info.gid() == gid)
-                        .findFirst())
+                        .findFirst()
+                        .orElseThrow(() -> new BusinessException(
+                                ErrorCode.GOOGLE_SHEET_INVALID_URL,
+                                "URL에 해당하는 시트 탭을 찾을 수 없습니다."
+                        )))
                 .orElse(sheetInfos.get(0));
 
         List<String> sheetNames = sheetInfos.stream()

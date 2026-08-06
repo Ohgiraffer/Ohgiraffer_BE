@@ -53,7 +53,11 @@ public class SpreadsheetIdExtractor {
 
         Matcher matcher = GID_PATTERN.matcher(spreadsheetUrl);
         if (matcher.find()) {
-            return Optional.of(Long.parseLong(matcher.group(1)));
+            try {
+                return Optional.of(Long.parseLong(matcher.group(1)));
+            } catch (NumberFormatException e) {
+                throw new BusinessException(ErrorCode.GOOGLE_SHEET_INVALID_URL);
+            }
         }
         return Optional.empty();
     }

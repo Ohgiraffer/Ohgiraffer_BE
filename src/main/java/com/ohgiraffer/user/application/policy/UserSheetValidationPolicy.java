@@ -68,6 +68,7 @@ public class UserSheetValidationPolicy {
 
     private List<UserSheetRowResponse> markDuplicateEmails(List<UserSheetRowResponse> rows) {
         Map<String, Long> emailCounts = rows.stream()
+                .filter(r -> !isBlank(r.email()) && isValidEmail(r.email()))
                 .collect(Collectors.groupingBy(UserSheetRowResponse::email, Collectors.counting()));
 
         return rows.stream()
