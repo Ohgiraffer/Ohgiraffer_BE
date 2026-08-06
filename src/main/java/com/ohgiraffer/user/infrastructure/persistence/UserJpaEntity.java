@@ -105,4 +105,8 @@ public class UserJpaEntity {
                 needResetPw, notificationOn, joinDate, leaveDate, status, bootcampId
         );
     }
+
+    public void assignBootcamp(Long bootcampId) {
+        this.bootcampId = bootcampId;
+    }
 }

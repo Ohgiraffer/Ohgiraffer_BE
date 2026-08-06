@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface BootcampCommandUsecase {
-    Long register(String orgName, String proName, LocalDate startDate, LocalDate endDate);
+    Long register(Long userId, String orgName, String proName, LocalDate startDate, LocalDate endDate);
     void update(Long bootcampId, String orgName, String proName, LocalDate startDate, LocalDate endDate);
 
     void savePolicy(BootcampPolicyRequest request);

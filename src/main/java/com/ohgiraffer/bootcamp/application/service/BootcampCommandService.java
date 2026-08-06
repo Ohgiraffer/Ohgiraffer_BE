@@ -5,6 +5,7 @@ import com.ohgiraffer.bootcamp.application.policy.AttendancePeriodChangeLogPolic
 import com.ohgiraffer.bootcamp.application.policy.AttendancePeriodPolicy;
 import com.ohgiraffer.bootcamp.application.policy.BootcampInfoChangeLogPolicy;
 import com.ohgiraffer.bootcamp.application.port.GetUserBootcampIdPort;
+import com.ohgiraffer.bootcamp.application.port.SetBootcampIdPort;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampCommandUsecase;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePeriod;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePolicy;
@@ -37,12 +38,18 @@ public class BootcampCommandService implements BootcampCommandUsecase {
     private final AttendancePolicyRepository attendancePolicyRepository;
     private final GetUserBootcampIdPort getUserBootcampIdPort;
     private final SettingChangeLogRepository settingChangeLogRepository;
+    private final SetBootcampIdPort setBootcampIdPort;
 
     @Override
-    public Long register(String orgName, String proName, LocalDate startDate, LocalDate endDate) {
+    public Long register(Long userId, String orgName, String proName, LocalDate startDate, LocalDate endDate) {
         Bootcamp saved = bootcampRepository.save(Bootcamp.create(orgName, proName, startDate, endDate));
 
-        log.info("[register] 부트캠프 등록 완료 | bootcampId={}, orgName={}", saved.getId(), saved.getOrgName());
+        boolean assigned = setBootcampIdPort.assignBootcampIfAbsent(userId, saved.getId());
+        if (!assigned) {
+            throw new BusinessException(ErrorCode.BOOTCAMP_ALREADY_REGISTERED);
+        }
+
+        log.info("[register] 부트캠프 등록 완료 | bootcampId={}, orgName={}, userId={}", saved.getId(), saved.getOrgName(), userId);
 
         return saved.getId();
     }
