@@ -114,3 +114,10 @@ sendbird:
   app-id: ${SENDBIRD_APP_ID}
   api-token: ${SENDBIRD_API_TOKEN}
 
+# ===== AI =====
+ai:
+  gemini:
+    api-key: ${GEMINI_API_KEY}
+    model: ${GEMINI_MODEL:gemini-1.5-flash}
+    base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+    timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:90}
