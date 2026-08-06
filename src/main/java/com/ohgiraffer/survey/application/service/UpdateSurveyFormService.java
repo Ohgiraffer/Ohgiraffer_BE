@@ -9,6 +9,7 @@ import com.ohgiraffer.survey.application.usecase.UpdateSurveyFormUseCase;
 import com.ohgiraffer.survey.domain.model.SurveyForm;
 import com.ohgiraffer.survey.domain.model.SurveyFormStatus;
 import com.ohgiraffer.survey.domain.repository.SurveyFormRepository;
+import com.ohgiraffer.user.domain.model.Role;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -25,30 +26,42 @@ public class UpdateSurveyFormService
     private final SurveyFormPersistenceService persistenceService;
     private final GoogleFormPort googleFormPort;
     private final Clock clock;
+    private final SurveyFormAccessValidator accessValidator;
 
     public UpdateSurveyFormService(
             SurveyFormRepository surveyFormRepository,
             SurveyFormPersistenceService persistenceService,
             GoogleFormPort googleFormPort,
-            Clock clock
+            Clock clock,
+            SurveyFormAccessValidator accessValidator
     ) {
         this.surveyFormRepository = surveyFormRepository;
         this.persistenceService = persistenceService;
         this.googleFormPort = googleFormPort;
         this.clock = clock;
+        this.accessValidator = accessValidator;
     }
 
     @Override
     public UpdateSurveyFormResult update(
-            UpdateSurveyFormCommand command
+            UpdateSurveyFormCommand command,
+            Long requesterId,
+            Role requesterRole
     ) {
-        validateCommand(command);
+        validateCommand(
+                command
+        );
+
+        accessValidator.validateStaffAuthority(
+                requesterId,
+                requesterRole
+        );
 
         SurveyForm originalSurveyForm =
                 surveyFormRepository
                         .findById(command.surveyFormId())
-                        .orElseThrow(
-                                () -> new BusinessException(
+                        .orElseThrow(() ->
+                                new BusinessException(
                                         ErrorCode.SURVEY_FORM_NOT_FOUND
                                 )
                         );

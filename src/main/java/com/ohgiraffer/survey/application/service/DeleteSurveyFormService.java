@@ -7,6 +7,7 @@ import com.ohgiraffer.survey.application.usecase.DeleteSurveyFormUseCase;
 import com.ohgiraffer.survey.domain.model.SurveyForm;
 import com.ohgiraffer.survey.domain.model.SurveyFormStatus;
 import com.ohgiraffer.survey.domain.repository.SurveyFormRepository;
+import com.ohgiraffer.user.domain.model.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,18 +21,28 @@ public class DeleteSurveyFormService
     private final SurveyFormRepository surveyFormRepository;
     private final SurveyFormPersistenceService persistenceService;
     private final GoogleFormPort googleFormPort;
+    private final SurveyFormAccessValidator accessValidator;
 
     @Override
     public void delete(
-            Long surveyFormId
+            Long surveyFormId,
+            Long requesterId,
+            Role requesterRole
     ) {
-        validateSurveyFormId(surveyFormId);
+        validateSurveyFormId(
+                surveyFormId
+        );
+
+        accessValidator.validateStaffAuthority(
+                requesterId,
+                requesterRole
+        );
 
         SurveyForm surveyForm =
                 surveyFormRepository
                         .findById(surveyFormId)
-                        .orElseThrow(
-                                () -> new BusinessException(
+                        .orElseThrow(() ->
+                                new BusinessException(
                                         ErrorCode.SURVEY_FORM_NOT_FOUND
                                 )
                         );
@@ -40,22 +51,23 @@ public class DeleteSurveyFormService
         boolean movedToTrash = false;
 
         try {
-            /*
-             * 공개된 설문은 응답 확인 전에 먼저 신규 응답을 차단합니다.
-             * 이후 응답 여부를 다시 확인하여 확인과 삭제 사이의
-             * 경쟁 상태를 방지합니다.
-             */
             responsesBlocked =
-                    blockResponsesIfPublished(surveyForm);
+                    blockResponsesIfPublished(
+                            surveyForm
+                    );
 
-            validateNoResponses(surveyForm);
+            validateNoResponses(
+                    surveyForm
+            );
 
             movedToTrash =
                     googleFormPort.moveToTrash(
                             surveyForm.getGoogleFormId()
                     );
 
-            persistenceService.delete(surveyForm);
+            persistenceService.delete(
+                    surveyForm
+            );
 
         } catch (RuntimeException exception) {
             compensateGoogleForm(

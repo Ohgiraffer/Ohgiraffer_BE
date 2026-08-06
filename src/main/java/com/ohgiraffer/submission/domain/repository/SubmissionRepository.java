@@ -2,6 +2,8 @@ package com.ohgiraffer.submission.domain.repository;
 
 import com.ohgiraffer.submission.domain.model.Submission;
 
+import java.util.Optional;
+
 public interface SubmissionRepository {
 
     Submission save(Submission submission);
@@ -12,6 +14,16 @@ public interface SubmissionRepository {
     );
 
     boolean existsBySubmissionBoxIdAndTeamId(
+            Long submissionBoxId,
+            Long teamId
+    );
+
+    Optional<Submission> findBySubmissionBoxIdAndOwnerUserId(
+            Long submissionBoxId,
+            Long ownerUserId
+    );
+
+    Optional<Submission> findBySubmissionBoxIdAndTeamId(
             Long submissionBoxId,
             Long teamId
     );

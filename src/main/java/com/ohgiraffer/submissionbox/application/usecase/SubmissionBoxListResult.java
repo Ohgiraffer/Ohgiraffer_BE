@@ -16,12 +16,15 @@ public record SubmissionBoxListResult(
         int itemCount,
         SubmissionBoxStatus status,
         boolean acceptingSubmissions,
-        boolean lateSubmission
+        boolean lateSubmission,
+        Boolean submitted,
+        Long submissionId
 ) {
 
     public static SubmissionBoxListResult from(
             SubmissionBox submissionBox,
-            LocalDateTime now
+            LocalDateTime now,
+            Long submissionId
     ) {
         SubmissionBoxStatus status =
                 calculateStatus(submissionBox, now);
@@ -42,7 +45,32 @@ public record SubmissionBoxListResult(
                 submissionBox.getItems().size(),
                 status,
                 acceptingSubmissions,
-                lateSubmission
+                lateSubmission,
+                submissionId != null,
+                submissionId
+        );
+    }
+
+    public static SubmissionBoxListResult from(
+            SubmissionBox submissionBox,
+            LocalDateTime now
+    ) {
+        SubmissionBoxStatus status =
+                calculateStatus(submissionBox, now);
+
+        return new SubmissionBoxListResult(
+                submissionBox.getId(),
+                submissionBox.getProjectName(),
+                submissionBox.getTargetScope(),
+                submissionBox.getStartAt(),
+                submissionBox.getDueAt(),
+                submissionBox.getLatePolicy(),
+                submissionBox.getItems().size(),
+                status,
+                canSubmit(submissionBox, now),
+                now.isAfter(submissionBox.getDueAt()),
+                null,
+                null
         );
     }
 
