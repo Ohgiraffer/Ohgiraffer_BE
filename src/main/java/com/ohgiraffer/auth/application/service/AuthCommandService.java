@@ -2,6 +2,7 @@ package com.ohgiraffer.auth.application.service;
 
 import com.ohgiraffer.auth.application.policy.LogoutPolicy;
 import com.ohgiraffer.auth.application.usecase.AuthCommandUsecase;
+import com.ohgiraffer.auth.domain.event.UserLoggedInEvent;
 import com.ohgiraffer.auth.domain.model.LoginResult;
 import com.ohgiraffer.auth.presentation.api.request.LoginRequest;
 import com.ohgiraffer.auth.presentation.api.response.LoginResponse;
@@ -17,6 +18,7 @@ import com.ohgiraffer.user.domain.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -38,6 +40,7 @@ public class AuthCommandService implements AuthCommandUsecase {
     private final LogoutPolicy logoutPolicy;
     private final RefreshTokenService refreshTokenService;
     private final TokenBlacklistService tokenBlacklistService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public LoginResult login(LoginRequest request, String clientIp) {
@@ -67,6 +70,9 @@ public class AuthCommandService implements AuthCommandUsecase {
         }
 
         CustomUserPrincipal principal = (CustomUserPrincipal) authentication.getPrincipal();
+
+        eventPublisher.publishEvent(new UserLoggedInEvent(principal.getId(), user.getName(), user.getProfileImg()));
+
 
         String accessToken = jwtTokenProvider.createAccessToken(principal.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken(principal.getId());

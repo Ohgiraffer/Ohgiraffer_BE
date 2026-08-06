@@ -89,6 +89,7 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers("/chat/webhooks/sendbird").permitAll()
 
                         // 나머지는 인증 필요
                         .anyRequest().authenticated()

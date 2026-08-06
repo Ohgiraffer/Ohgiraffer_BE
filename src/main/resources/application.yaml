@@ -33,7 +33,11 @@ spring:
       - classpath:db/migration/be3
       - classpath:db/migration/be4
       - classpath:db/migration/be5
-      - classpath:db/seed
+      - classpath:db/seed/be1
+      - classpath:db/seed/be2
+      - classpath:db/seed/be3
+      - classpath:db/seed/be4
+      - classpath:db/seed/be5
 
   # ===== Redis (채팅 / 캐시 / 인증코드) =====
   data:

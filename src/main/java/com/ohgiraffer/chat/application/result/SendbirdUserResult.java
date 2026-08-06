@@ -8,7 +8,7 @@ package com.ohgiraffer.chat.application.result;
 
 public record SendbirdUserResult(
         Long userId,
-        String nickname,
+        String name,
         String profileUrl,
         boolean isOnline
 ) {

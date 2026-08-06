@@ -7,10 +7,16 @@ import com.ohgiraffer.chat.application.result.SendbirdUserStatus;
 
 import java.util.List;
 
+/*
+ * comment.
+ *  Sendbird Platform API 호출 계약
+ */
+
+
 public interface SendbirdApiPort {
 
     // 로그인 성공 시 샌드버드 유저 생성 또는 재사용 (채팅 유저 프로비저닝)
-    SendbirdUserProvisionResult provisionUser(Long userId, String nickname, String profileUrl);
+    SendbirdUserProvisionResult provisionUser(Long userId, String name, String profileUrl);
 
     // 채팅 상대 검색
     List<SendbirdUserResult> searchUsers(String query);
@@ -34,7 +40,7 @@ public interface SendbirdApiPort {
     void deleteMessage(String channelId, String sendbirdMessageId);
 
     // 스레드 답글 작성
-    SendbirdMessageResult sendReply(String channelId, Long parentMessageId, Long senderId, String content);
+    SendbirdMessageResult sendReply(String channelId, Long parentMessageId, Long senderId, String content, String attachmentUrl);
 
     // 온라인 상태 조회
     SendbirdUserStatus getUserStatus(Long userId);

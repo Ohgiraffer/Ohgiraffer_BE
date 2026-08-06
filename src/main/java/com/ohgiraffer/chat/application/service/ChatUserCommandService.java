@@ -22,16 +22,17 @@ public class ChatUserCommandService implements ChatUserCommandUseCase {
 
     private final SendbirdApiPort sendbirdApiPort;
 
+    // 로그인 후 채팅 진입 시 Sendbird 유저 프로비저닝 - 이미 등록된 유저면 SendbirdApiAdapter가 알아서 토큰만 재발급
     @Override
     public SendbirdUserProvisionResult provisionUser(ProvisionChatUserCommand command) {
         SendbirdUserProvisionResult result = sendbirdApiPort.provisionUser(
                 command.userId(),
-                command.nickname(),
+                command.name(),
                 command.profileUrl()
         );
 
-        log.info("[Chat] Sendbird 유저 프로비저닝 완료 | userId={}, nickname={}",
-                result.userId(), result.nickname());
+        log.info("[Chat] Sendbird 유저 프로비저닝 완료 | userId={}, name={}",
+                result.userId(), result.name());
 
         return result;
     }

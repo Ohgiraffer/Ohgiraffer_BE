@@ -2,10 +2,12 @@ package com.ohgiraffer.global.s3;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriUtils;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 @Component
@@ -15,6 +17,9 @@ public class S3UrlResolver {
 
     @Value("${cloud.aws.s3.bucket}")
     private String bucket;
+
+    @Value("${cloud.aws.region.static}")
+    private String region;
 
     private static final Duration URL_EXPIRATION = Duration.ofHours(24);
 
@@ -39,4 +44,21 @@ public class S3UrlResolver {
 
         return s3Presigner.presignGetObject(presignRequest).url().toString();
     }
+
+    // 만료 없는 고정 public URL 생성 - 버킷 정책으로 이미 공개된 prefix(chatAttachments 등) 전용
+    // 해당 prefix가 버킷 정책에서 public read로 열려있지 않으면 이 URL로는 접근 불가함
+    public String resolvePublicUrl(String key) {
+        if (key == null || key.isBlank()) {
+            return null;
+        }
+
+        // '/'는 경로 구분자로 유지하고, 각 세그먼트만 인코딩 (슬래시까지 인코딩되면 경로 구조가 깨짐)
+        String encodedKey = java.util.Arrays.stream(key.split("/", -1))
+                .map(segment -> UriUtils.encodePathSegment(segment, StandardCharsets.UTF_8))
+                .reduce((a, b) -> a + "/" + b)
+                .orElse("");
+
+        return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
+    }
+
 }

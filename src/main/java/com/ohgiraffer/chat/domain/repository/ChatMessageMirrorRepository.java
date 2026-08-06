@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /*
@@ -16,25 +17,35 @@ import java.util.Optional;
 
 public interface ChatMessageMirrorRepository {
 
+    // 신규 메시지 저장 / 기존 메시지 갱신(id 존재 시) 공용
     ChatMessageMirror save(ChatMessageMirror message);
 
     // 메시지 단건 조회 - 수정/삭제 시 본인 확인용
     Optional<ChatMessageMirror> findById(Long chatMessageId);
 
-    // 웹훅 멱등성 체크용 - 이미 처리된 이벤트인지 확인
+    // 웹훅 멱등성 체크용 - 이미 처리된 이벤트인지 확인 (sendbird_message_id UNIQUE 기준)
     Optional<ChatMessageMirror> findBySendbirdMessageId(String sendbirdMessageId);
     boolean existsBySendbirdMessageId(String sendbirdMessageId);
 
     // 채널 메시지 이력 조회, 삭제된 메시지는 제외
-    List<ChatMessageMirror> findByChannelIdOrderBySentAtDesc(String channelId);
+    Page<ChatMessageMirror> findByChannelIdOrderBySentAtDesc(String channelId, Pageable pageable);
 
-    // 스레드 답글 목록 조회
-    List<ChatMessageMirror> findByParentMessageId(Long parentMessageId);
+    // 스레드 답글 목록 조회 - 삭제된 답글 제외
+    Page<ChatMessageMirror> findByParentMessageId(Long parentMessageId, Pageable pageable);
 
-    // 원본 메시지의 답글 수 카운트
+    // 원본 메시지의 답글 수 카운트 - 삭제된 답글 제외
     long countByParentMessageId(Long parentMessageId);
 
     // 통합 검색 - 조건 조합은 Querydsl로 동적 처리
     Page<ChatMessageMirror> search(ChatMessageSearchCondition condition, Pageable pageable);
+
+    // 채널별 최신메시지 1건 일괄 조회 - 윈도우함수 네이티브쿼리로 DB에서 Greatest-N-per-Group 처리
+    Map<String, ChannelLastMessage> findLatestMessagesByChannelIds(List<String> channelIds);
+
+    // 채널의 최신 메시지 1건만 조회 (상세조회 최적화용) - 전체 이력 대신 단건만 가져옴
+    Optional<ChatMessageMirror> findTopByChannelIdOrderBySentAtDesc(String channelId);
+
+    // 즉시 flush하여 제약 위반 예외를 호출부에서 바로 잡을 수 있게 함 (경쟁상태 멱등 처리용)
+    ChatMessageMirror saveAndFlush(ChatMessageMirror message);
 
 }
