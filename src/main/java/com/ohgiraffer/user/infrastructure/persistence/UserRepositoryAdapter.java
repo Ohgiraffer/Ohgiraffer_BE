@@ -48,5 +48,18 @@ public class UserRepositoryAdapter implements UserRepository {
         return springDataUserRepository.existsByEmail(email);
     }
 
+    @Override
+    public void saveAll(List<User> users) {
+        List<UserJpaEntity> entities = users.stream()
+                .map(UserJpaEntity::fromDomain)
+                .toList();
+        springDataUserRepository.saveAll(entities);
+    }
+
+    @Override
+    public Optional<Long> findBootcampIdByUserId(Long userId) {
+        return springDataUserRepository.findBootcampIdByUserId(userId);
+    }
+
 
 }
