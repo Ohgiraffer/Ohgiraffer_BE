@@ -64,7 +64,7 @@ public class DownloadApprovalPdfService implements DownloadApprovalPdfUseCase {
 
         return value.strip()
                 .replaceAll(
-                        "[\\\\/:*?\"<>|]",
+                        "[\\\\/:*?\"<>|\\p{Cntrl}]",
                         "_"
                 );
     }
