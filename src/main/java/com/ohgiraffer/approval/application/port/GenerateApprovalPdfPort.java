@@ -4,5 +4,7 @@ import com.ohgiraffer.approval.application.query.LeavePdfData;
 
 public interface GenerateApprovalPdfPort {
 
-    String generateLeaveApplicationPdf(LeavePdfData data);
+    byte[] generateLeaveApplicationPdf(
+            LeavePdfData data
+    );
 }

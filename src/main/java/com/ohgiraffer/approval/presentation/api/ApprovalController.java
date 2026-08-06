@@ -7,6 +7,7 @@ import com.ohgiraffer.approval.application.query.ApprovalListItemResult;
 import com.ohgiraffer.approval.application.query.ApprovalListScope;
 import com.ohgiraffer.approval.application.query.GetApprovalHistoriesQuery;
 import com.ohgiraffer.approval.application.result.ApprovalHistoryListResult;
+import com.ohgiraffer.approval.application.result.ApprovalPdfResult;
 import com.ohgiraffer.approval.application.usecase.*;
 import com.ohgiraffer.approval.presentation.api.request.CreateLeaveApprovalRequest;
 import com.ohgiraffer.approval.presentation.api.request.CreatePurchaseApprovalRequest;
@@ -17,7 +18,10 @@ import com.ohgiraffer.approval.presentation.api.response.ApprovalListResponse;
 import com.ohgiraffer.approval.presentation.api.response.CreateApprovalResponse;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import jakarta.validation.Valid;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -44,6 +49,7 @@ public class ApprovalController {
     private final ApproveApprovalUseCase approveApprovalUseCase;
     private final RejectApprovalUseCase rejectApprovalUseCase;
     private final GetApprovalHistoriesUseCase getApprovalHistoriesUseCase;
+    private final DownloadApprovalPdfUseCase downloadApprovalPdfUseCase;
 
     public ApprovalController(
             CreateLeaveApprovalUseCase createLeaveApprovalUseCase,
@@ -53,7 +59,8 @@ public class ApprovalController {
             CheckApprovalUseCase checkApprovalUseCase,
             ApproveApprovalUseCase approveApprovalUseCase,
             RejectApprovalUseCase rejectApprovalUseCase,
-            GetApprovalHistoriesUseCase getApprovalHistoriesUseCase
+            GetApprovalHistoriesUseCase getApprovalHistoriesUseCase,
+            DownloadApprovalPdfUseCase downloadApprovalPdfUseCase
     ) {
         this.createLeaveApprovalUseCase = createLeaveApprovalUseCase;
         this.createPurchaseApprovalUseCase = createPurchaseApprovalUseCase;
@@ -63,6 +70,7 @@ public class ApprovalController {
         this.approveApprovalUseCase = approveApprovalUseCase;
         this.rejectApprovalUseCase = rejectApprovalUseCase;
         this.getApprovalHistoriesUseCase = getApprovalHistoriesUseCase;
+        this.downloadApprovalPdfUseCase = downloadApprovalPdfUseCase;
     }
 
     @PostMapping("/leave")
@@ -247,5 +255,39 @@ public class ApprovalController {
                         result
                 )
         );
+    }
+
+    @GetMapping("/{approvalId}/pdf")
+    @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<byte[]> downloadApprovalPdf(
+            @PathVariable Long approvalId,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        ApprovalPdfResult result =
+                downloadApprovalPdfUseCase.downloadPdf(
+                        principal.getId(),
+                        principal.getRole(),
+                        approvalId
+                );
+
+        ContentDisposition contentDisposition =
+                ContentDisposition.attachment()
+                        .filename(
+                                result.fileName(),
+                                StandardCharsets.UTF_8
+                        )
+                        .build();
+
+        return ResponseEntity.ok()
+                .contentType(
+                        MediaType.APPLICATION_PDF
+                )
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        contentDisposition.toString()
+                )
+                .body(
+                        result.content()
+                );
     }
 }
