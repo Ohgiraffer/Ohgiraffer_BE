@@ -1,5 +1,6 @@
 package com.ohgiraffer.chat.presentation.api.response;
 
+import com.ohgiraffer.chat.application.result.ChatMessageResult;
 import com.ohgiraffer.chat.application.result.SendbirdMessageResult;
 
 import java.time.Instant;
@@ -26,8 +27,8 @@ public record ChatMessageResponse(
         );
     }
 
-    // ChatMessageResponse에 추가 - ChatMessageResult(조회용) 기준 변환
-    public static ChatMessageResponse from(com.ohgiraffer.chat.application.result.ChatMessageResult result) {
+    // ChatMessageResult(조회용) 기준 변환
+    public static ChatMessageResponse from(ChatMessageResult result) {
         return new ChatMessageResponse(
                 result.sendbirdMessageId(), result.channelId(), result.senderId(),
                 result.content(), result.attachmentUrl(), null, result.sentAt()

@@ -5,14 +5,20 @@ import com.ohgiraffer.chat.application.port.SendbirdApiPort;
 import com.ohgiraffer.chat.application.result.SendbirdMessageResult;
 import com.ohgiraffer.chat.application.usecase.ChatMessageCommandUseCase;
 import com.ohgiraffer.chat.application.usecase.ChatMessageMirrorCommandUseCase;
+import com.ohgiraffer.chat.domain.model.ChatChannel;
 import com.ohgiraffer.chat.domain.model.ChatMessageMirror;
+import com.ohgiraffer.chat.domain.repository.ChatChannelMemberRepository;
+import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
 import com.ohgiraffer.chat.domain.repository.ChatMessageMirrorRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /*
  * comment.
@@ -29,11 +35,30 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
     private final SendbirdApiPort sendbirdApiPort;
     private final ChatMessageMirrorRepository chatMessageMirrorRepository;
     private final ChatMessageMirrorCommandUseCase chatMessageMirrorCommandUseCase;
+    // channelId 존재 검증용
+    private final ChatChannelRepository chatChannelRepository;
+    // 발신자 멤버십 검증용
+    private final ChatChannelMemberRepository chatChannelMemberRepository;
+    // mentionedUserIds 실존 검증용
+    private final UserRepository userRepository;
+
 
     // 메시지 전송 - Sendbird 반영 성공 후 즉시 미러링 저장 (parentMessageId=null이라 일반 메시지로 저장됨)
     @Override
     @Transactional
     public SendbirdMessageResult sendMessage(SendMessageCommand command) {
+
+        // channelId 실존 검증 + senderId 활성 멤버십 검증 (IDOR 방지, ChatAttachmentController와 동일 패턴)
+        ChatChannel channel = chatChannelRepository.findBySendbirdChannelUrl(command.channelId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_CHANNEL_NOT_FOUND));
+
+        if (!chatChannelMemberRepository.existsActiveMembership(channel.getId(), command.senderId())) {
+            throw new BusinessException(ErrorCode.CHAT_CHANNEL_NOT_FOUND);
+        }
+
+        // mentionedUserIds 실존 검증 (ChatChannelCommandService.validateUsersExist와 동일 패턴)
+        validateUsersExist(command.mentionedUserIds());
+
         SendbirdMessageResult result = sendbirdApiPort.sendMessage(
                 command.channelId(), command.senderId(), command.content(),
                 command.attachmentUrl(), command.mentionedUserIds()
@@ -49,6 +74,22 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
 
         return result;
     }
+
+    // mentionedUserIds 전원이 users 테이블에 실존하는지 검증, 하나라도 없으면 USER_NOT_FOUND로 즉시 차단
+    private void validateUsersExist(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        List<Long> notFound = userIds.stream()
+                .filter(userId -> userRepository.findById(userId).isEmpty())
+                .toList();
+
+        if (!notFound.isEmpty()) {
+            log.warn("[Chat] 존재하지 않는 mentionedUserId 포함 | notFound={}", notFound);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+    }
+
 
     // 메시지/답글 수정 - 본인 확인 + 이미 삭제된 메시지인지 검증 후 Sendbird 반영, 성공하면 미러링도 갱신
     @Override

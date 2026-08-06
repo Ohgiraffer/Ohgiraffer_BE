@@ -132,11 +132,14 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
             List<Map<String, Object>> users = (List<Map<String, Object>>) response.get("users");
 
             return users.stream()
+                    // user_id가 숫자가 아니면(우리 서비스 유저 아님) 제외
+                    .filter(this::isOurServiceUser)
                     .map(this::toUserResult)
                     .toList();
         } catch (RestClientException e) {
             throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 유저 검색 실패");
         }
+
     }
 
     // 채팅방 생성 - userIds 1명이면 1:1(is_distinct=true), 2명 이상이면 그룹
@@ -145,7 +148,8 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         Map<String, Object> body = new HashMap<>();
         body.put("user_ids", userIds.stream().map(String::valueOf).toList());
         body.put("nickname", name == null ? "" : name);
-        body.put("is_distinct", userIds.size() <= 1);
+        // 본인 포함 전체 인원 기준으로 변경
+        body.put("is_distinct", userIds.size() <= 2);
 
         try {
             Map<String, Object> response = restClient.post()
@@ -194,6 +198,16 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     @Override
     public SendbirdMessageResult sendMessage(String channelId, Long senderId, String content,
                                              String attachmentUrl, List<Long> mentionedUserIds) {
+
+        // content/attachmentUrl 정규화 - null, blank, "null"/"undefined" 같은 플레이스홀더 문자열을 전부 null로 통일
+        String normalizedContent = normalizeContent(content);
+        String normalizedUrl = normalizeAttachmentUrl(attachmentUrl);
+
+        // 정규화 후에도 둘 다 없으면 보낼 내용이 없는 것이므로 차단
+        if (normalizedContent == null && normalizedUrl == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "메시지 내용 또는 첨부파일 중 하나는 필요합니다.");
+        }
+
         // Sendbird 메시지 전송 요청 바디
         Map<String, Object> body = new HashMap<>();
         // 발신자 ID - Sendbird에 provision된 유저여야 함
@@ -202,7 +216,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         if (attachmentUrl != null) {
             body.put("message_type", "FILE");
             body.put("url", attachmentUrl);
-            body.put("message", content == null ? "" : content);
+            body.put("message", normalizedContent == null ? "" : normalizedContent);
         } else {
             // 첨부파일 없으면 일반 텍스트 타입
             body.put("message_type", "MESG");
@@ -234,6 +248,28 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
                     "Sendbird 메시지 전송 중 통신 오류 발생 (channelId=" + channelId
                             + ", senderId=" + senderId + "): " + e.getMessage());
         }
+    }
+
+    // null/빈 문자열/"null" 같은 무의미한 문자열/URL 형식 아닌 값은 전부 null로 통일
+    // "값 없음"을 나타내는 표현이 여러 개(null, "", "null") 존재하지 않도록 여기서 하나로 정규화
+    // isValidAttachmentUrl은 이 메서드로 통합, 별도로 남겨두지 않음
+    private String normalizeAttachmentUrl(String attachmentUrl) {
+        boolean isValid = attachmentUrl != null
+                && !attachmentUrl.isBlank()
+                && (attachmentUrl.startsWith("http://") || attachmentUrl.startsWith("https://"));
+        return isValid ? attachmentUrl : null;
+    }
+
+    // 메시지 본문 정규화. null/blank/"null","undefined" 같은 플레이스홀더 문자열은 전부 null(값 없음)로 통일
+    private String normalizeContent(String content) {
+        if (content == null || content.isBlank()) {
+            return null;
+        }
+        String trimmed = content.trim();
+        if (trimmed.equalsIgnoreCase("null") || trimmed.equalsIgnoreCase("undefined")) {
+            return null;
+        }
+        return content;
     }
 
     // 메시지 수정 - 본문 텍스트만 갱신
@@ -269,6 +305,14 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     @Override
     public SendbirdMessageResult sendReply(String channelId, Long parentMessageId, Long senderId,
                                            String content, String attachmentUrl) {
+
+        String normalizedContent = normalizeContent(content);
+        String normalizedUrl = normalizeAttachmentUrl(attachmentUrl);
+
+        if (normalizedContent == null && normalizedUrl == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "메시지 내용 또는 첨부파일 중 하나는 필요합니다.");
+        }
+
         Map<String, Object> body = new HashMap<>();
         body.put("user_id", String.valueOf(senderId));
         body.put("parent_message_id", parentMessageId);
@@ -277,7 +321,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         if (attachmentUrl != null) {
             body.put("message_type", "FILE");
             body.put("url", attachmentUrl);
-            body.put("message", content == null ? "" : content);
+            body.put("message", normalizedContent == null ? "" : normalizedContent);
         } else {
             body.put("message_type", "MESG");
             body.put("message", content);
@@ -344,7 +388,7 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     private SendbirdUserResult toUserResult(Map<String, Object> raw) {
         return new SendbirdUserResult(
                 Long.parseLong((String) raw.get("user_id")),
-                (String) raw.get("name"),
+                (String) raw.get("nickname"),
                 (String) raw.get("profile_url"),
                 Boolean.TRUE.equals(raw.get("is_online"))
         );
@@ -369,6 +413,20 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
                 (String) raw.get("type"),
                 Instant.ofEpochMilli(createdAtMillis)
         );
+    }
+
+    // user_id가 숫자 형식인지 확인 - 숫자가 아니면 우리 서비스에서 provision한 유저가 아니므로 검색 결과에서 제외
+    private boolean isOurServiceUser(Map<String, Object> raw) {
+        Object userId = raw.get("user_id");
+        if (userId == null) {
+            return false;
+        }
+        try {
+            Long.parseLong((String) userId);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
 }

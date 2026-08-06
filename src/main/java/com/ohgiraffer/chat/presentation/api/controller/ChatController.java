@@ -10,7 +10,10 @@ import com.ohgiraffer.chat.domain.model.ChatChannel;
 import com.ohgiraffer.chat.domain.repository.ChatMessageSearchCondition;
 import com.ohgiraffer.chat.presentation.api.request.*;
 import com.ohgiraffer.chat.presentation.api.response.*;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,14 +40,17 @@ public class ChatController {
 
     // 채팅방 생성
     @PostMapping("/channels")
-    public ResponseEntity<ChannelResponse> createChannel(@RequestBody CreateChannelRequest request) {
+    public ResponseEntity<ChannelResponse> createChannel(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Valid @RequestBody CreateChannelRequest request
+    ) {
         ChatChannelResult result = chatChannelCommandUseCase.createChannel(
-                new CreateChannelCommand(request.userIds(), request.name())
+                new CreateChannelCommand(principal.getId(), request.userIds(), request.name())
         );
         return ResponseEntity.ok(ChannelResponse.from(result));
     }
 
-    // 참여 채팅방 목록 조회 - type 없으면 전체, direct/group이면 필터
+    // 참여 채팅방 목록 조회 - type 없으면 전체, dm/group이면 필터
     @GetMapping("/channels")
     public ResponseEntity<List<ChatChannelListItemResponse>> getChannelList(
             @AuthenticationPrincipal CustomUserPrincipal principal,
@@ -60,6 +66,18 @@ public class ChatController {
                 .toList();
 
         return ResponseEntity.ok(result);
+    }
+
+    // type 파라미터가 dm/group 둘 다 아니면 400으로 명확히 차단 (기존엔 IllegalArgumentException이 그대로 튀어 500이 났음)
+    private ChatChannel.ChannelType parseChannelType(String type) {
+        if (type == null) {
+            return null;
+        }
+        try {
+            return ChatChannel.ChannelType.valueOf(type.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "type은 dm 또는 group만 가능합니다.");
+        }
     }
 
     // 메시지 전송(파일·멘션 포함)
@@ -81,8 +99,8 @@ public class ChatController {
     @PostMapping("/messages/{messageId}/replies")
     public ResponseEntity<ChatMessageResponse> reply(
             @AuthenticationPrincipal CustomUserPrincipal principal,
-            @PathVariable Long messageId,
-            @RequestBody ReplyRequest request
+            @PathVariable String messageId,
+            @Valid @RequestBody ReplyRequest request
     ) {
         SendbirdMessageResult result = chatReplyCommandUseCase.reply(
                 new ReplyToMessageCommand(request.channelId(), messageId, principal.getId(),
@@ -96,7 +114,7 @@ public class ChatController {
     public ResponseEntity<Void> updateMessage(
             @AuthenticationPrincipal CustomUserPrincipal principal,
             @PathVariable String messageId,
-            @RequestBody UpdateMessageRequest request
+            @Valid @RequestBody UpdateMessageRequest request
     ) {
         chatMessageCommandUseCase.updateMessage(
                 new UpdateMessageCommand(request.channelId(), messageId, principal.getId(), request.content())
@@ -154,7 +172,7 @@ public class ChatController {
     @GetMapping("/messages/{messageId}/replies")
     public ResponseEntity<List<ChatMessageResponse>> getThreadReplies(
             @AuthenticationPrincipal CustomUserPrincipal principal,
-            @PathVariable Long messageId,
+            @PathVariable String messageId,
             @PageableDefault(size = 20) Pageable pageable
     ) {
         List<ChatMessageResponse> result = chatMessageMirrorQueryUseCase
@@ -183,25 +201,6 @@ public class ChatController {
                 .map(ChatMessageResponse::from);
 
         return ResponseEntity.ok(result);
-    }
-
-    // 팀변경 채널 자동반영 (시스템 호출)
-    @PatchMapping("/channels/team-change")
-    public ResponseEntity<Void> updateChannelMembers(@RequestBody UpdateChannelMembersRequest request) {
-        chatChannelCommandUseCase.updateChannelMembers(
-                new UpdateChannelMembersCommand(request.channelId(), request.addUserIds(), request.removeUserIds())
-        );
-        return ResponseEntity.noContent().build();
-    }
-
-    // 팀 채팅방 자동 생성 (시스템 호출)
-    @PostMapping("/teams/{teamId}/channel")
-    public ResponseEntity<ChannelResponse> createTeamChannel(
-            @PathVariable Long teamId,
-            @RequestBody CreateTeamChannelRequest request
-    ) {
-        ChatChannelResult result = chatChannelCommandUseCase.createTeamChannel(teamId, request.memberUserIds());
-        return ResponseEntity.ok(ChannelResponse.from(result));
     }
 
     // 온라인 상태 조회
