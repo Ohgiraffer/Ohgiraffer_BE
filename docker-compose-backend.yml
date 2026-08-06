@@ -1,0 +1,48 @@
+services:
+  app:
+    image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+    container_name: campflow-app
+    ports:
+      - "8080:8080"
+    environment:
+      MYSQL_HOST: ${DB_HOST}
+      MYSQL_PORT: ${DB_PORT:-3306}
+      MYSQL_DATABASE: ${DB_NAME:-campflow}
+      MYSQL_USERNAME: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-this-is-ohgiraffer-campflow-jwt-secret-key-for-hs256-authentication}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      SENDBIRD_APP_ID: ${SENDBIRD_APP_ID:-}
+      SENDBIRD_API_TOKEN: ${SENDBIRD_API_TOKEN:-}
+      GOOGLE_SHEETS_ENABLED: ${GOOGLE_SHEETS_ENABLED:-false}
+      GOOGLE_FORMS_ENABLED: ${GOOGLE_FORMS_ENABLED:-false}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: campflow-redis
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis-data:
