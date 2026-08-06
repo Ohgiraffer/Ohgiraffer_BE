@@ -79,10 +79,12 @@ public class ChatWebhookService {
     @SuppressWarnings("unchecked")
     private void mirrorUpdated(Map<String, Object> raw) {
         Map<String, Object> payloadMsg = (Map<String, Object>) raw.get("payload");
+        Map<String, Object> file = (Map<String, Object>) payloadMsg.get("file");
 
         MirrorMessageUpdatedCommand command = new MirrorMessageUpdatedCommand(
                 String.valueOf(payloadMsg.get("message_id")),
-                (String) payloadMsg.get("message")
+                (String) payloadMsg.get("message"),
+                file != null ? (String) file.get("url") : null
         );
 
         chatMessageMirrorCommandUseCase.mirrorUpdated(command);

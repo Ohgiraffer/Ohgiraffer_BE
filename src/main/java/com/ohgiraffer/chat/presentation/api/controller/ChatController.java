@@ -56,8 +56,7 @@ public class ChatController {
             @AuthenticationPrincipal CustomUserPrincipal principal,
             @RequestParam(required = false) String type
     ) {
-        ChatChannel.ChannelType channelType = type == null ? null
-                : ChatChannel.ChannelType.valueOf(type.toUpperCase());
+        ChatChannel.ChannelType channelType = parseChannelType(type);
 
         List<ChatChannelListItemResponse> result = chatChannelQueryUseCase
                 .getChannelList(principal.getId(), channelType)
@@ -117,7 +116,8 @@ public class ChatController {
             @Valid @RequestBody UpdateMessageRequest request
     ) {
         chatMessageCommandUseCase.updateMessage(
-                new UpdateMessageCommand(request.channelId(), messageId, principal.getId(), request.content())
+                new UpdateMessageCommand(request.channelId(), messageId, principal.getId(),
+                        request.content(), request.attachmentUrl())
         );
         return ResponseEntity.noContent().build();
     }

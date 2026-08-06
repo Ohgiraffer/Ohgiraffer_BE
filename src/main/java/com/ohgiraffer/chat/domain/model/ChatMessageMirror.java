@@ -18,7 +18,7 @@ public class ChatMessageMirror {
     private final Long parentMessageId;
     private final Long senderId;
     private String content;
-    private final String attachmentUrl;
+    private String attachmentUrl;
     private final String attachmentType;
     private final Instant sentAt;
     private LocalDateTime deletedAt;
@@ -67,8 +67,9 @@ public class ChatMessageMirror {
         );
     }
 
-    public void edit(String newContent) {
+    public void edit(String newContent, String newAttachmentUrl) {
         this.content = newContent;
+        this.attachmentUrl = newAttachmentUrl;
         this.isEdited = true;
     }
 

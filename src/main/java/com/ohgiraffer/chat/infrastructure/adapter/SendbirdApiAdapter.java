@@ -213,14 +213,14 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         // 발신자 ID - Sendbird에 provision된 유저여야 함
         body.put("user_id", String.valueOf(senderId));
 
-        if (attachmentUrl != null) {
+        if (normalizedUrl != null) {
             body.put("message_type", "FILE");
-            body.put("url", attachmentUrl);
+            body.put("url", normalizedUrl);
             body.put("message", normalizedContent == null ? "" : normalizedContent);
         } else {
             // 첨부파일 없으면 일반 텍스트 타입
             body.put("message_type", "MESG");
-            body.put("message", content);
+            body.put("message", normalizedContent);
         }
 
         if (mentionedUserIds != null && !mentionedUserIds.isEmpty()) {
@@ -272,23 +272,41 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         return content;
     }
 
-    // 메시지 수정 - 본문 텍스트만 갱신
+    // 메시지 / 스레드 답글 수정 - 본문 텍스트만 갱신
+    // 텍스트뿐 아니라 첨부파일도 갱신 가능, attachmentUrl 유무로 FILE<->MESG 전환도 처리
+    // hasAttachmentUrlField: 클라이언트가 attachmentUrl 필드 자체를 보냈는지(null vs 미전달 구분)는 이미 서비스 계층에서 정규화되어 넘어옴
     @Override
-    public void updateMessage(String channelId, String sendbirdMessageId, String newContent) {
-        Map<String, Object> body = Map.of("message", newContent);
+    public void updateMessage(String channelId, String sendbirdMessageId, String messageType, String newContent, String newAttachmentUrl) {
+        Map<String, Object> body = new HashMap<>();
+        // 원래 타입과 동일한 값이어야 함
+        body.put("message_type", messageType);
+        body.put("message", newContent == null ? "" : newContent);
+
+        // FILE 타입이면 url도 항상 같이 보냄(교체 또는 기존 값 유지)
+        if ("FILE".equals(messageType)) {
+            body.put("url", newAttachmentUrl);
+        }
+
+        log.info("[updateMessage] Sendbird 요청 channelId={}, messageId={}, body={}", channelId, sendbirdMessageId, body);
 
         try {
-            restClient.put()
+            Map<String, Object> response = restClient.put()
                     .uri("/group_channels/{channel_url}/messages/{message_id}", channelId, sendbirdMessageId)
                     .body(body)
                     .retrieve()
-                    .toBodilessEntity();
+                    .body(Map.class);
+
+            log.info("[updateMessage] Sendbird 응답={}", response);
+        } catch (HttpClientErrorException e) {
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR,
+                    "Sendbird 메시지 수정 실패 (status=" + e.getStatusCode()
+                            + ", body=" + e.getResponseBodyAsString() + ")");
         } catch (RestClientException e) {
             throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 메시지 수정 실패");
         }
     }
 
-    // 메시지 삭제
+    // 메시지 / 스레드 답글 삭제
     @Override
     public void deleteMessage(String channelId, String sendbirdMessageId) {
         try {
@@ -318,13 +336,13 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         body.put("parent_message_id", parentMessageId);
 
         // sendMessage와 동일하게 첨부파일 유무로 message_type 분기
-        if (attachmentUrl != null) {
+        if (normalizedUrl != null) {
             body.put("message_type", "FILE");
-            body.put("url", attachmentUrl);
+            body.put("url", normalizedUrl);
             body.put("message", normalizedContent == null ? "" : normalizedContent);
         } else {
             body.put("message_type", "MESG");
-            body.put("message", content);
+            body.put("message", normalizedContent);
         }
 
         try {

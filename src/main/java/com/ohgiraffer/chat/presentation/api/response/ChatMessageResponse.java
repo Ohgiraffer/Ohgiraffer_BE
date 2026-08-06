@@ -31,7 +31,8 @@ public record ChatMessageResponse(
     public static ChatMessageResponse from(ChatMessageResult result) {
         return new ChatMessageResponse(
                 result.sendbirdMessageId(), result.channelId(), result.senderId(),
-                result.content(), result.attachmentUrl(), null, result.sentAt()
+                result.content(), result.attachmentUrl(),
+                result.attachmentUrl() != null ? "FILE" : "MESG", result.sentAt()
         );
     }
 
