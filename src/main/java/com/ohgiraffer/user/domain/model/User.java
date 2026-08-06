@@ -1,5 +1,7 @@
 package com.ohgiraffer.user.domain.model;
 
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.Getter;
 
 import java.time.LocalDate;
@@ -93,5 +95,14 @@ public class User {
     // 프로필 이미지 삭제
     public void deleteProfileImg() {
         this.profileImg = null;
+    }
+
+    // 훈련생 자퇴 or 제적 처리
+    public void dismiss(UserStatus newStatus) {
+        if (this.status != UserStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.USER_ALREADY_INACTIVE);
+        }
+        this.status = newStatus;
+        this.leaveDate = LocalDate.now();
     }
 }

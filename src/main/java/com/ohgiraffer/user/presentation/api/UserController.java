@@ -5,6 +5,7 @@ import com.ohgiraffer.security.user.CustomUserPrincipal;
 import com.ohgiraffer.user.application.usecase.UserCommandUsecase;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import com.ohgiraffer.user.presentation.api.request.SetPasswordRequest;
+import com.ohgiraffer.user.presentation.api.request.UserStatusChangeRequest;
 import com.ohgiraffer.user.presentation.api.response.SetAlarmResponse;
 import com.ohgiraffer.user.presentation.api.response.SetPasswordResponse;
 import com.ohgiraffer.user.presentation.api.response.SetProfileImgResponse;
@@ -17,6 +18,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -108,5 +110,25 @@ public class UserController {
     public ResponseEntity<UserResponse> getMe(
             @AuthenticationPrincipal CustomUserPrincipal principal) {
         return ResponseEntity.ok(userQueryUsecase.getMyInfo(principal.getId()));
+    }
+
+    @Operation(summary = "사용자 상태 변경(제적/자퇴)", description = "관리자가 특정 사용자의 상태를 제적 또는 자퇴로 변경합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "변경 성공"),
+            @ApiResponse(responseCode = "400", description = "허용되지 않는 상태값"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "이미 재원 상태가 아님"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PreAuthorize("hasRole('MANAGER')")
+    @PatchMapping("/{userId}/status")
+    public ResponseEntity<Void> changeUserStatus(
+            @PathVariable Long userId,
+            @Valid @RequestBody UserStatusChangeRequest request
+    ) {
+        userCommandUsecase.changeUserStatus(userId, request.status());
+        return ResponseEntity.ok().build();
     }
 }
