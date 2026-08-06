@@ -53,10 +53,10 @@ public class ChatMessageMirrorQueryService implements ChatMessageMirrorQueryUseC
 
     // 스레드 답글 조회 - 부모 메시지가 속한 채널의 멤버십 검증 후 답글 목록 반환
     @Override
-    public Page<ChatMessageResult> getThreadReplies(Long parentMessageId, Long principalId, Pageable pageable) {
+    public Page<ChatMessageResult> getThreadReplies(String parentSendbirdMessageId, Long principalId, Pageable pageable) {
 
         // 부모 메시지 조회 - 이 메시지가 속한 채널 기준으로 멤버십 검증할 것이므로 먼저 필요
-        ChatMessageMirror parent = chatMessageMirrorRepository.findById(parentMessageId)
+        ChatMessageMirror parent = chatMessageMirrorRepository.findBySendbirdMessageId(parentSendbirdMessageId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
         ChatChannel channel = chatChannelRepository.findBySendbirdChannelUrl(parent.getChannelId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_CHANNEL_NOT_FOUND));
@@ -66,8 +66,10 @@ public class ChatMessageMirrorQueryService implements ChatMessageMirrorQueryUseC
             throw new BusinessException(ErrorCode.CHAT_CHANNEL_NOT_FOUND);
         }
 
-        return chatMessageMirrorRepository.findByParentMessageId(parentMessageId, pageable)
+        // 답글 저장 시 자기참조 FK로 내부 PK를 썼으므로, 조회도 내부 PK(parent.getId()) 기준
+        return chatMessageMirrorRepository.findByParentMessageId(parent.getId(), pageable)
                 .map(ChatMessageResult::from);
+
     }
 
     // 메시지 통합 검색 - channelId 지정 시 해당 채널 멤버십 검증, 미지정 시 내 채널로만 범위 강제 제한

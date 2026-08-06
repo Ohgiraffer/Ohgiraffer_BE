@@ -70,7 +70,7 @@ public class ChatMessageMirrorCommandService implements ChatMessageMirrorCommand
         ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageId(command.sendbirdMessageId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
-        message.edit(command.content());
+        message.edit(command.content(), command.attachmentUrl());
         chatMessageMirrorRepository.save(message);
 
         log.info("[Chat] 메시지 수정 미러링 완료 | sendbirdMessageId={}", command.sendbirdMessageId());

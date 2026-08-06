@@ -34,7 +34,7 @@ public interface SendbirdApiPort {
     SendbirdMessageResult sendMessage(String channelId, Long senderId, String content, String attachmentUrl, List<Long> mentionedUserIds);
 
     // 메시지 수정
-    void updateMessage(String channelId, String sendbirdMessageId, String newContent);
+    void updateMessage(String channelId, String sendbirdMessageId, String messageType, String newContent, String newAttachmentUrl);
 
     // 메시지 삭제
     void deleteMessage(String channelId, String sendbirdMessageId);
