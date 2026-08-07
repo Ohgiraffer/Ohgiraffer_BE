@@ -12,6 +12,9 @@ import com.ohgiraffer.submission.domain.model.Submission;
 import com.ohgiraffer.submission.domain.repository.StudentTeamRepository;
 import com.ohgiraffer.submission.domain.repository.SubmissionRepository;
 import com.ohgiraffer.submissionbox.domain.model.SubmissionTargetScope;
+import com.ohgiraffer.submissionbox.application.port.SubmissionTeamTargetPort;
+import com.ohgiraffer.user.domain.model.UserStatus;
+import com.ohgiraffer.user.domain.repository.UserRepository;
 import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.submissionbox.application.usecase.SubmissionStatusResult;
 
@@ -35,35 +38,74 @@ public class QuerySubmissionBoxService
     private final SubmissionBoxRepository submissionBoxRepository;
     private final SubmissionRepository submissionRepository;
     private final StudentTeamRepository studentTeamRepository;
+    private final UserRepository userRepository;
+    private final SubmissionTeamTargetPort submissionTeamTargetPort;
 
     @Override
     public List<SubmissionBoxListResult> getSubmissionBoxes(
             Long userId,
             Role role
     ) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now =
+                LocalDateTime.now();
 
-        return submissionBoxRepository.findAll()
-                .stream()
+        List<SubmissionBox> submissionBoxes =
+                submissionBoxRepository.findAll();
+
+        if (role == Role.STUDENT) {
+            return submissionBoxes.stream()
+                    .map(submissionBox -> {
+                        Long submissionId =
+                                findStudentSubmissionId(
+                                        submissionBox,
+                                        userId
+                                );
+
+                        return SubmissionBoxListResult
+                                .forStudent(
+                                        submissionBox,
+                                        now,
+                                        submissionId
+                                );
+                    })
+                    .toList();
+        }
+
+        int individualTargetCount =
+                userRepository
+                        .findAllByRoleAndStatus(
+                                Role.STUDENT,
+                                UserStatus.ACTIVE
+                        )
+                        .size();
+
+        int teamTargetCount =
+                submissionTeamTargetPort
+                        .findActiveTeams()
+                        .size();
+
+        return submissionBoxes.stream()
                 .map(submissionBox -> {
-                    if (role != Role.STUDENT) {
-                        return SubmissionBoxListResult.from(
-                                submissionBox,
-                                now
-                        );
-                    }
+                    int submittedCount =
+                            submissionRepository
+                                    .findAllBySubmissionBoxId(
+                                            submissionBox.getId()
+                                    )
+                                    .size();
 
-                    Long submissionId =
-                            findStudentSubmissionId(
+                    int targetCount =
+                            submissionBox.getTargetScope()
+                                    == SubmissionTargetScope.TEAM
+                                    ? teamTargetCount
+                                    : individualTargetCount;
+
+                    return SubmissionBoxListResult
+                            .forStaff(
                                     submissionBox,
-                                    userId
+                                    now,
+                                    submittedCount,
+                                    targetCount
                             );
-
-                    return SubmissionBoxListResult.from(
-                            submissionBox,
-                            now,
-                            submissionId
-                    );
                 })
                 .toList();
     }

@@ -12,6 +12,7 @@ import com.ohgiraffer.submissionbox.domain.model.SubmissionTargetScope;
 import com.ohgiraffer.submissionbox.domain.repository.SubmissionBoxRepository;
 import com.ohgiraffer.submissionbox.application.port.SubmissionTeamTargetPort;
 import com.ohgiraffer.submissionbox.application.port.TeamSubmissionTarget;
+import com.ohgiraffer.submissionbox.application.usecase.SubmissionBoxItemResult;
 import com.ohgiraffer.user.domain.model.UserStatus;
 import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.domain.model.User;
@@ -73,6 +74,17 @@ public class QuerySubmissionStatusService
                                                 .SUBMISSION_BOX_NOT_FOUND
                                 )
                         );
+
+        List<SubmissionBoxItemResult> itemResults =
+                submissionBox.getItems()
+                        .stream()
+                        .map(SubmissionBoxItemResult::from)
+                        .sorted(
+                                Comparator.comparingInt(
+                                        SubmissionBoxItemResult::sortOrder
+                                )
+                        )
+                        .toList();
 
         List<Submission> submissions =
                 submissionRepository
@@ -170,6 +182,7 @@ public class QuerySubmissionStatusService
                 submissionBox.getLatePolicy(),
                 submittedCount,
                 allResults.size(),
+                itemResults,
                 page,
                 size,
                 filteredCount,

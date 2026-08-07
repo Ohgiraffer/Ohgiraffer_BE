@@ -18,7 +18,8 @@ public record SurveyFormDetailResponse(
         String responseUrl,
         Long createdBy,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        SurveySheetLinkResponse sheetLink
 ) {
 
     public static SurveyFormDetailResponse from(
@@ -34,7 +35,10 @@ public record SurveyFormDetailResponse(
                 result.responseUrl(),
                 result.createdBy(),
                 result.createdAt(),
-                result.updatedAt()
+                result.updatedAt(),
+                SurveySheetLinkResponse.from(
+                        result.sheetLink()
+                )
         );
     }
 }
