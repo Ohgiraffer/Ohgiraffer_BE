@@ -137,13 +137,67 @@ public class QuerySurveyFormService implements GetSurveyFormListUseCase, GetSurv
 
     @Override
     public SurveyFormDetailResult getSurveyForm(
-            Long surveyFormId
+            Long surveyFormId,
+            Long requesterId,
+            Role requesterRole
     ) {
+        validateSurveyDetailAuthority(
+                requesterId,
+                requesterRole
+        );
+
         SurveyForm surveyForm =
-                findSurveyForm(surveyFormId);
+                findSurveyForm(
+                        surveyFormId
+                );
+
+        if (requesterRole == Role.STUDENT) {
+            validateStudentSurveyAccess(
+                    surveyForm
+            );
+        }
 
         return SurveyFormDetailResult.from(
-                surveyForm
+                surveyForm,
+                requesterRole
+        );
+    }
+
+    private void validateStudentSurveyAccess(
+            SurveyForm surveyForm
+    ) {
+        boolean published =
+                surveyForm.getStatus()
+                        == SurveyFormStatus.PUBLISHED;
+
+        boolean beforeOrAtDeadline =
+                !LocalDateTime.now()
+                        .isAfter(
+                                surveyForm.getDueAt()
+                        );
+
+        if (!published || !beforeOrAtDeadline) {
+            throw new BusinessException(
+                    ErrorCode.SURVEY_FORM_ACCESS_DENIED
+            );
+        }
+    }
+
+    private void validateSurveyDetailAuthority(
+            Long requesterId,
+            Role requesterRole
+    ) {
+        if (requesterRole == Role.STUDENT) {
+            accessValidator.validateStudentAuthority(
+                    requesterId,
+                    requesterRole
+            );
+            return;
+        }
+
+        accessValidator.validateStaffAuthority(
+                requesterId,
+                requesterRole
         );
     }
 

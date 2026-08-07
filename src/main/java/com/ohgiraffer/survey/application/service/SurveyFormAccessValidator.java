@@ -27,4 +27,17 @@ public class SurveyFormAccessValidator {
             );
         }
     }
+
+    public void validateStudentAuthority(
+            Long requesterId,
+            Role requesterRole
+    ) {
+        if (requesterId == null
+                || requesterId <= 0
+                || requesterRole != Role.STUDENT) {
+            throw new BusinessException(
+                    ErrorCode.SURVEY_FORM_ACCESS_DENIED
+            );
+        }
+    }
 }
