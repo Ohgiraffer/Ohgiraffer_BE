@@ -11,6 +11,7 @@ import com.ohgiraffer.survey.domain.model.sheet.SurveySheetLink;
 import com.ohgiraffer.survey.domain.repository.SurveyFormRepository;
 import com.ohgiraffer.user.domain.model.Role;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,14 +32,10 @@ public class SaveSurveySheetLinkService
             SurveySheetPort surveySheetPort,
             SurveySheetLinkPersistenceService persistenceService
     ) {
-        this.surveyFormRepository =
-                surveyFormRepository;
-        this.accessValidator =
-                accessValidator;
-        this.surveySheetPort =
-                surveySheetPort;
-        this.persistenceService =
-                persistenceService;
+        this.surveyFormRepository = surveyFormRepository;
+        this.accessValidator = accessValidator;
+        this.surveySheetPort = surveySheetPort;
+        this.persistenceService = persistenceService;
     }
 
     @Override
@@ -89,6 +86,27 @@ public class SaveSurveySheetLinkService
                 submittedAtColumn
         );
 
+        SurveySheetLink savedSurveySheetLink =
+                saveConnection(
+                        command,
+                        connectionInfo,
+                        respondentColumn,
+                        submittedAtColumn,
+                        requesterId
+                );
+
+        return SaveSurveySheetLinkResult.from(
+                savedSurveySheetLink
+        );
+    }
+
+    private SurveySheetLink saveConnection(
+            SaveSurveySheetLinkCommand command,
+            SurveySheetConnectionInfo connectionInfo,
+            String respondentColumn,
+            String submittedAtColumn,
+            Long requesterId
+    ) {
         SurveySheetLink surveySheetLink =
                 createOrChangeConnection(
                         command,
@@ -98,13 +116,63 @@ public class SaveSurveySheetLinkService
                         requesterId
                 );
 
-        SurveySheetLink savedSurveySheetLink =
-                persistenceService.save(
-                        surveySheetLink
+        try {
+            return persistenceService.save(
+                    surveySheetLink
+            );
+        } catch (DataIntegrityViolationException exception) {
+            /*
+             * 같은 설문에 대한 최초 연결 요청이 동시에 실행되면
+             * 두 요청 모두 기존 연결이 없다고 조회할 수 있습니다.
+             *
+             * DB의 survey_form_id UNIQUE 제약조건으로 인해
+             * 한 요청만 INSERT에 성공하고 다른 요청은 실패합니다.
+             *
+             * 실패한 요청은 방금 생성된 기존 연결을 다시 조회한 후
+             * 연결 변경으로 한 번만 재시도합니다.
+             */
+            return retryAsConnectionChange(
+                    command,
+                    connectionInfo,
+                    respondentColumn,
+                    submittedAtColumn,
+                    requesterId,
+                    exception
+            );
+        }
+    }
+
+    private SurveySheetLink retryAsConnectionChange(
+            SaveSurveySheetLinkCommand command,
+            SurveySheetConnectionInfo connectionInfo,
+            String respondentColumn,
+            String submittedAtColumn,
+            Long requesterId,
+            DataIntegrityViolationException originalException
+    ) {
+        SurveySheetLink existingLink =
+                persistenceService
+                        .findBySurveyFormId(
+                                command.surveyFormId()
+                        )
+                        .orElseThrow(
+                                () -> originalException
+                        );
+
+        SurveySheetLink changedLink =
+                existingLink.changeConnection(
+                        command.spreadsheetUrl().trim(),
+                        connectionInfo.spreadsheetId(),
+                        connectionInfo.spreadsheetTitle(),
+                        connectionInfo.selectedSheetGid(),
+                        connectionInfo.selectedSheetName(),
+                        respondentColumn,
+                        submittedAtColumn,
+                        requesterId
                 );
 
-        return SaveSurveySheetLinkResult.from(
-                savedSurveySheetLink
+        return persistenceService.save(
+                changedLink
         );
     }
 

@@ -9,10 +9,9 @@ import com.ohgiraffer.survey.application.usecase.ValidateSurveySheetUseCase;
 import com.ohgiraffer.survey.domain.repository.SurveyFormRepository;
 import com.ohgiraffer.user.domain.model.Role;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional(readOnly = true)
+
 public class ValidateSurveySheetService
         implements ValidateSurveySheetUseCase {
 

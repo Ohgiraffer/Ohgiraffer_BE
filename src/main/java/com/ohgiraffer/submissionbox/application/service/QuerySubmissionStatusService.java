@@ -263,7 +263,7 @@ public class QuerySubmissionStatusService
 
         return normalized;
     }
-    
+
 
     private boolean matchesKeyword(
             SubmissionStatusResult result,

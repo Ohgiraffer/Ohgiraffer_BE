@@ -283,16 +283,37 @@ public class GoogleSheetsClient {
                 return Collections.emptyList();
             }
 
-            List<SheetInfo> result = new ArrayList<>();
+            List<SheetInfo> result =
+                    new ArrayList<>();
+
             for (Sheet sheet : spreadsheet.getSheets()) {
-                if (sheet.getProperties() != null
-                        && sheet.getProperties().getTitle() != null) {
-                    result.add(new SheetInfo(
-                            sheet.getProperties().getTitle(),
-                            sheet.getProperties().getSheetId()
-                    ));
+                if (sheet == null
+                        || sheet.getProperties() == null) {
+                    continue;
                 }
+
+                String sheetName =
+                        sheet.getProperties()
+                                .getTitle();
+
+                Integer sheetId =
+                        sheet.getProperties()
+                                .getSheetId();
+
+                if (sheetName == null
+                        || sheetName.isBlank()
+                        || sheetId == null) {
+                    continue;
+                }
+
+                result.add(
+                        new SheetInfo(
+                                sheetName.trim(),
+                                sheetId.longValue()
+                        )
+                );
             }
+
             return result;
 
         } catch (GoogleJsonResponseException exception) {
