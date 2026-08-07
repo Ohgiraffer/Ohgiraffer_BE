@@ -2,6 +2,7 @@ package com.ohgiraffer.team.infrastructure.persistence;
 
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
+import com.ohgiraffer.team.domain.model.UnassignedStudent;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -19,7 +20,7 @@ public class TeamRepositoryAdapter
 
     @Override
     public List<Team> findAll() {
-        return springDataTeamRepository.findAll()
+        return springDataTeamRepository.findAllByOrderByIdAsc()
                 .stream()
                 .map(TeamJpaEntity::toDomain)
                 .toList();
@@ -60,6 +61,27 @@ public class TeamRepositoryAdapter
                 .toList();
     }
 
+    @Override
+    public boolean existsActiveMember(
+            Long teamId,
+            Long userId
+    ) {
+        return springDataTeamMemberRepository
+                .existsByTeamIdAndUserIdAndLeftAtIsNull(
+                        teamId,
+                        userId
+                );
+    }
+
+    @Override
+    public List<UnassignedStudent> findUnassignedStudents() {
+        return springDataTeamMemberRepository
+                .findUnassignedStudents()
+                .stream()
+                .map(this::toUnassignedStudent)
+                .toList();
+    }
+
     private TeamMember toTeamMember(
             TeamMemberProjection projection
     ) {
@@ -71,6 +93,16 @@ public class TeamRepositoryAdapter
                 projection.getEmail(),
                 projection.getJoinedAt(),
                 projection.getLeftAt()
+        );
+    }
+
+    private UnassignedStudent toUnassignedStudent(
+            UnassignedStudentProjection projection
+    ) {
+        return UnassignedStudent.restore(
+                projection.getUserId(),
+                projection.getName(),
+                projection.getEmail()
         );
     }
 }

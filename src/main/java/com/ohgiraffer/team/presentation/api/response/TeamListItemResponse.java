@@ -1,6 +1,7 @@
 package com.ohgiraffer.team.presentation.api.response;
 
 import com.ohgiraffer.team.application.usecase.TeamListResult;
+import com.ohgiraffer.user.domain.model.Role;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -16,7 +17,8 @@ public record TeamListItemResponse(
 ) {
 
     public static TeamListItemResponse from(
-            TeamListResult result
+            TeamListResult result,
+            Role requesterRole
     ) {
         return new TeamListItemResponse(
                 result.teamId(),
@@ -27,7 +29,12 @@ public record TeamListItemResponse(
                 result.memberCount(),
                 result.members()
                         .stream()
-                        .map(TeamMemberResponse::from)
+                        .map(member ->
+                                TeamMemberResponse.from(
+                                        member,
+                                        requesterRole
+                                )
+                        )
                         .toList()
         );
     }

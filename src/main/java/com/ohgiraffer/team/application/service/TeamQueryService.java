@@ -4,9 +4,11 @@ import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.team.application.usecase.GetTeamDetailUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamListUseCase;
+import com.ohgiraffer.team.application.usecase.GetUnassignedStudentUseCase;
 import com.ohgiraffer.team.application.usecase.TeamDetailResult;
 import com.ohgiraffer.team.application.usecase.TeamListResult;
 import com.ohgiraffer.team.application.usecase.TeamMemberResult;
+import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
@@ -23,7 +25,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class TeamQueryService
-        implements GetTeamListUseCase, GetTeamDetailUseCase {
+        implements GetTeamListUseCase,
+        GetTeamDetailUseCase,
+        GetUnassignedStudentUseCase {
 
     private final TeamRepository teamRepository;
 
@@ -90,10 +94,15 @@ public class TeamQueryService
                 teamRepository.findById(teamId)
                         .orElseThrow(() ->
                                 new BusinessException(
-                                        ErrorCode.RESOURCE_NOT_FOUND,
-                                        "팀을 찾을 수 없습니다."
+                                        ErrorCode.TEAM_NOT_FOUND
                                 )
                         );
+
+        validateTeamDetailAccess(
+                teamId,
+                requesterId,
+                requesterRole
+        );
 
         List<TeamMemberResult> members =
                 teamRepository.findActiveMembersByTeamId(teamId)
@@ -107,6 +116,26 @@ public class TeamQueryService
         );
     }
 
+    @Override
+    public List<UnassignedStudentResult> getUnassignedStudents(
+            Long requesterId,
+            Role requesterRole
+    ) {
+        validateRequester(
+                requesterId,
+                requesterRole
+        );
+
+        validateManagerAccess(
+                requesterRole
+        );
+
+        return teamRepository.findUnassignedStudents()
+                .stream()
+                .map(UnassignedStudentResult::from)
+                .toList();
+    }
+
     private void validateRequester(
             Long requesterId,
             Role requesterRole
@@ -115,7 +144,41 @@ public class TeamQueryService
                 || requesterId <= 0
                 || requesterRole == null) {
             throw new BusinessException(
-                    ErrorCode.FORBIDDEN
+                    ErrorCode.TEAM_ACCESS_DENIED
+            );
+        }
+    }
+
+    private void validateManagerAccess(
+            Role requesterRole
+    ) {
+        if (requesterRole != Role.INSTRUCTOR
+                && requesterRole != Role.MANAGER) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_ACCESS_DENIED
+            );
+        }
+    }
+
+    private void validateTeamDetailAccess(
+            Long teamId,
+            Long requesterId,
+            Role requesterRole
+    ) {
+        if (requesterRole == Role.INSTRUCTOR
+                || requesterRole == Role.MANAGER) {
+            return;
+        }
+
+        boolean activeMember =
+                teamRepository.existsActiveMember(
+                        teamId,
+                        requesterId
+                );
+
+        if (!activeMember) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_ACCESS_DENIED
             );
         }
     }

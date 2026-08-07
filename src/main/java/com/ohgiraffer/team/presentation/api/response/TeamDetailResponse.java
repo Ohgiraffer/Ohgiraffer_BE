@@ -1,6 +1,7 @@
 package com.ohgiraffer.team.presentation.api.response;
 
 import com.ohgiraffer.team.application.usecase.TeamDetailResult;
+import com.ohgiraffer.user.domain.model.Role;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,7 +21,8 @@ public record TeamDetailResponse(
 ) {
 
     public static TeamDetailResponse from(
-            TeamDetailResult result
+            TeamDetailResult result,
+            Role requesterRole
     ) {
         return new TeamDetailResponse(
                 result.teamId(),
@@ -29,13 +31,35 @@ public record TeamDetailResponse(
                 result.endDate(),
                 result.dissolved(),
                 result.dissolvedAt(),
-                result.sendbirdChannelUrl(),
-                result.notionPageId(),
+                maskExternalIdentifier(
+                        result.sendbirdChannelUrl(),
+                        requesterRole
+                ),
+                maskExternalIdentifier(
+                        result.notionPageId(),
+                        requesterRole
+                ),
                 result.memberCount(),
                 result.members()
                         .stream()
-                        .map(TeamMemberResponse::from)
+                        .map(member ->
+                                TeamMemberResponse.from(
+                                        member,
+                                        requesterRole
+                                )
+                        )
                         .toList()
         );
+    }
+
+    private static String maskExternalIdentifier(
+            String value,
+            Role requesterRole
+    ) {
+        if (requesterRole == Role.STUDENT) {
+            return null;
+        }
+
+        return value;
     }
 }
