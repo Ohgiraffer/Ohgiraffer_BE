@@ -24,6 +24,7 @@ public class S3UrlResolver {
 
     private static final Duration URL_EXPIRATION = Duration.ofHours(24);
     private static final Duration DOWNLOAD_URL_EXPIRATION = Duration.ofMinutes(5);
+    private static final Duration PREVIEW_URL_EXPIRATION = Duration.ofMinutes(5);
 
     public S3UrlResolver(S3Presigner s3Presigner) {
         this.s3Presigner = s3Presigner;
@@ -92,6 +93,71 @@ public class S3UrlResolver {
 
         return s3Presigner
                 .presignGetObject(presignRequest)
+                .url()
+                .toString();
+    }
+
+    public String resolvePreview(
+            String key,
+            String originalFileName,
+            String contentType
+    ) {
+        if (key == null || key.isBlank()) {
+            throw new IllegalArgumentException(
+                    "S3 key가 필요합니다."
+            );
+        }
+
+        if (originalFileName == null
+                || originalFileName.isBlank()) {
+            throw new IllegalArgumentException(
+                    "원본 파일명이 필요합니다."
+            );
+        }
+
+        if (contentType == null
+                || contentType.isBlank()) {
+            throw new IllegalArgumentException(
+                    "콘텐츠 유형이 필요합니다."
+            );
+        }
+
+        String contentDisposition =
+                ContentDisposition
+                        .inline()
+                        .filename(
+                                originalFileName,
+                                StandardCharsets.UTF_8
+                        )
+                        .build()
+                        .toString();
+
+        GetObjectRequest getObjectRequest =
+                GetObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(key)
+                        .responseContentType(
+                                contentType
+                        )
+                        .responseContentDisposition(
+                                contentDisposition
+                        )
+                        .build();
+
+        GetObjectPresignRequest presignRequest =
+                GetObjectPresignRequest.builder()
+                        .signatureDuration(
+                                PREVIEW_URL_EXPIRATION
+                        )
+                        .getObjectRequest(
+                                getObjectRequest
+                        )
+                        .build();
+
+        return s3Presigner
+                .presignGetObject(
+                        presignRequest
+                )
                 .url()
                 .toString();
     }
