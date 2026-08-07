@@ -1,6 +1,5 @@
 package com.ohgiraffer.user.presentation.api;
 
-import com.ohgiraffer.chat.application.usecase.ChatUserQueryUseCase;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import com.ohgiraffer.user.application.usecase.UserCommandUsecase;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;

@@ -22,6 +22,15 @@ import com.ohgiraffer.survey.application.usecase.GetSurveyResponsesUseCase;
 import com.ohgiraffer.survey.application.usecase.SurveyResponseDetailResult;
 import com.ohgiraffer.survey.application.usecase.SurveyResponseStatus;
 import com.ohgiraffer.survey.presentation.api.response.SurveyResponseDetailResponse;
+import com.ohgiraffer.survey.application.usecase.SurveySheetValidationResult;
+import com.ohgiraffer.survey.application.usecase.ValidateSurveySheetUseCase;
+import com.ohgiraffer.survey.presentation.api.request.ValidateSurveySheetRequest;
+import com.ohgiraffer.survey.presentation.api.response.SurveySheetValidationResponse;
+import com.ohgiraffer.survey.application.command.SaveSurveySheetLinkCommand;
+import com.ohgiraffer.survey.application.usecase.SaveSurveySheetLinkResult;
+import com.ohgiraffer.survey.application.usecase.SaveSurveySheetLinkUseCase;
+import com.ohgiraffer.survey.presentation.api.request.SaveSurveySheetLinkRequest;
+import com.ohgiraffer.survey.presentation.api.response.SaveSurveySheetLinkResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -37,6 +46,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PutMapping;
 
 import java.util.List;
 
@@ -51,6 +61,8 @@ public class SurveyFormController {
     private final UpdateSurveyFormUseCase updateSurveyFormUseCase;
     private final DeleteSurveyFormUseCase deleteSurveyFormUseCase;
     private final GetSurveyResponsesUseCase getSurveyResponsesUseCase;
+    private final ValidateSurveySheetUseCase validateSurveySheetUseCase;
+    private final SaveSurveySheetLinkUseCase saveSurveySheetLinkUseCase;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
@@ -213,6 +225,75 @@ public class SurveyFormController {
 
         return ResponseEntity.ok(
                 SurveyResponseDetailResponse.from(
+                        result
+                )
+        );
+    }
+
+    @PostMapping("/{surveyFormId}/sheet-link/validate")
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR')"
+    )
+    public ResponseEntity<SurveySheetValidationResponse>
+    validateSurveySheet(
+            @PathVariable Long surveyFormId,
+
+            @Valid
+            @RequestBody
+            ValidateSurveySheetRequest request,
+
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
+    ) {
+        SurveySheetValidationResult result =
+                validateSurveySheetUseCase.validate(
+                        surveyFormId,
+                        request.spreadsheetUrl(),
+                        request.sheetName(),
+                        principal.getId(),
+                        principal.getRole()
+                );
+
+        return ResponseEntity.ok(
+                SurveySheetValidationResponse.from(
+                        result
+                )
+        );
+    }
+
+    @PutMapping("/{surveyFormId}/sheet-link")
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR')"
+    )
+    public ResponseEntity<SaveSurveySheetLinkResponse>
+    saveSurveySheetLink(
+            @PathVariable Long surveyFormId,
+
+            @Valid
+            @RequestBody
+            SaveSurveySheetLinkRequest request,
+
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
+    ) {
+        SaveSurveySheetLinkCommand command =
+                new SaveSurveySheetLinkCommand(
+                        surveyFormId,
+                        request.spreadsheetUrl(),
+                        request.sheetName(),
+                        request.respondentColumn(),
+                        request.submittedAtColumn()
+                );
+
+        SaveSurveySheetLinkResult result =
+                saveSurveySheetLinkUseCase.save(
+                        command,
+                        principal.getId(),
+                        principal.getRole()
+                );
+
+        return ResponseEntity.ok(
+                SaveSurveySheetLinkResponse.from(
                         result
                 )
         );
