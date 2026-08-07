@@ -111,6 +111,6 @@ public class ValidateSurveySheetService
             return null;
         }
 
-        return requestedSheetName.trim();
+        return requestedSheetName;
     }
 }

@@ -113,13 +113,10 @@ public class GoogleSurveySheetAdapter
     ) {
         if (requestedSheetName != null
                 && !requestedSheetName.isBlank()) {
-            String normalizedSheetName =
-                    requestedSheetName.trim();
-
             return sheetInfos.stream()
                     .filter(sheetInfo ->
                             sheetInfo.name()
-                                    .equals(normalizedSheetName)
+                                    .equals(requestedSheetName)
                     )
                     .findFirst()
                     .orElseThrow(

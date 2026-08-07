@@ -60,7 +60,7 @@ public class SaveSurveySheetLinkService
         SurveySheetConnectionInfo connectionInfo =
                 surveySheetPort.inspect(
                         command.spreadsheetUrl().trim(),
-                        command.sheetName().trim()
+                        command.sheetName()
                 );
 
         String respondentColumn =
