@@ -12,12 +12,14 @@ import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
 import com.ohgiraffer.chat.domain.repository.ChatMessageMirrorRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /*
  * comment.
@@ -34,6 +36,7 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
     private final ChatChannelRepository chatChannelRepository;
     private final ChatChannelMemberRepository chatChannelMemberRepository;
     private final ChatMessageMirrorRepository chatMessageMirrorRepository;
+    private final UserRepository userRepository;
 
     // 그룹 채팅방 상세 조회 - 참여자 목록 + 최신메시지 기준 읽음 인원 계산
     @Override
@@ -54,9 +57,18 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
         List<ChatChannelMember> chatChannelMembers =
                 chatChannelMemberRepository.findAllByChatChannelIdAndLeftAtIsNull(channel.getId());
 
+        // 멤버 이름 벌크 조회 - 멤버마다 findById 반복 호출(N+1) 대신 id 모아서 한 번에 조회
+        List<Long> memberUserIds = chatChannelMembers.stream()
+                .map(ChatChannelMember::getUserId)
+                .toList();
+        Map<Long, String> memberNamesById = userRepository.findByIdIn(memberUserIds).stream()
+                .collect(Collectors.toMap(user -> user.getId(), user -> user.getName()));
+
         List<ChatChannelDetailResult.ChatChannelMemberResult> members = chatChannelMembers.stream()
                 .map(m -> new ChatChannelDetailResult.ChatChannelMemberResult(
-                        m.getUserId(), m.getJoinedAt(), m.getLastReadMessageId(),
+                        m.getUserId(),
+                        memberNamesById.get(m.getUserId()),
+                        m.getJoinedAt(), m.getLastReadMessageId(),
                         isRead(m.getLastReadMessageId(), latestMessageId)
                 ))
                 .toList();

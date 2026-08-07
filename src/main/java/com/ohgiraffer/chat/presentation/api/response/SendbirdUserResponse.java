@@ -11,11 +11,12 @@ public record SendbirdUserResponse(
         Long userId,
         String name,
         String profileUrl,
-        boolean isOnline
+        boolean isOnline,
+        String role
 ) {
 
     public static SendbirdUserResponse from(SendbirdUserResult result) {
-        return new SendbirdUserResponse(result.userId(), result.name(), result.profileUrl(), result.isOnline());
+        return new SendbirdUserResponse(result.userId(), result.name(), result.profileUrl(), result.isOnline(), result.role());
     }
 
 }

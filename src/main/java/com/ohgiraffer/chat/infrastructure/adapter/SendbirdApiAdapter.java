@@ -122,10 +122,14 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     public List<SendbirdUserResult> searchUsers(String query) {
         try {
             Map<String, Object> response = restClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/users")
-                            .queryParam("nickname_startswith", query)
-                            .build())
+                    .uri(uriBuilder -> {
+                        java.net.URI uri = uriBuilder
+                                .path("/users")
+                                .queryParam("nickname_startswith", query)
+                                .build();
+                        log.info("[searchUsers] Sendbird 요청 URI={}", uri); // 실제 인코딩된 URL 확인용
+                        return uri;
+                    })
                     .retrieve()
                     .body(Map.class);
 
@@ -415,12 +419,14 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     }
 
     // Sendbird 유저 검색 응답(raw Map)을 SendbirdUserResult로 변환
+    // role은 Sendbird 원본 데이터에 없는 우리 서비스 도메인 개념이라 여기선 null, ChatUserQueryService에서 채움
     private SendbirdUserResult toUserResult(Map<String, Object> raw) {
         return new SendbirdUserResult(
                 Long.parseLong((String) raw.get("user_id")),
                 (String) raw.get("nickname"),
                 (String) raw.get("profile_url"),
-                Boolean.TRUE.equals(raw.get("is_online"))
+                Boolean.TRUE.equals(raw.get("is_online")),
+                null
         );
     }
 
