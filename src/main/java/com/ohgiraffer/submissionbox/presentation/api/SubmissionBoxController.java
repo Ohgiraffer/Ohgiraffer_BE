@@ -16,6 +16,10 @@ import com.ohgiraffer.submissionbox.application.command.UpdateSubmissionBoxComma
 import com.ohgiraffer.submissionbox.application.usecase.UpdateSubmissionBoxUseCase;
 import com.ohgiraffer.submissionbox.presentation.api.request.UpdateSubmissionBoxRequest;
 import com.ohgiraffer.submissionbox.application.usecase.DeleteSubmissionBoxUseCase;
+import com.ohgiraffer.submissionbox.application.usecase.GetSubmissionStatusUseCase;
+import com.ohgiraffer.submissionbox.application.usecase.SubmissionStatusDetailResult;
+import com.ohgiraffer.submissionbox.presentation.api.response.SubmissionStatusDetailResponse;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.DeleteMapping;
 
 import jakarta.validation.Valid;
@@ -45,6 +49,7 @@ public class SubmissionBoxController {
     private final GetSubmissionBoxDetailUseCase getSubmissionBoxDetailUseCase;
     private final UpdateSubmissionBoxUseCase updateSubmissionBoxUseCase;
     private final DeleteSubmissionBoxUseCase deleteSubmissionBoxUseCase;
+    private final GetSubmissionStatusUseCase getSubmissionStatusUseCase;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
@@ -141,5 +146,50 @@ public class SubmissionBoxController {
         );
 
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{submissionBoxId}/submissions")
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR')"
+    )
+    public ResponseEntity<SubmissionStatusDetailResponse>
+    getSubmissionStatus(
+            @PathVariable Long submissionBoxId,
+            @RequestParam(
+                    required = false
+            )
+            String keyword,
+            @RequestParam(
+                    defaultValue = "ALL"
+            )
+            String status,
+            @RequestParam(
+                    defaultValue = "0"
+            )
+            int page,
+            @RequestParam(
+                    defaultValue = "20"
+            )
+            int size,
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
+    ) {
+        SubmissionStatusDetailResult result =
+                getSubmissionStatusUseCase
+                        .getSubmissionStatus(
+                                submissionBoxId,
+                                principal.getId(),
+                                principal.getRole(),
+                                keyword,
+                                status,
+                                page,
+                                size
+                        );
+
+        return ResponseEntity.ok(
+                SubmissionStatusDetailResponse.from(
+                        result
+                )
+        );
     }
 }
