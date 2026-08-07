@@ -7,4 +7,6 @@ public interface UserQueryUsecase {
     UserResponse getMyInfo(Long userId);
 
     UserSheetConnectionResponse checkSheetConnection(String spreadsheetUrl);
+
+    Long getBootcampId(Long userId);
 }

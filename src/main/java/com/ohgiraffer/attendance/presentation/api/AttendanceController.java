@@ -2,6 +2,7 @@ package com.ohgiraffer.attendance.presentation.api;
 
 import com.ohgiraffer.attendance.application.usecase.AttendanceQueryUsecase;
 import com.ohgiraffer.attendance.presentation.api.response.MonthlyAttendanceResponse;
+import com.ohgiraffer.attendance.presentation.api.response.AttendanceSummaryResponse;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -42,5 +43,18 @@ public class AttendanceController {
     ) {
         YearMonth yearMonth = YearMonth.of(year, month);
         return ResponseEntity.ok(attendanceQueryUsecase.getMonthlyAttendance(principal.getId(), yearMonth));
+    }
+
+    @Operation(summary = "누적 출결 통계 조회", description = "로그인한 사용자 본인의 부트캠프 시작일부터 오늘까지 누적 출결 통계, 출석률, 위험도를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/summary")
+    public ResponseEntity<AttendanceSummaryResponse> getMySummary(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        return ResponseEntity.ok(attendanceQueryUsecase.getSummary(principal.getId()));
     }
 }

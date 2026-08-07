@@ -3,10 +3,9 @@ package com.ohgiraffer.bootcamp.application.service;
 import com.ohgiraffer.bootcamp.application.port.GetUserBootcampIdPort;
 import com.ohgiraffer.bootcamp.application.port.GetUserNamesPort;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
-import com.ohgiraffer.bootcamp.domain.model.AttendancePeriod;
-import com.ohgiraffer.bootcamp.domain.model.Bootcamp;
-import com.ohgiraffer.bootcamp.domain.model.SettingChangeLog;
+import com.ohgiraffer.bootcamp.domain.model.*;
 import com.ohgiraffer.bootcamp.domain.repository.AttendancePeriodRepository;
+import com.ohgiraffer.bootcamp.domain.repository.AttendancePolicyRepository;
 import com.ohgiraffer.bootcamp.domain.repository.BootcampRepository;
 import com.ohgiraffer.bootcamp.domain.repository.SettingChangeLogRepository;
 import com.ohgiraffer.bootcamp.presentation.api.response.BootcampSettingsResponse;
@@ -29,6 +28,7 @@ public class BootcampQueryService implements BootcampQueryUsecase {
 
     private final BootcampRepository bootcampRepository;
     private final AttendancePeriodRepository attendancePeriodRepository;
+    private final AttendancePolicyRepository attendancePolicyRepository;
     private final GetUserBootcampIdPort getUserBootcampIdPort;
     private final SettingChangeLogRepository settingChangeLogRepository;
     private final GetUserNamesPort getUserNamesPort;
@@ -78,5 +78,24 @@ public class BootcampQueryService implements BootcampQueryUsecase {
                 .toList();
 
         return new SettingChangeLogResponse(items);
+    }
+
+    @Override
+    public BootcampPeriodResult getPeriod(Long bootcampId) {
+        Bootcamp bootcamp = bootcampRepository.findById(bootcampId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+        return new BootcampPeriodResult(bootcamp.getStartDate(), bootcamp.getEndDate());
+    }
+
+    @Override
+    public AttendancePolicyResult getPolicy(Long bootcampId) {
+        AttendancePolicy policy = attendancePolicyRepository.findByBootcampId(bootcampId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+
+        return new AttendancePolicyResult(
+                policy.getCautionThresholdPct(),
+                policy.getWarningThresholdPct(),
+                policy.getPeriodExpulsionPct()
+        );
     }
 }

@@ -95,6 +95,12 @@ public class UserQueryService implements UserQueryUsecase {
         );
     }
 
+    @Override
+    public Long getBootcampId(Long userId) {
+        return userRepository.findBootcampIdByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+    }
+
     private String buildFullRange(String sheetName) {
         String escaped = sheetName.replace("'", "''");
         return "'" + escaped + "'!A1:D1000";

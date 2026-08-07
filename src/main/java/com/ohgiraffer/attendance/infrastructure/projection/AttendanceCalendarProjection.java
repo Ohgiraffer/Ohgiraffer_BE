@@ -1,4 +1,4 @@
-package com.ohgiraffer.attendance.infrastructure.persistence;
+package com.ohgiraffer.attendance.infrastructure.projection;
 
 import com.ohgiraffer.attendance.domain.model.AttendanceStatus;
 
