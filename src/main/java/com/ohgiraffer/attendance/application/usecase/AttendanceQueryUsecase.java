@@ -9,4 +9,6 @@ public interface AttendanceQueryUsecase {
     MonthlyAttendanceResponse getMonthlyAttendance(Long userId, YearMonth yearMonth);
     AttendanceSummaryResponse getSummary(Long userId);
 
+    MonthlyAttendanceResponse getMonthlyAttendanceForManager(Long requesterId, Long targetUserId, YearMonth yearMonth);
+    AttendanceSummaryResponse getSummaryForManager(Long requesterId, Long targetUserId);
 }

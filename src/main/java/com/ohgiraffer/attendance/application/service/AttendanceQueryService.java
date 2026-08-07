@@ -1,5 +1,6 @@
 package com.ohgiraffer.attendance.application.service;
 
+import com.ohgiraffer.attendance.application.policy.BootcampAccessPolicy;
 import com.ohgiraffer.attendance.application.usecase.AttendanceQueryUsecase;
 import com.ohgiraffer.attendance.domain.model.*;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
@@ -36,11 +37,35 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
     private final AttendanceRepository attendanceRepository;
     private final UserQueryUsecase userQueryUsecase;
     private final BootcampQueryUsecase bootcampQueryUsecase;
+    private final BootcampAccessPolicy bootcampAccessPolicy;
 
     private static final int LATE_EARLY_LEAVE_CONVERSION_COUNT = 3;
 
     @Override
     public MonthlyAttendanceResponse getMonthlyAttendance(Long userId, YearMonth yearMonth) {
+        return buildMonthlyAttendance(userId, yearMonth);
+    }
+
+    @Override
+    public MonthlyAttendanceResponse getMonthlyAttendanceForManager(Long requesterId, Long targetUserId, YearMonth yearMonth) {
+        bootcampAccessPolicy.validateSameBootcamp(requesterId, targetUserId);
+        return buildMonthlyAttendance(targetUserId, yearMonth);
+    }
+
+    @Override
+    @Cacheable(value = "attendanceSummary", key = "#userId + '-' + T(java.time.LocalDate).now()")
+    public AttendanceSummaryResponse getSummary(Long userId) {
+        return buildSummary(userId);
+    }
+
+    @Override
+    @Cacheable(value = "attendanceSummary", key = "#targetUserId + '-' + T(java.time.LocalDate).now()")
+    public AttendanceSummaryResponse getSummaryForManager(Long requesterId, Long targetUserId) {
+        bootcampAccessPolicy.validateSameBootcamp(requesterId, targetUserId);
+        return buildSummary(targetUserId);
+    }
+
+    private MonthlyAttendanceResponse buildMonthlyAttendance(Long userId, YearMonth yearMonth) {
         LocalDate start = yearMonth.atDay(1);
         LocalDate end = yearMonth.atEndOfMonth();
 
@@ -52,7 +77,7 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
                         AttendanceCalendarView::attendanceDate,
                         v -> v,
                         (existing, duplicate) -> {
-                            log.warn("[getMonthlyAttendance] 동일 날짜 출결 중복 발견, 기존 값 유지 | userId={}, date={}",
+                            log.warn("[buildMonthlyAttendance] 동일 날짜 출결 중복 발견, 기존 값 유지 | userId={}, date={}",
                                     userId, existing.attendanceDate());
                             return existing;
                         }
@@ -74,9 +99,7 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
         return new MonthlyAttendanceResponse(yearMonth.toString(), days);
     }
 
-    @Override
-    @Cacheable(value = "attendanceSummary", key = "#userId + '-' + T(java.time.LocalDate).now()")
-    public AttendanceSummaryResponse getSummary(Long userId) {
+    private AttendanceSummaryResponse buildSummary(Long userId) {
         Long bootcampId = userQueryUsecase.getBootcampId(userId);
         BootcampPeriodResult bootcampPeriod = bootcampQueryUsecase.getPeriod(bootcampId);
         AttendancePolicyResult policy = bootcampQueryUsecase.getPolicy(bootcampId);
@@ -101,9 +124,7 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
         return AttendanceSummaryResponse.of(summary, attendanceRate, riskLevel, periodRates);
     }
 
-    private List<PeriodAttendanceRate> calculatePeriodRates(
-            Long userId, Long bootcampId, LocalDate today
-    ) {
+    private List<PeriodAttendanceRate> calculatePeriodRates(Long userId, Long bootcampId, LocalDate today) {
         List<AttendancePeriodResult> periods = bootcampQueryUsecase.getAttendancePeriods(bootcampId);
 
         return periods.stream()
