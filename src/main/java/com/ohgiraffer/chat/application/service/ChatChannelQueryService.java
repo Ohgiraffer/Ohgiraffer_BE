@@ -140,9 +140,9 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
         return unreadCounts.values().stream().mapToLong(Long::longValue).sum();
     }
 
-    // 검색어/채널명 비교용 정규화. 공백 제거 + 소문자 변환 (띄어쓰기 차이로 매칭 실패하는 것 방지)
+    // 검색어/채널명 비교용 정규화. 공백 제거 + 소문자 변환(Locale.ROOT로 JVM 기본 로케일 영향 배제, 터키어 로케일 등에서 i/I 변환 오류 방지)
     private String normalizeForSearch(String text) {
-        return text.replaceAll("\\s+", "").toLowerCase();
+        return text.replaceAll("\\s+", "").toLowerCase(java.util.Locale.ROOT);
     }
 
     // 최신 메시지가 없으면(빈 채팅방) 전원 읽음, 있으면 lastReadMessageId가 최신 메시지 id 이상인지로 판단
