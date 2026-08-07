@@ -13,6 +13,8 @@ public record SurveyFormListResponse(
         SurveyFormStatus status,
         int respondedCount,
         int targetCount,
+        Boolean responded,
+        String responseUrl,
         Instant createdAt
 ) {
 
@@ -26,6 +28,8 @@ public record SurveyFormListResponse(
                 result.status(),
                 result.respondedCount(),
                 result.targetCount(),
+                result.responded(),
+                result.responseUrl(),
                 result.createdAt()
         );
     }

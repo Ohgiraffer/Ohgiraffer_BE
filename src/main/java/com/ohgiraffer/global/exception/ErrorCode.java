@@ -34,6 +34,7 @@ public enum ErrorCode {
     INVALID_USER_STATUS_TARGET(HttpStatus.BAD_REQUEST, "USER_006", "제적 또는 자퇴 상태로만 변경할 수 있습니다."),
     USER_ALREADY_INACTIVE(HttpStatus.CONFLICT, "USER_007", "이미 자퇴/제적 처리된 훈련생입니다."),
     USER_ALREADY_COMPLETED(HttpStatus.CONFLICT, "USER_008", "이미 수료 완료된 훈련생은 자퇴/제적 처리할 수 없습니다."),
+    USER_BULK_INSERT_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "USER_009", "등록 중 오류가 발생했습니다. 다시 시도해주세요."),
 
     GOOGLE_SHEET_INVALID_URL(HttpStatus.BAD_REQUEST, "SHEET_001", "올바른 Google 스프레드시트 URL이 아닙니다."),
     GOOGLE_SHEET_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SHEET_002", "Google 스프레드시트에 접근할 권한이 없습니다."),
@@ -71,6 +72,7 @@ public enum ErrorCode {
     SURVEY_FORM_NOT_FOUND(HttpStatus.NOT_FOUND, "SURVEY_001", "설문 폼을 찾을 수 없습니다."),
     SURVEY_FORM_INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "SURVEY_002", "변경할 수 없는 설문 상태입니다."),
     SURVEY_FORM_HAS_RESPONSES(HttpStatus.CONFLICT, "SURVEY_003", "응답이 존재하는 설문은 삭제할 수 없습니다."),
+    SURVEY_FORM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SURVEY_005", "해당 설문에 접근할 권한이 없습니다."),
 
     SUBMISSION_BOX_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_001", "제출함을 찾을 수 없습니다."),
     SUBMISSION_BOX_HAS_SUBMISSIONS(HttpStatus.CONFLICT, "SUBMISSION_002", "제출물이 존재하는 제출함은 삭제할 수 없습니다."),
@@ -88,6 +90,9 @@ public enum ErrorCode {
     SUBMISSION_FILE_NAME_TOO_LONG(HttpStatus.BAD_REQUEST, "SUBMISSION_014", "제출 파일명이 허용 길이를 초과했습니다."),
     SUBMISSION_FILE_UPLOAD_FAILED(HttpStatus.BAD_GATEWAY, "SUBMISSION_015", "파일 저장소에 파일을 업로드하지 못했습니다."),
     SUBMISSION_TEAM_DATA_INCONSISTENT(HttpStatus.INTERNAL_SERVER_ERROR, "SUBMISSION_016", "학생의 팀 소속 정보가 올바르지 않습니다."),
+    SUBMISSION_FILE_DOWNLOAD_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "SUBMISSION_017", "파일 제출 항목만 다운로드할 수 있습니다."),
+
+    SUBMISSION_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_018", "제출 파일을 찾을 수 없습니다."),
   
     BOOTCAMP_NOT_FOUND(HttpStatus.NOT_FOUND, "BOOTCAMP_001", "부트캠프를 찾을 수 없습니다."),
     INVALID_PERIOD_RANGE(HttpStatus.BAD_REQUEST, "BOOTCAMP_002", "단위기간 시작일이 종료일보다 늦을 수 없습니다."),

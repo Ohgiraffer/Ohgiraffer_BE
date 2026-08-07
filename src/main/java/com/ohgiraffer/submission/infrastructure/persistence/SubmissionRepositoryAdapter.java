@@ -8,6 +8,9 @@ import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.util.Optional;
+import java.util.List;
+
 @Repository
 @RequiredArgsConstructor
 public class SubmissionRepositoryAdapter
@@ -83,4 +86,55 @@ public class SubmissionRepositoryAdapter
                         teamId
                 );
     }
+
+    @Override
+    public Optional<Submission>
+    findBySubmissionBoxIdAndOwnerUserId(
+            Long submissionBoxId,
+            Long ownerUserId
+    ) {
+        return repository
+                .findBySubmissionBoxIdAndOwnerUserId(
+                        submissionBoxId,
+                        ownerUserId
+                )
+                .map(SubmissionJpaEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Submission>
+    findBySubmissionBoxIdAndTeamId(
+            Long submissionBoxId,
+            Long teamId
+    ) {
+        return repository
+                .findBySubmissionBoxIdAndTeamId(
+                        submissionBoxId,
+                        teamId
+                )
+                .map(SubmissionJpaEntity::toDomain);
+    }
+
+    @Override
+    public List<Submission> findAllBySubmissionBoxId(
+            Long submissionBoxId
+    ) {
+        return repository
+                .findAllBySubmissionBoxIdOrderBySubmittedAtAsc(
+                        submissionBoxId
+                )
+                .stream()
+                .map(SubmissionJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public Optional<Submission> findById(
+            Long submissionId
+    ) {
+        return repository
+                .findDetailById(submissionId)
+                .map(SubmissionJpaEntity::toDomain);
+    }
+
 }

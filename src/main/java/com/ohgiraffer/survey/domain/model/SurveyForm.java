@@ -296,4 +296,10 @@ public final class SurveyForm {
                 + googleFormId
                 + "/edit";
     }
+
+    public String getResponseUrl() {
+        return "https://docs.google.com/forms/d/"
+                + googleFormId
+                + "/viewform";
+    }
 }

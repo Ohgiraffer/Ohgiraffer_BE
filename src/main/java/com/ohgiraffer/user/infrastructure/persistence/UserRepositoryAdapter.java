@@ -68,5 +68,20 @@ public class UserRepositoryAdapter implements UserRepository {
                 .toList();
     }
 
+    @Override
+    public boolean existsByEmail(String email) {
+        return springDataUserRepository.existsByEmail(email);
+    }
+
+    @Override
+    public void saveAll(List<User> users) {
+        List<UserJpaEntity> entities = users.stream()
+                .map(UserJpaEntity::fromDomain)
+                .toList();
+        springDataUserRepository.saveAllAndFlush(entities);
+    }
+
+
+
 
 }

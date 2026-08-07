@@ -26,4 +26,6 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, L
     int assignBootcampIfAbsent(@Param("userId") Long userId, @Param("bootcampId") Long bootcampId);
 
     List<UserJpaEntity> findByNameContaining(String keyword);
+
+    boolean existsByEmail(String email);
 }

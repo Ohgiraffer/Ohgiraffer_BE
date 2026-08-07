@@ -22,6 +22,10 @@ public class User {
     private UserStatus status;
     private Long bootcampId;
 
+    // bcrypt("1234")
+    private static final String DEFAULT_PASSWORD =
+            "$2a$12$.UXrD41avDmOR85e3Sm7e.IYGNSej6NVekeaEvGHalA2Cy4NDyTj6";
+
     public User(
             Long id,
             String name,
@@ -53,28 +57,29 @@ public class User {
     }
 
     // 신규 회원 추가
-//    public static User create(
-//            String name,
-//            String phone,
-//            String email,
-//            Role role,
-//            String password
-//    ) {
-//        return new User(
-//                null,
-//                name,
-//                phone,
-//                email,
-//                role,
-//                null,
-//                password,
-//                true,
-//                true,
-//                LocalDate.now(),
-//                null,
-//                UserStatus.ACTIVE
-//        );
-//    }
+    public static User register(
+            String name,
+            String phone,
+            String email,
+            Role role,
+            Long bootcampId
+    ) {
+        return new User(
+                null,
+                name,
+                phone,
+                email,
+                role,
+                null,
+                DEFAULT_PASSWORD,
+                true,
+                true,
+                LocalDate.now(),
+                null,
+                UserStatus.ACTIVE,
+                bootcampId
+        );
+    }
 
     // 비밀번호 변경
     public void changePassword(String encodedPassword) {

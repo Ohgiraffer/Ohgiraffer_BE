@@ -19,11 +19,18 @@ public record SubmissionBoxDetailResponse(
         SubmissionBoxStatus status,
         boolean acceptingSubmissions,
         boolean lateSubmission,
-        List<SubmissionBoxItemResponse> items
+        int submittedCount,
+        Integer targetCount,
+        Long mySubmissionId,
+        boolean canSubmit,
+        boolean canEdit,
+        List<SubmissionBoxItemResponse> items,
+        List<SubmissionStatusResponse> submissions
 ) {
 
     public SubmissionBoxDetailResponse {
         items = List.copyOf(items);
+        submissions = List.copyOf(submissions);
     }
 
     public static SubmissionBoxDetailResponse from(
@@ -33,6 +40,12 @@ public record SubmissionBoxDetailResponse(
                 result.items()
                         .stream()
                         .map(SubmissionBoxItemResponse::from)
+                        .toList();
+
+        List<SubmissionStatusResponse> submissionResponses =
+                result.submissions()
+                        .stream()
+                        .map(SubmissionStatusResponse::from)
                         .toList();
 
         return new SubmissionBoxDetailResponse(
@@ -46,7 +59,13 @@ public record SubmissionBoxDetailResponse(
                 result.status(),
                 result.acceptingSubmissions(),
                 result.lateSubmission(),
-                itemResponses
+                result.submittedCount(),
+                result.targetCount(),
+                result.mySubmissionId(),
+                result.canSubmit(),
+                result.canEdit(),
+                itemResponses,
+                submissionResponses
         );
     }
 }
