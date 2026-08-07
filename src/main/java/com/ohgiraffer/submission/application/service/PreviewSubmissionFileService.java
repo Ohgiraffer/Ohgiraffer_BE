@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -20,16 +21,57 @@ import java.util.Set;
 public class PreviewSubmissionFileService
         implements PreviewSubmissionFileUseCase {
 
-    private static final Set<String>
-            PREVIEWABLE_CONTENT_TYPES =
-            Set.of(
-                    "application/pdf",
-                    "video/mp4",
-                    "video/quicktime",
-                    "image/jpeg",
-                    "image/png",
-                    "image/webp",
-                    "image/gif"
+    private static final Map<String, Set<String>>
+            PREVIEWABLE_FILE_TYPES =
+            Map.ofEntries(
+                    Map.entry(
+                            "pdf",
+                            Set.of(
+                                    "application/pdf"
+                            )
+                    ),
+                    Map.entry(
+                            "mp4",
+                            Set.of(
+                                    "video/mp4"
+                            )
+                    ),
+                    Map.entry(
+                            "mov",
+                            Set.of(
+                                    "video/quicktime"
+                            )
+                    ),
+                    Map.entry(
+                            "jpg",
+                            Set.of(
+                                    "image/jpeg"
+                            )
+                    ),
+                    Map.entry(
+                            "jpeg",
+                            Set.of(
+                                    "image/jpeg"
+                            )
+                    ),
+                    Map.entry(
+                            "png",
+                            Set.of(
+                                    "image/png"
+                            )
+                    ),
+                    Map.entry(
+                            "webp",
+                            Set.of(
+                                    "image/webp"
+                            )
+                    ),
+                    Map.entry(
+                            "gif",
+                            Set.of(
+                                    "image/gif"
+                            )
+                    )
             );
 
     private final SubmissionFileAccessService
@@ -57,7 +99,8 @@ public class PreviewSubmissionFileService
                         value.getContentType()
                 );
 
-        validatePreviewableContentType(
+        validatePreviewableFile(
+                value.getOriginalFileName(),
                 contentType
         );
 
@@ -82,10 +125,7 @@ public class PreviewSubmissionFileService
     ) {
         if (contentType == null
                 || contentType.isBlank()) {
-            throw new BusinessException(
-                    ErrorCode
-                            .SUBMISSION_FILE_PREVIEW_NOT_SUPPORTED
-            );
+            throwPreviewNotSupported();
         }
 
         int parameterIndex =
@@ -99,23 +139,82 @@ public class PreviewSubmissionFileService
                 )
                         : contentType;
 
-        return normalized
+        normalized = normalized
                 .trim()
                 .toLowerCase(
                         Locale.ROOT
                 );
+
+        if (normalized.isBlank()) {
+            throwPreviewNotSupported();
+        }
+
+        return normalized;
     }
 
-    private void validatePreviewableContentType(
+    private void validatePreviewableFile(
+            String originalFileName,
             String contentType
     ) {
-        if (!PREVIEWABLE_CONTENT_TYPES.contains(
+        String extension =
+                extractExtension(
+                        originalFileName
+                );
+
+        Set<String> allowedContentTypes =
+                PREVIEWABLE_FILE_TYPES.get(
+                        extension
+                );
+
+        if (allowedContentTypes == null
+                || !allowedContentTypes.contains(
                 contentType
         )) {
-            throw new BusinessException(
-                    ErrorCode
-                            .SUBMISSION_FILE_PREVIEW_NOT_SUPPORTED
-            );
+            throwPreviewNotSupported();
         }
+    }
+
+    private String extractExtension(
+            String originalFileName
+    ) {
+        if (originalFileName == null
+                || originalFileName.isBlank()) {
+            throwPreviewNotSupported();
+        }
+
+        String normalizedFileName =
+                originalFileName.trim();
+
+        int extensionIndex =
+                normalizedFileName.lastIndexOf('.');
+
+        if (extensionIndex < 0
+                || extensionIndex
+                == normalizedFileName.length() - 1) {
+            throwPreviewNotSupported();
+        }
+
+        String extension =
+                normalizedFileName
+                        .substring(
+                                extensionIndex + 1
+                        )
+                        .trim()
+                        .toLowerCase(
+                                Locale.ROOT
+                        );
+
+        if (extension.isBlank()) {
+            throwPreviewNotSupported();
+        }
+
+        return extension;
+    }
+
+    private void throwPreviewNotSupported() {
+        throw new BusinessException(
+                ErrorCode
+                        .SUBMISSION_FILE_PREVIEW_NOT_SUPPORTED
+        );
     }
 }

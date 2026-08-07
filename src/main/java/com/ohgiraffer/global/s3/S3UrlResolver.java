@@ -142,6 +142,9 @@ public class S3UrlResolver {
                         .responseContentDisposition(
                                 contentDisposition
                         )
+                        .responseCacheControl(
+                                "no-store"
+                        )
                         .build();
 
         GetObjectPresignRequest presignRequest =
