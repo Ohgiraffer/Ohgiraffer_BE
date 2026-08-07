@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /*
  * comment.
@@ -56,10 +57,17 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
         List<ChatChannelMember> chatChannelMembers =
                 chatChannelMemberRepository.findAllByChatChannelIdAndLeftAtIsNull(channel.getId());
 
+        // 멤버 이름 벌크 조회 - 멤버마다 findById 반복 호출(N+1) 대신 id 모아서 한 번에 조회
+        List<Long> memberUserIds = chatChannelMembers.stream()
+                .map(ChatChannelMember::getUserId)
+                .toList();
+        Map<Long, String> memberNamesById = userRepository.findByIdIn(memberUserIds).stream()
+                .collect(Collectors.toMap(user -> user.getId(), user -> user.getName()));
+
         List<ChatChannelDetailResult.ChatChannelMemberResult> members = chatChannelMembers.stream()
                 .map(m -> new ChatChannelDetailResult.ChatChannelMemberResult(
                         m.getUserId(),
-                        findMemberName(m.getUserId()),
+                        memberNamesById.get(m.getUserId()),
                         m.getJoinedAt(), m.getLastReadMessageId(),
                         isRead(m.getLastReadMessageId(), latestMessageId)
                 ))
@@ -74,13 +82,6 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
                 channel.getSendbirdChannelUrl(), channel.getName(), channel.getChannelType().name(),
                 members, readUserIds.size(), readUserIds
         );
-    }
-
-    // userId로 users 테이블 조회해서 이름 매칭. 탈퇴 등으로 못 찾으면 null
-    private String findMemberName(Long userId) {
-        return userRepository.findById(userId)
-                .map(user -> user.getName())
-                .orElse(null);
     }
 
     // 최신 메시지가 없으면(빈 채팅방) 전원 읽음, 있으면 lastReadMessageId가 최신 메시지 id 이상인지로 판단
