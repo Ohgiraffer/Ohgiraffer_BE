@@ -35,11 +35,37 @@ public class TeamRepositoryAdapter
 
             return savedEntity.toDomain();
         } catch (DataIntegrityViolationException exception) {
-            throw new BusinessException(
-                    ErrorCode.TEAM_DUPLICATE_NAME,
-                    exception
-            );
+            if (isTeamNameUniqueConstraintViolation(exception)) {
+                throw new BusinessException(
+                        ErrorCode.TEAM_DUPLICATE_NAME,
+                        exception
+                );
+            }
+
+            throw exception;
         }
+    }
+
+    private boolean isTeamNameUniqueConstraintViolation(
+            DataIntegrityViolationException exception
+    ) {
+        Throwable current =
+                exception;
+
+        while (current != null) {
+            String message =
+                    current.getMessage();
+
+            if (message != null
+                    && message.toLowerCase().contains("uq_team_name")) {
+                return true;
+            }
+
+            current =
+                    current.getCause();
+        }
+
+        return false;
     }
 
     @Override
