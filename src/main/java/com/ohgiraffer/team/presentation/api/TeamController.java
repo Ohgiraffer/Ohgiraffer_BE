@@ -10,7 +10,6 @@ import com.ohgiraffer.team.application.usecase.AssignTeamMemberResult;
 import com.ohgiraffer.team.application.usecase.AssignTeamMemberUseCase;
 import com.ohgiraffer.team.application.usecase.CreateTeamResult;
 import com.ohgiraffer.team.application.usecase.CreateTeamUseCase;
-import com.ohgiraffer.team.application.usecase.GetTeamDetailUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamListUseCase;
 import com.ohgiraffer.team.application.usecase.GetUnassignedStudentUseCase;
 import com.ohgiraffer.team.application.usecase.MoveTeamMemberUseCase;
@@ -51,7 +50,6 @@ import java.util.List;
 public class TeamController {
 
     private final GetTeamListUseCase getTeamListUseCase;
-    private final GetTeamDetailUseCase getTeamDetailUseCase;
     private final GetUnassignedStudentUseCase getUnassignedStudentUseCase;
     private final CreateTeamUseCase createTeamUseCase;
     private final UpdateTeamUseCase updateTeamUseCase;
@@ -73,27 +71,6 @@ public class TeamController {
         return ResponseEntity.ok(
                 TeamListResponse.from(
                         results,
-                        principal.getRole()
-                )
-        );
-    }
-
-    @GetMapping("/{teamId:\\d+}")
-    @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR', 'MANAGER')")
-    public ResponseEntity<TeamDetailResponse> getTeam(
-            @PathVariable Long teamId,
-            @AuthenticationPrincipal CustomUserPrincipal principal
-    ) {
-        TeamDetailResult result =
-                getTeamDetailUseCase.getTeam(
-                        teamId,
-                        principal.getId(),
-                        principal.getRole()
-                );
-
-        return ResponseEntity.ok(
-                TeamDetailResponse.from(
-                        result,
                         principal.getRole()
                 )
         );
@@ -202,7 +179,7 @@ public class TeamController {
                 );
     }
 
-    @PatchMapping("/{teamId:\\d+}/members/{memberId:\\d+}/move")
+    @PatchMapping("/{teamId:\\d+}/members/{memberId:\\d+}")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     public ResponseEntity<AssignTeamMemberResponse> moveTeamMember(
             @PathVariable Long teamId,

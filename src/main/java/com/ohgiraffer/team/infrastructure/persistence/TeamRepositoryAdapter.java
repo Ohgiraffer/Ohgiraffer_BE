@@ -1,10 +1,13 @@
 package com.ohgiraffer.team.infrastructure.persistence;
 
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
 import com.ohgiraffer.team.domain.model.UnassignedStudent;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -22,14 +25,21 @@ public class TeamRepositoryAdapter
     public Team save(
             Team team
     ) {
-        TeamJpaEntity savedEntity =
-                springDataTeamRepository.save(
-                        TeamJpaEntity.from(
-                                team
-                        )
-                );
+        try {
+            TeamJpaEntity savedEntity =
+                    springDataTeamRepository.saveAndFlush(
+                            TeamJpaEntity.from(
+                                    team
+                            )
+                    );
 
-        return savedEntity.toDomain();
+            return savedEntity.toDomain();
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_DUPLICATE_NAME,
+                    exception
+            );
+        }
     }
 
     @Override
@@ -59,6 +69,17 @@ public class TeamRepositoryAdapter
             Long teamId
     ) {
         return springDataTeamRepository.findById(teamId)
+                .map(TeamJpaEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Team> findByIdForUpdate(
+            Long teamId
+    ) {
+        return springDataTeamRepository
+                .findByIdForUpdate(
+                        teamId
+                )
                 .map(TeamJpaEntity::toDomain);
     }
 
@@ -99,15 +120,14 @@ public class TeamRepositoryAdapter
     }
 
     @Override
-    public boolean existsActiveMember(
-            Long teamId,
-            Long userId
+    public Optional<TeamMember> findMemberByIdForUpdate(
+            Long teamMemberId
     ) {
         return springDataTeamMemberRepository
-                .existsByTeamIdAndUserIdAndLeftAtIsNull(
-                        teamId,
-                        userId
-                );
+                .findByIdForUpdate(
+                        teamMemberId
+                )
+                .map(TeamMemberViewJpaEntity::toDomain);
     }
 
     @Override
@@ -171,16 +191,5 @@ public class TeamRepositoryAdapter
                 projection.getName(),
                 projection.getEmail()
         );
-    }
-
-    @Override
-    public Optional<TeamMember> findMemberByIdForUpdate(
-            Long teamMemberId
-    ) {
-        return springDataTeamMemberRepository
-                .findByIdForUpdate(
-                        teamMemberId
-                )
-                .map(TeamMemberViewJpaEntity::toDomain);
     }
 }

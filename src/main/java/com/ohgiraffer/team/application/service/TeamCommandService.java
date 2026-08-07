@@ -89,7 +89,7 @@ public class TeamCommandService
         );
 
         Team team =
-                teamRepository.findById(
+                teamRepository.findByIdForUpdate(
                                 command.teamId()
                         )
                         .orElseThrow(() ->

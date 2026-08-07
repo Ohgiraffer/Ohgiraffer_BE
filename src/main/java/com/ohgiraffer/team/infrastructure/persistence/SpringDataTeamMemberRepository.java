@@ -52,9 +52,18 @@ public interface SpringDataTeamMemberRepository
             @Param("teamIds") List<Long> teamIds
     );
 
-    boolean existsByTeamIdAndUserIdAndLeftAtIsNull(
-            Long teamId,
-            Long userId
+    Optional<TeamMemberViewJpaEntity> findById(
+            Long teamMemberId
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT tm
+            FROM TeamMemberViewJpaEntity tm
+            WHERE tm.id = :teamMemberId
+            """)
+    Optional<TeamMemberViewJpaEntity> findByIdForUpdate(
+            @Param("teamMemberId") Long teamMemberId
     );
 
     boolean existsByUserIdAndLeftAtIsNull(
@@ -78,14 +87,4 @@ public interface SpringDataTeamMemberRepository
             ORDER BY u.name ASC, u.id ASC
             """)
     List<UnassignedStudentProjection> findUnassignedStudents();
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-        SELECT tm
-        FROM TeamMemberViewJpaEntity tm
-        WHERE tm.id = :teamMemberId
-        """)
-    Optional<TeamMemberViewJpaEntity> findByIdForUpdate(
-            @Param("teamMemberId") Long teamMemberId
-    );
 }

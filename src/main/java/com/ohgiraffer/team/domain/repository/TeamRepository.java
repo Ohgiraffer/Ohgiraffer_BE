@@ -23,6 +23,10 @@ public interface TeamRepository {
             Long teamId
     );
 
+    Optional<Team> findByIdForUpdate(
+            Long teamId
+    );
+
     List<TeamMember> findActiveMembersByTeamId(
             Long teamId
     );
@@ -37,11 +41,6 @@ public interface TeamRepository {
 
     Optional<TeamMember> findMemberByIdForUpdate(
             Long teamMemberId
-    );
-
-    boolean existsActiveMember(
-            Long teamId,
-            Long userId
     );
 
     boolean existsActiveMemberByUserId(
