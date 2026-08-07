@@ -16,10 +16,14 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, L
 
     List<UserJpaEntity> findAllByRoleAndStatus(Role role, UserStatus status);
 
+    List<UserJpaEntity> findByIdIn(List<Long> userIds);
+
     @Query("SELECT u.bootcampId FROM UserJpaEntity u WHERE u.id = :userId")
     Optional<Long> findBootcampIdByUserId(@Param("userId") Long userId);
 
     @Modifying(clearAutomatically = true)
     @Query("UPDATE UserJpaEntity u SET u.bootcampId = :bootcampId WHERE u.id = :userId AND u.bootcampId IS NULL")
     int assignBootcampIfAbsent(@Param("userId") Long userId, @Param("bootcampId") Long bootcampId);
+
+    boolean existsByEmail(String email);
 }

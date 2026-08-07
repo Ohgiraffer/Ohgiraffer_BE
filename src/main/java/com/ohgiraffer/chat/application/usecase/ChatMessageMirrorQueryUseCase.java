@@ -17,8 +17,8 @@ public interface ChatMessageMirrorQueryUseCase {
     // 채널 메시지 이력 조회
     Page<ChatMessageResult> getChannelMessages(String channelId, Long principalId, Pageable pageable);
 
-    // 스레드 답글 조회
-    Page<ChatMessageResult> getThreadReplies(Long parentMessageId, Long principalId, Pageable pageable);
+    // 스레드 답글 조회 - parentSendbirdMessageId(String, 클라이언트가 응답에서 받은 값)로 원본 메시지 특정
+    Page<ChatMessageResult> getThreadReplies(String parentSendbirdMessageId, Long principalId, Pageable pageable);
 
     // 메시지 통합 검색
     Page<ChatMessageResult> searchMessages(ChatMessageSearchCondition condition, Long principalId, Pageable pageable);

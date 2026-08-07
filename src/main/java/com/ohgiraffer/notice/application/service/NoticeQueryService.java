@@ -3,6 +3,7 @@ package com.ohgiraffer.notice.application.service;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.notice.application.port.AuthorNameQueryPort;
+import com.ohgiraffer.notice.application.query.NoticeDashboardView;
 import com.ohgiraffer.notice.application.query.NoticeDetailView;
 import com.ohgiraffer.notice.application.query.NoticeSummaryView;
 import com.ohgiraffer.notice.application.usecase.NoticeQueryUseCase;
@@ -15,6 +16,9 @@ import com.ohgiraffer.notice.domain.repository.NoticeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,6 +27,20 @@ import java.util.stream.Collectors;
 @Service
 @Transactional(readOnly = true)
 public class NoticeQueryService implements NoticeQueryUseCase {
+
+    /**
+     * 대시보드에서 고정 공지를 "최근"으로 볼 기간. 요구사항의 "3일 전꺼까지만"이다.
+     *
+     * <p>이 기간이 지나면 확인하지 않은 공지만 카드에 남는다.
+     */
+    private static final int PINNED_WINDOW_DAYS = 3;
+
+    /**
+     * 사용자가 말하는 "3일 전"은 시각이 아니라 날짜다.
+     * 시각 기준으로 72시간을 빼면 사흘 전 오전에 올라온 공지가 오후에 사라져,
+     * 같은 날짜인데 보이다 안 보이다 하게 된다.
+     */
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final NoticeRepository noticeRepository;
     private final NoticeCategoryRepository noticeCategoryRepository;
@@ -68,17 +86,13 @@ public class NoticeQueryService implements NoticeQueryUseCase {
                 .orElse(null);
 
         /*
-         * 확인 정보는 필수 공지에만 의미가 있다. 일반 공지에는 화면에 체크박스가 없다.
+         * 확인은 고정 공지든 일반 공지든 모두 대상이다.
+         * 공지를 읽으면 체크한다는 운영 정책에 맞춰 프론트와 함께 정했고,
+         * 대시보드의 "읽지 않은 공지"도 이 기록을 기준으로 판단한다.
          */
-        long confirmationCount = 0L;
-        boolean confirmedByMe = false;
-
-        if (notice.requiresConfirmation()) {
-            confirmationCount =
-                    noticeConfirmationRepository.countBy(noticeId);
-            confirmedByMe =
-                    noticeConfirmationRepository.existsBy(noticeId, userId);
-        }
+        long confirmationCount = noticeConfirmationRepository.countBy(noticeId);
+        boolean confirmedByMe =
+                noticeConfirmationRepository.existsBy(noticeId, userId);
 
         /*
          * 작성자를 찾지 못해도 상세 조회는 막지 않는다.
@@ -123,18 +137,14 @@ public class NoticeQueryService implements NoticeQueryUseCase {
                 ));
 
         /*
-         * 확인 여부도 마찬가지로 한 번에 가져온다.
-         * 확인 대상은 필수 공지뿐이라 그 목록만 조회한다.
+         * 확인 여부도 한 번에 가져온다. 고정 공지든 일반 공지든 확인 대상이라
+         * 목록 전체의 식별자를 넘긴다.
          */
-        List<Long> mandatoryNoticeIds = notices.stream()
-                .filter(Notice::requiresConfirmation)
-                .map(Notice::getId)
-                .toList();
-
-        Set<Long> confirmedNoticeIds = mandatoryNoticeIds.isEmpty()
-                ? Set.of()
-                : noticeConfirmationRepository
-                        .findConfirmedNoticeIds(userId, mandatoryNoticeIds);
+        Set<Long> confirmedNoticeIds =
+                noticeConfirmationRepository.findConfirmedNoticeIds(
+                        userId,
+                        notices.stream().map(Notice::getId).toList()
+                );
 
         /*
          * 작성자 이름도 한 번에 가져온다.
@@ -154,6 +164,36 @@ public class NoticeQueryService implements NoticeQueryUseCase {
                         confirmedNoticeIds.contains(notice.getId())
                 ))
                 .toList();
+    }
+
+    @Override
+    public List<NoticeDashboardView> findDashboardSummary(
+            ViewerRole viewer,
+            Long userId
+    ) {
+        /*
+         * 대상 판정을 저장소에 맡긴다. 확인 여부가 조건에 섞여 있어
+         * 여기서 거르려면 전체를 읽어와야 하는데, 대시보드는 몇 건만 쓰는 화면이다.
+         */
+        return noticeRepository
+                .findDashboardSummary(
+                        viewer,
+                        userId,
+                        pinnedSince()
+                )
+                .stream()
+                .map(NoticeDashboardView::of)
+                .toList();
+    }
+
+    /**
+     * 사흘 전 날짜의 0시(한국 시간). 그날 올라온 공지는 시각과 무관하게 모두 포함된다.
+     */
+    private static Instant pinnedSince() {
+        return LocalDate.now(KST)
+                .minusDays(PINNED_WINDOW_DAYS)
+                .atStartOfDay(KST)
+                .toInstant();
     }
 
     private static BusinessException noticeNotFound() {

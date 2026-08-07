@@ -16,7 +16,7 @@ public record NoticeSummaryResponse(
         String title,
         Long authorId,
         String authorName,
-        boolean mandatory,
+        boolean pinned,
         boolean confirmedByMe,
         LocalDateTime createdAt
 ) {
@@ -31,7 +31,7 @@ public record NoticeSummaryResponse(
                 view.title(),
                 view.authorId(),
                 view.authorName(),
-                view.mandatory(),
+                view.pinned(),
                 view.confirmedByMe(),
                 toKst(view.createdAt())
         );

@@ -13,15 +13,21 @@ import com.ohgiraffer.user.application.helper.UserProfileImgTransactionHelper;
 import com.ohgiraffer.user.application.policy.PasswordChangePolicy;
 import com.ohgiraffer.user.application.policy.ProfileImgChangePolicy;
 import com.ohgiraffer.user.application.usecase.UserCommandUsecase;
+import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.domain.model.User;
+import com.ohgiraffer.user.domain.model.UserStatus;
 import com.ohgiraffer.user.domain.repository.UserRepository;
+import com.ohgiraffer.user.presentation.api.request.AddUserRequest;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Service
 @Slf4j
@@ -105,5 +111,43 @@ public class UserCommandService implements UserCommandUsecase {
         s3FileHandler.delete(key);
 
         log.info("[deleteProfileImage] 프로필 이미지 삭제 완료 | userId={}", userId);
+    }
+
+    @Override
+    @Transactional
+    public void changeUserStatus(Long userId, UserStatus newStatus) {
+        if (newStatus != UserStatus.WITHDRAWN && newStatus != UserStatus.EXPELLED) {
+            throw new BusinessException(ErrorCode.INVALID_USER_STATUS_TARGET);
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        user.dismiss(newStatus);
+
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void addUsers(AddUserRequest request, Long requesterId) {
+        Long bootcampId = userRepository.findBootcampIdByUserId(requesterId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        List<User> users = request.rows().stream()
+                .map(row -> User.register(
+                        row.name(),
+                        row.phone(),
+                        row.email(),
+                        Role.fromSheetDisplayName(row.role()),
+                        bootcampId
+                ))
+                .toList();
+
+        try {
+            userRepository.saveAll(users);
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.USER_BULK_INSERT_FAILED);
+        }
     }
 }

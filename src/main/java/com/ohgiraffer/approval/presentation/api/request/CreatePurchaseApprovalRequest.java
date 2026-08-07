@@ -11,9 +11,6 @@ import java.math.BigDecimal;
 public record CreatePurchaseApprovalRequest(
 
         @NotNull
-        Long approverId,
-
-        @NotNull
         Long budgetCategoryId,
 
         @NotBlank

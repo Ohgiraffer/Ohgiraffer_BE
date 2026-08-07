@@ -1,11 +1,14 @@
 package com.ohgiraffer.user.presentation.api;
 
+import com.ohgiraffer.chat.application.usecase.ChatUserQueryUseCase;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import com.ohgiraffer.user.application.usecase.UserCommandUsecase;
+import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
+import com.ohgiraffer.user.presentation.api.request.AddUserRequest;
 import com.ohgiraffer.user.presentation.api.request.SetPasswordRequest;
-import com.ohgiraffer.user.presentation.api.response.SetAlarmResponse;
-import com.ohgiraffer.user.presentation.api.response.SetPasswordResponse;
-import com.ohgiraffer.user.presentation.api.response.SetProfileImgResponse;
+import com.ohgiraffer.user.presentation.api.request.UserSheetConnectionRequest;
+import com.ohgiraffer.user.presentation.api.request.UserStatusChangeRequest;
+import com.ohgiraffer.user.presentation.api.response.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -14,6 +17,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class UserController {
 
     private final UserCommandUsecase userCommandUsecase;
+    private final UserQueryUsecase userQueryUsecase;
 
     @Operation(summary = "최초 비밀번호 재설정", description = "최초 로그인 시 임시 비밀번호를 새 비밀번호로 변경합니다. 변경 후에는 재로그인이 필요합니다.")
     @ApiResponses({
@@ -93,4 +98,70 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "내 정보 조회", description = "로그인한 사용자 본인의 정보를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> getMe(
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(userQueryUsecase.getMyInfo(principal.getId()));
+    }
+
+    @Operation(summary = "사용자 상태 변경(제적/자퇴)", description = "관리자가 특정 사용자의 상태를 제적 또는 자퇴로 변경합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "변경 성공"),
+            @ApiResponse(responseCode = "400", description = "허용되지 않는 상태값"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "이미 재원 상태가 아님"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PreAuthorize("hasRole('MANAGER')")
+    @PatchMapping("/status")
+    public ResponseEntity<Void> changeUserStatus(
+            @Valid @RequestBody UserStatusChangeRequest request
+    ) {
+        userCommandUsecase.changeUserStatus(request.userId(), request.status());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "구글시트 연결 확인", description = "관리자가 입력한 스프레드시트 URL의 접근 가능 여부와 시트명, 컬럼 목록을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "URL 형식이 올바르지 않음"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "서비스 계정에 시트가 공유되지 않음"),
+            @ApiResponse(responseCode = "404", description = "시트를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PreAuthorize("hasRole('MANAGER')")
+    @PostMapping("/sheet/info")
+    public ResponseEntity<UserSheetConnectionResponse> checkSheetConnection(
+            @Valid @RequestBody UserSheetConnectionRequest request
+    ) {
+        return ResponseEntity.ok(userQueryUsecase.checkSheetConnection(request.spreadsheetUrl()));
+    }
+
+    @Operation(summary = "구글시트 사용자 일괄 등록 확정", description = "사용자를 목록에 실제로 등록합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "등록 성공"),
+            @ApiResponse(responseCode = "400", description = "요청 목록이 비어있음"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PreAuthorize("hasRole('MANAGER')")
+    @PostMapping("/register")
+    public ResponseEntity<Void> confirmSheetUsers(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Valid @RequestBody AddUserRequest request
+    ) {
+        userCommandUsecase.addUsers(request, principal.getId());
+        return ResponseEntity.ok().build();
+    }
 }

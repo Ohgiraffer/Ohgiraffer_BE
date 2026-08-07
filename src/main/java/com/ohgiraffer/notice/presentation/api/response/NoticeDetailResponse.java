@@ -9,8 +9,8 @@ import java.time.ZoneId;
 /**
  * 공지 상세 조회 응답. 시각은 한국 시간으로 변환해 내려준다.
  *
- * <p>{@code mandatory} 가 true 인 공지에만 화면에 확인 체크박스가 노출된다.
- * 일반 공지의 confirmationCount 는 0, confirmedByMe 는 false 로 내려간다.
+ * <p>확인 체크박스는 고정 여부와 무관하게 모든 공지에 노출된다.
+ * {@code pinned} 는 목록 상단 고정 여부일 뿐이다.
  */
 public record NoticeDetailResponse(
         Long noticeId,
@@ -20,7 +20,7 @@ public record NoticeDetailResponse(
         String content,
         Long authorId,
         String authorName,
-        boolean mandatory,
+        boolean pinned,
         boolean visibleToTrainee,
         long confirmationCount,
         boolean confirmedByMe,
@@ -39,7 +39,7 @@ public record NoticeDetailResponse(
                 view.content(),
                 view.authorId(),
                 view.authorName(),
-                view.mandatory(),
+                view.pinned(),
                 view.visibleToTrainee(),
                 view.confirmationCount(),
                 view.confirmedByMe(),

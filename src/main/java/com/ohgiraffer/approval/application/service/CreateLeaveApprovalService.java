@@ -13,7 +13,6 @@ import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;
 import com.ohgiraffer.approval.domain.repository.UserSignatureRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
-import com.ohgiraffer.user.domain.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +28,6 @@ public class CreateLeaveApprovalService
     private final ApprovalLeaveDetailRepository approvalLeaveDetailRepository;
     private final ApprovalHistoryRepository approvalHistoryRepository;
     private final UserSignatureRepository userSignatureRepository;
-    private final UserRepository userRepository;
     private final Clock clock;
 
     public CreateLeaveApprovalService(
@@ -37,14 +35,12 @@ public class CreateLeaveApprovalService
             ApprovalLeaveDetailRepository approvalLeaveDetailRepository,
             ApprovalHistoryRepository approvalHistoryRepository,
             UserSignatureRepository userSignatureRepository,
-            UserRepository userRepository,
             Clock clock
     ) {
         this.approvalRequestRepository = approvalRequestRepository;
         this.approvalLeaveDetailRepository = approvalLeaveDetailRepository;
         this.approvalHistoryRepository = approvalHistoryRepository;
         this.userSignatureRepository = userSignatureRepository;
-        this.userRepository = userRepository;
         this.clock = clock;
     }
 
@@ -64,10 +60,6 @@ public class CreateLeaveApprovalService
                 now.toLocalDate()
         );
 
-        validateApproverExists(
-                command.approverId()
-        );
-
         UserSignature userSignature =
                 userSignatureRepository
                         .findActiveByUserId(
@@ -82,7 +74,6 @@ public class CreateLeaveApprovalService
         ApprovalRequest approvalRequest =
                 ApprovalRequest.createLeave(
                         command.requesterId(),
-                        command.approverId(),
                         userSignature.getId(),
                         userSignature.getSignatureImage(),
                         userSignature.getFileType(),
@@ -145,31 +136,6 @@ public class CreateLeaveApprovalService
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "지난 날짜로는 휴가를 신청할 수 없습니다."
-            );
-        }
-    }
-
-    private void validateApproverExists(
-            Long approverId
-    ) {
-        if (approverId == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "결재자 아이디는 필수입니다."
-            );
-        }
-
-        boolean exists =
-                userRepository
-                        .findById(
-                                approverId
-                        )
-                        .isPresent();
-
-        if (!exists) {
-            throw new BusinessException(
-                    ErrorCode.RESOURCE_NOT_FOUND,
-                    "결재자를 찾을 수 없습니다."
             );
         }
     }

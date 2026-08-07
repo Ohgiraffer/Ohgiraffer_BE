@@ -4,6 +4,7 @@ import com.ohgiraffer.approval.domain.model.approval.ApprovalPurchaseDetail;
 import com.ohgiraffer.approval.domain.repository.ApprovalPurchaseDetailRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -46,5 +47,24 @@ public class ApprovalPurchaseDetailRepositoryAdapter
                 .map(
                         ApprovalPurchaseDetailJpaEntity::toDomain
                 );
+    }
+
+    @Override
+    public List<ApprovalPurchaseDetail> findByApprovalIdIn(
+            List<Long> approvalIds
+    ) {
+        if (approvalIds == null || approvalIds.isEmpty()) {
+            return List.of();
+        }
+
+        return repository
+                .findByApprovalIdIn(
+                        approvalIds
+                )
+                .stream()
+                .map(
+                        ApprovalPurchaseDetailJpaEntity::toDomain
+                )
+                .toList();
     }
 }

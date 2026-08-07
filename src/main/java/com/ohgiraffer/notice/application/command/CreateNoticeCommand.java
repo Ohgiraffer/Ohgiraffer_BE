@@ -10,7 +10,7 @@ public record CreateNoticeCommand(
         Long categoryId,
         String title,
         String content,
-        boolean mandatory,
+        boolean pinned,
         boolean visibleToTrainee
 ) {
 }

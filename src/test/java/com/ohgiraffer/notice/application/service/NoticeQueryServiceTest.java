@@ -3,6 +3,7 @@ package com.ohgiraffer.notice.application.service;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.notice.application.port.AuthorNameQueryPort;
+import com.ohgiraffer.notice.application.query.NoticeDashboardView;
 import com.ohgiraffer.notice.application.query.NoticeDetailView;
 import com.ohgiraffer.notice.application.query.NoticeSummaryView;
 import com.ohgiraffer.notice.domain.model.Notice;
@@ -15,10 +16,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -90,7 +95,7 @@ class NoticeQueryServiceTest {
         assertEquals("과제", view.categoryName());
         assertEquals("8월 특강 안내", view.title());
         assertEquals(AUTHOR_ID, view.authorId());
-        assertTrue(view.mandatory());
+        assertTrue(view.pinned());
         assertEquals(CREATED_AT, view.createdAt());
     }
 
@@ -231,7 +236,7 @@ class NoticeQueryServiceTest {
     }
 
     @Test
-    @DisplayName("필수 공지 상세는 확인 인원과 내 확인 여부를 함께 담는다")
+    @DisplayName("고정 공지 상세는 확인 인원과 내 확인 여부를 함께 담는다")
     void findDetailFillsConfirmation() {
         when(noticeRepository.findById(NOTICE_ID))
                 .thenReturn(Optional.of(notice(true)));
@@ -255,14 +260,18 @@ class NoticeQueryServiceTest {
     }
 
     @Test
-    @DisplayName("일반 공지 상세는 확인 정보를 조회하지 않는다")
-    void findDetailSkipsConfirmationForOptionalNotice() {
+    @DisplayName("일반 공지 상세에도 확인 정보를 채운다")
+    void findDetailFillsConfirmationForNormalNotice() {
         when(noticeRepository.findById(NOTICE_ID))
                 .thenReturn(Optional.of(notice(true, false)));
         when(noticeCategoryRepository.findById(CATEGORY_ID))
                 .thenReturn(Optional.of(
                         NoticeCategory.restore(CATEGORY_ID, "과제")
                 ));
+        when(noticeConfirmationRepository.countBy(NOTICE_ID))
+                .thenReturn(5L);
+        when(noticeConfirmationRepository.existsBy(NOTICE_ID, VIEWER_ID))
+                .thenReturn(true);
 
         NoticeDetailView view = noticeQueryService.findDetail(
                 NOTICE_ID,
@@ -270,54 +279,59 @@ class NoticeQueryServiceTest {
                 VIEWER_ID
         );
 
-        assertEquals(0L, view.confirmationCount());
-        assertFalse(view.confirmedByMe());
-        verify(noticeConfirmationRepository, never()).countBy(NOTICE_ID);
-        verify(noticeConfirmationRepository, never())
-                .existsBy(NOTICE_ID, VIEWER_ID);
+        /*
+         * 확인 체크박스는 고정 여부와 무관하게 모든 공지에 노출된다.
+         */
+        assertFalse(view.pinned());
+        assertEquals(5L, view.confirmationCount());
+        assertTrue(view.confirmedByMe());
     }
 
     @Test
-    @DisplayName("목록의 확인 여부는 필수 공지만 모아 한 번에 조회한다")
+    @DisplayName("목록의 확인 여부는 고정·일반을 가리지 않고 한 번에 조회한다")
     void findAllFetchesConfirmationsInOneQuery() {
-        Notice mandatory = notice(NOTICE_ID, true, true);
-        Notice optional = notice(11L, true, false);
+        Notice pinned = notice(NOTICE_ID, true, true);
+        Notice normal = notice(11L, true, false);
 
         when(noticeRepository.findAllVisible(ViewerRole.TRAINEE, null))
-                .thenReturn(List.of(mandatory, optional));
+                .thenReturn(List.of(pinned, normal));
         when(noticeCategoryRepository.findAll())
                 .thenReturn(List.of(
                         NoticeCategory.restore(CATEGORY_ID, "과제")
                 ));
         when(noticeConfirmationRepository
-                .findConfirmedNoticeIds(VIEWER_ID, List.of(NOTICE_ID)))
-                .thenReturn(Set.of(NOTICE_ID));
+                .findConfirmedNoticeIds(VIEWER_ID, List.of(NOTICE_ID, 11L)))
+                .thenReturn(Set.of(11L));
 
         List<NoticeSummaryView> views =
                 noticeQueryService.findAll(ViewerRole.TRAINEE, null, VIEWER_ID);
 
-        assertTrue(views.get(0).confirmedByMe());
-        assertFalse(views.get(1).confirmedByMe());
+        /*
+         * 확인한 쪽이 일반 공지다. 고정 여부와 확인 여부는 별개다.
+         */
+        assertFalse(views.get(0).confirmedByMe());
+        assertTrue(views.get(1).confirmedByMe());
         verify(noticeConfirmationRepository, times(1))
-                .findConfirmedNoticeIds(VIEWER_ID, List.of(NOTICE_ID));
+                .findConfirmedNoticeIds(VIEWER_ID, List.of(NOTICE_ID, 11L));
     }
 
     @Test
-    @DisplayName("필수 공지가 하나도 없으면 확인 여부를 조회하지 않는다")
-    void findAllSkipsConfirmationLookupWithoutMandatoryNotice() {
+    @DisplayName("고정 공지가 없어도 확인 여부는 조회한다")
+    void findAllFetchesConfirmationWithoutPinnedNotice() {
         when(noticeRepository.findAllVisible(ViewerRole.STAFF, null))
                 .thenReturn(List.of(notice(11L, true, false)));
         when(noticeCategoryRepository.findAll())
                 .thenReturn(List.of(
                         NoticeCategory.restore(CATEGORY_ID, "과제")
                 ));
+        when(noticeConfirmationRepository
+                .findConfirmedNoticeIds(VIEWER_ID, List.of(11L)))
+                .thenReturn(Set.of(11L));
 
         List<NoticeSummaryView> views =
                 noticeQueryService.findAll(ViewerRole.STAFF, null, VIEWER_ID);
 
-        assertFalse(views.get(0).confirmedByMe());
-        verify(noticeConfirmationRepository, never())
-                .findConfirmedNoticeIds(any(), any());
+        assertTrue(views.get(0).confirmedByMe());
     }
 
     @Test
@@ -383,18 +397,73 @@ class NoticeQueryServiceTest {
         verify(authorNameQueryPort, times(1)).findNames(any());
     }
 
+    @Test
+    @DisplayName("대시보드 요약은 조회자와 사용자를 그대로 저장소에 넘긴다")
+    void findDashboardSummaryDelegatesConditions() {
+        when(noticeRepository.findDashboardSummary(
+                eq(ViewerRole.TRAINEE), eq(VIEWER_ID), any(Instant.class)))
+                .thenReturn(List.of(notice(NOTICE_ID, true, true)));
+
+        List<NoticeDashboardView> cards = noticeQueryService
+                .findDashboardSummary(ViewerRole.TRAINEE, VIEWER_ID);
+
+        assertEquals(1, cards.size());
+        assertEquals(NOTICE_ID, cards.get(0).noticeId());
+        assertEquals("8월 특강 안내", cards.get(0).title());
+        assertTrue(cards.get(0).pinned());
+    }
+
+    @Test
+    @DisplayName("고정 공지 기준 시각은 사흘 전 날짜의 한국 시간 0시다")
+    void findDashboardSummaryUsesKstDateBoundary() {
+        when(noticeRepository.findDashboardSummary(
+                any(), any(), any(Instant.class)))
+                .thenReturn(List.of());
+
+        noticeQueryService.findDashboardSummary(ViewerRole.STAFF, VIEWER_ID);
+
+        ArgumentCaptor<Instant> captor =
+                ArgumentCaptor.forClass(Instant.class);
+        verify(noticeRepository)
+                .findDashboardSummary(any(), any(), captor.capture());
+
+        /*
+         * 72시간을 빼면 사흘 전 오전에 올라온 공지가 그날 오후에 사라진다.
+         * 날짜 0시를 기준으로 삼아 그날 것은 시각과 무관하게 모두 포함한다.
+         */
+        ZoneId kst = ZoneId.of("Asia/Seoul");
+        Instant expected = LocalDate.now(kst)
+                .minusDays(3)
+                .atStartOfDay(kst)
+                .toInstant();
+
+        assertEquals(expected, captor.getValue());
+    }
+
+    @Test
+    @DisplayName("대시보드에 보여줄 공지가 없으면 빈 목록을 돌려준다")
+    void findDashboardSummaryReturnsEmpty() {
+        when(noticeRepository.findDashboardSummary(any(), any(), any()))
+                .thenReturn(List.of());
+
+        List<NoticeDashboardView> cards = noticeQueryService
+                .findDashboardSummary(ViewerRole.STAFF, VIEWER_ID);
+
+        assertTrue(cards.isEmpty());
+    }
+
     private Notice notice(boolean visibleToTrainee) {
         return notice(NOTICE_ID, visibleToTrainee, true);
     }
 
-    private Notice notice(boolean visibleToTrainee, boolean mandatory) {
-        return notice(NOTICE_ID, visibleToTrainee, mandatory);
+    private Notice notice(boolean visibleToTrainee, boolean pinned) {
+        return notice(NOTICE_ID, visibleToTrainee, pinned);
     }
 
     private Notice notice(
             Long noticeId,
             boolean visibleToTrainee,
-            boolean mandatory
+            boolean pinned
     ) {
         return Notice.restore(
                 noticeId,
@@ -402,7 +471,7 @@ class NoticeQueryServiceTest {
                 CATEGORY_ID,
                 "8월 특강 안내",
                 "<p>본문입니다.</p>",
-                mandatory,
+                pinned,
                 visibleToTrainee,
                 CREATED_AT,
                 CREATED_AT

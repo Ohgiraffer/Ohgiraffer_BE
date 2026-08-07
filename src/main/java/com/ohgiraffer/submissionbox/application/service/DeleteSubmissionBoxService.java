@@ -36,7 +36,6 @@ public class DeleteSubmissionBoxService
                         );
 
         validateManagementAuthority(
-                submissionBox,
                 requesterId,
                 requesterRole
         );
@@ -55,27 +54,19 @@ public class DeleteSubmissionBoxService
     }
 
     private void validateManagementAuthority(
-            SubmissionBox submissionBox,
             Long requesterId,
             Role requesterRole
     ) {
-        if (requesterId == null || requesterRole == null) {
+        if (requesterId == null
+                || requesterId <= 0
+                || requesterRole == null) {
             throw new BusinessException(
                     ErrorCode.SUBMISSION_BOX_ACCESS_DENIED
             );
         }
 
-        if (requesterRole == Role.MANAGER) {
-            return;
-        }
-
-        boolean isCreator =
-                requesterRole == Role.INSTRUCTOR
-                        && requesterId.equals(
-                        submissionBox.getCreatedBy()
-                );
-
-        if (!isCreator) {
+        if (requesterRole != Role.MANAGER
+                && requesterRole != Role.INSTRUCTOR) {
             throw new BusinessException(
                     ErrorCode.SUBMISSION_BOX_ACCESS_DENIED
             );

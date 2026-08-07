@@ -23,7 +23,7 @@ public record UpdateNoticeRequest(
         @NotBlank(message = "공지 본문은 필수입니다.")
         String content,
 
-        Boolean mandatory,
+        Boolean pinned,
 
         Boolean visibleToTrainee
 ) {
@@ -35,7 +35,7 @@ public record UpdateNoticeRequest(
                 categoryId,
                 title,
                 content,
-                mandatory != null && mandatory,
+                pinned != null && pinned,
                 visibleToTrainee == null || visibleToTrainee
         );
     }

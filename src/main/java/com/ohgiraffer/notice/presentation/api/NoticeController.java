@@ -12,6 +12,7 @@ import com.ohgiraffer.notice.presentation.api.request.CreateNoticeRequest;
 import com.ohgiraffer.notice.presentation.api.request.UpdateNoticeRequest;
 import com.ohgiraffer.notice.presentation.api.response.CreateNoticeResponse;
 import com.ohgiraffer.notice.presentation.api.response.NoticeConfirmationResponse;
+import com.ohgiraffer.notice.presentation.api.response.NoticeDashboardResponse;
 import com.ohgiraffer.notice.presentation.api.response.NoticeDetailResponse;
 import com.ohgiraffer.notice.presentation.api.response.NoticeSummaryResponse;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
@@ -104,10 +105,10 @@ public class NoticeController {
     @Operation(
             summary = "공지 목록 조회",
             description = """
-                    필수 공지를 상단에 두고 같은 등급 안에서는 최신순으로 정렬해 전체를 반환한다.
+                    고정 공지를 상단에 두고 같은 등급 안에서는 최신순으로 정렬해 전체를 반환한다.
                     페이지네이션과 검색은 화면에서 처리하기로 해 서버는 자르거나 거르지 않는다.
                     훈련생에게는 훈련생 비공개 공지를 제외한다.
-                    confirmedByMe 는 필수 공지에만 의미가 있다. 일반 공지는 항상 false 다.
+                    pinned 인 공지가 목록 상단에 온다. confirmedByMe 는 모든 공지에 채워진다.
                     """
     )
     @ApiResponse(responseCode = "200", description = "조회 성공. 비어 있을 수 있다")
@@ -129,6 +130,38 @@ public class NoticeController {
                         .toList();
 
         return ResponseEntity.ok(notices);
+    }
+
+    /**
+     * 메인 대시보드의 공지 요약 카드.
+     */
+    @Operation(
+            summary = "메인 대시보드 공지 요약",
+            description = """
+                    우선 확인해야 할 공지만 골라 반환한다. 대상은 두 가지를 합친 것이다.
+                    최근 3일 안에 올라온 고정 공지, 그리고 아직 확인하지 않은 공지다.
+                    확인하지 않은 공지가 없으면 최근 고정 공지만 남는다.
+                    고정 공지가 위로 오고 같은 등급 안에서는 최신순이다.
+                    5개 단위 페이지네이션과 더보기는 화면에서 처리하기로 해 서버는 자르지 않는다.
+                    훈련생에게는 훈련생 비공개 공지를 제외한다.
+                    """
+    )
+    @ApiResponse(responseCode = "200", description = "조회 성공. 비어 있을 수 있다")
+    @GetMapping("/summary")
+    public ResponseEntity<List<NoticeDashboardResponse>> findDashboardSummary(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        List<NoticeDashboardResponse> cards =
+                noticeQueryUseCase.findDashboardSummary(
+                                viewerRole(principal),
+                                currentUserId(principal)
+                        )
+                        .stream()
+                        .map(NoticeDashboardResponse::from)
+                        .toList();
+
+        return ResponseEntity.ok(cards);
     }
 
     /**
@@ -249,12 +282,12 @@ public class NoticeController {
     }
 
     /**
-     * 필수 공지 확인 처리. 화면의 확인 체크박스가 호출한다.
+     * 고정 공지 확인 처리. 화면의 확인 체크박스가 호출한다.
      */
     @Operation(
             summary = "공지 확인 처리",
             description = """
-                    필수 공지에만 확인 체크박스가 노출되므로 일반 공지에는 사용할 수 없다.
+                    고정 공지든 일반 공지든 모두 확인할 수 있다.
                     이미 확인한 공지를 다시 호출해도 결과는 같다.
                     확인은 취소할 수 없으므로 confirmedByMe 가 true 인 체크박스는 잠가야 한다.
                     응답에 갱신된 인원수가 담기므로 화면에서 1을 더하지 말고 이 값을 쓴다.
@@ -265,11 +298,6 @@ public class NoticeController {
                     responseCode = "200",
                     description = "확인 처리 완료. 갱신된 확인 현황",
                     content = @Content(schema = @Schema(implementation = NoticeConfirmationResponse.class))
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "필수 공지가 아님 (NOTICE_004)",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             ),
             @ApiResponse(
                     responseCode = "404",
