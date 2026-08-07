@@ -4,5 +4,6 @@ public enum SurveyQuestionType {
 
     NUMERIC,
     CHOICE,
-    TEXT
+    TEXT,
+    UNANSWERED
 }

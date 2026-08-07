@@ -43,4 +43,9 @@ public record SurveyQuestionStatistics(
     public boolean isText() {
         return type == SurveyQuestionType.TEXT;
     }
+
+    public boolean isUnanswered() {
+        return type == SurveyQuestionType.UNANSWERED;
+    }
+
 }

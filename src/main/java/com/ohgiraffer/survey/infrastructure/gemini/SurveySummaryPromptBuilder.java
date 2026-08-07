@@ -9,37 +9,10 @@ import com.ohgiraffer.survey.application.summary.SurveyStatisticsResult;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 @Component
 public class SurveySummaryPromptBuilder {
-
-    private static final int
-            MAX_TEXT_RESPONSES_PER_QUESTION = 50;
-
-    private static final int
-            MAX_TEXT_RESPONSE_LENGTH = 300;
-
-    private static final Pattern EMAIL_PATTERN =
-            Pattern.compile(
-                    "[A-Za-z0-9._%+-]+"
-                            + "@"
-                            + "[A-Za-z0-9.-]+"
-                            + "\\.[A-Za-z]{2,}"
-            );
-
-    private static final Pattern PHONE_PATTERN =
-            Pattern.compile(
-                    "(?<!\\d)"
-                            + "(?:01[016789])"
-                            + "[-\\s]?"
-                            + "\\d{3,4}"
-                            + "[-\\s]?"
-                            + "\\d{4}"
-                            + "(?!\\d)"
-            );
 
     private final ObjectMapper objectMapper;
 
@@ -188,49 +161,20 @@ public class SurveySummaryPromptBuilder {
         }
 
         if (question.isText()) {
-            List<String> responses =
-                    question.textResponses()
-                            .stream()
-                            .limit(
-                                    MAX_TEXT_RESPONSES_PER_QUESTION
-                            )
-                            .map(this::sanitizeText)
-                            .toList();
+            payload.put(
+                    "rawResponsesExcluded",
+                    true
+            );
 
             payload.put(
-                    "responses",
-                    responses
+                    "analysisNote",
+                    "개인정보 보호를 위해 서술형 응답 원문은 제공되지 않음"
             );
         }
 
         return payload;
     }
 
-    private String sanitizeText(
-            String value
-    ) {
-        if (value == null || value.isBlank()) {
-            return "";
-        }
-
-        String sanitized =
-                EMAIL_PATTERN.matcher(value)
-                        .replaceAll("[이메일 제거]");
-
-        sanitized =
-                PHONE_PATTERN.matcher(sanitized)
-                        .replaceAll("[전화번호 제거]");
-
-        if (sanitized.length()
-                > MAX_TEXT_RESPONSE_LENGTH) {
-            sanitized = sanitized.substring(
-                    0,
-                    MAX_TEXT_RESPONSE_LENGTH
-            ) + "...";
-        }
-
-        return sanitized;
-    }
 
     private String writeJson(
             Map<String, Object> payload

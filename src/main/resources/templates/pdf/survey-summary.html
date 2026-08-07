@@ -289,6 +289,11 @@
             font-size: 7.5pt;
         }
 
+        .question-type-unanswered {
+            color: #7d5b20;
+            background: #fff3d6;
+        }
+
         .response-count {
             color: #77817b;
             font-size: 8pt;
@@ -360,6 +365,15 @@
             color: #68716c;
             border-radius: 6px;
             background: #f6f7f6;
+            font-size: 8.5pt;
+        }
+
+        .unanswered-notice {
+            padding: 9px 11px;
+            color: #7d652f;
+            border: 1px solid #eee0bd;
+            border-radius: 6px;
+            background: #fff9ea;
             font-size: 8.5pt;
         }
 
@@ -621,13 +635,18 @@
                           th:if="${question.text}">
                         서술형
                     </span>
+
+                    <span class="question-type question-type-unanswered"
+                          th:if="${question.unanswered}">
+                        미응답
+                    </span>
                 </td>
 
                 <td class="question-meta-cell">
                     <span class="response-count">
                         응답
                         <span th:text="${question.responseCount}">
-                            14
+                            0
                         </span>
                         건
                     </span>
@@ -673,8 +692,9 @@
             </tr>
         </table>
 
-        <div th:if="${question.numeric
-                or question.choice}">
+        <div th:if="${(question.numeric
+                or question.choice)
+                and question.responseCount > 0}">
 
             <div class="distribution-row"
                  th:each="entry
@@ -725,6 +745,11 @@
             </span>
             건이 수집되었습니다.
             개인정보 보호를 위해 원문은 보고서에 표시하지 않습니다.
+        </div>
+
+        <div class="unanswered-notice"
+             th:if="${question.unanswered}">
+            이 문항에는 수집된 응답이 없습니다.
         </div>
     </div>
 </div>

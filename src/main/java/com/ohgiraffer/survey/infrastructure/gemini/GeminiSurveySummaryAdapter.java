@@ -8,10 +8,14 @@ import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.survey.application.port.SurveySummaryAiPort;
 import com.ohgiraffer.survey.application.summary.SurveyAiSummary;
 import com.ohgiraffer.survey.application.summary.SurveyStatisticsResult;
+import com.ohgiraffer.survey.application.summary.SurveyQuestionStatistics;
 import org.springframework.web.client.RestClientException;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class GeminiSurveySummaryAdapter
@@ -70,7 +74,8 @@ public class GeminiSurveySummaryAdapter
                     response.improvements(),
                     response.recommendations(),
                     convertQuestionSummaries(
-                            response.questionSummaries()
+                            response.questionSummaries(),
+                            statistics
                     )
             );
         } catch (BusinessException exception) {
@@ -144,16 +149,35 @@ public class GeminiSurveySummaryAdapter
     private List<SurveyAiSummary.QuestionSummary>
     convertQuestionSummaries(
             List<GeminiSurveySummaryResponse
-                    .QuestionSummaryResponse> responses
+                    .QuestionSummaryResponse> responses,
+            SurveyStatisticsResult statistics
     ) {
-        if (responses == null) {
+        if (responses == null || responses.isEmpty()) {
             return List.of();
         }
+
+        Set<Integer> validQuestionNumbers =
+                statistics.questions()
+                        .stream()
+                        .map(
+                                SurveyQuestionStatistics::questionNumber
+                        )
+                        .collect(
+                                Collectors.toUnmodifiableSet()
+                        );
+
+        Set<Integer> seenQuestionNumbers =
+                new HashSet<>();
 
         return responses.stream()
                 .filter(response ->
                         response != null
-                                && response.questionNumber() > 0
+                                && validQuestionNumbers.contains(
+                                response.questionNumber()
+                        )
+                                && seenQuestionNumbers.add(
+                                response.questionNumber()
+                        )
                                 && response.summary() != null
                                 && !response.summary().isBlank()
                 )
@@ -177,4 +201,6 @@ public class GeminiSurveySummaryAdapter
             );
         }
     }
+
+
 }

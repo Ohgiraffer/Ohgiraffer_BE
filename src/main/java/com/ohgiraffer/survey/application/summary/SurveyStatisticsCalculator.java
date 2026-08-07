@@ -67,16 +67,22 @@ public class SurveyStatisticsCalculator {
                             columnIndex
                     );
 
-            if (responses.isEmpty()) {
-                continue;
-            }
+            SurveyQuestionStatistics statistics;
 
-            SurveyQuestionStatistics statistics =
-                    analyzeSafely(
-                            questionNumber,
-                            header,
-                            responses
-                    );
+            if (responses.isEmpty()) {
+                statistics =
+                        createUnansweredQuestion(
+                                questionNumber,
+                                header
+                        );
+            } else {
+                statistics =
+                        analyzeSafely(
+                                questionNumber,
+                                header,
+                                responses
+                        );
+            }
 
             questions.add(statistics);
             questionNumber++;
@@ -88,6 +94,23 @@ public class SurveyStatisticsCalculator {
                 dataset.responseCount(),
                 questions.size(),
                 questions
+        );
+    }
+
+    private SurveyQuestionStatistics createUnansweredQuestion(
+            int questionNumber,
+            String question
+    ) {
+        return new SurveyQuestionStatistics(
+                questionNumber,
+                question,
+                SurveyQuestionType.UNANSWERED,
+                0,
+                null,
+                null,
+                null,
+                Map.of(),
+                List.of()
         );
     }
 

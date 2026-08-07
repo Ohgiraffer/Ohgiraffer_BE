@@ -57,6 +57,10 @@ public class SurveySummaryFileNameGenerator {
 
         normalized = normalized
                 .replaceAll(
+                        "[\\p{Cc}\\p{Cf}]",
+                        "_"
+                )
+                .replaceAll(
                         "[\\\\/:*?\"<>|]",
                         "_"
                 )
@@ -77,14 +81,37 @@ public class SurveySummaryFileNameGenerator {
             return "설문";
         }
 
-        if (normalized.length()
-                > MAX_TITLE_LENGTH) {
-            normalized = normalized.substring(
-                    0,
-                    MAX_TITLE_LENGTH
-            );
-        }
+        normalized = truncateByCodePoints(
+                normalized,
+                MAX_TITLE_LENGTH
+        );
 
         return normalized;
+    }
+
+    private String truncateByCodePoints(
+            String value,
+            int maximumCodePointCount
+    ) {
+        int codePointCount =
+                value.codePointCount(
+                        0,
+                        value.length()
+                );
+
+        if (codePointCount <= maximumCodePointCount) {
+            return value;
+        }
+
+        int endIndex =
+                value.offsetByCodePoints(
+                        0,
+                        maximumCodePointCount
+                );
+
+        return value.substring(
+                0,
+                endIndex
+        );
     }
 }
