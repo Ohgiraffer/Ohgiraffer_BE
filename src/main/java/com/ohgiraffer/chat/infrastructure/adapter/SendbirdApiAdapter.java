@@ -146,6 +146,50 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
 
     }
 
+    // 여러 유저 온라인 상태 일괄 조회 (user_ids 파라미터로 한 번에, N+1 방지)
+    @Override
+    public List<SendbirdUserStatus> getUserStatuses(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        try {
+            String idsParam = userIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+
+            Map<String, Object> response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/users")
+                            .queryParam("user_ids", idsParam)
+                            .build())
+                    .retrieve()
+                    .body(Map.class);
+
+            List<Map<String, Object>> users = (List<Map<String, Object>>) response.get("users");
+
+            return users.stream()
+                    .map(this::toUserStatus)
+                    .toList();
+        } catch (RestClientException e) {
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 온라인 상태 일괄 조회 실패");
+        }
+    }
+
+    // Sendbird 유저 응답(raw Map)을 SendbirdUserStatus로 변환 (getUserStatus 단건 조회 로직과 동일)
+    private SendbirdUserStatus toUserStatus(Map<String, Object> raw) {
+        Long userId = Long.parseLong((String) raw.get("user_id"));
+        boolean isOnline = Boolean.TRUE.equals(raw.get("is_online"));
+        Object lastSeenAtRaw = raw.get("last_seen_at");
+        Instant lastSeenAt = null;
+
+        if (!isOnline && lastSeenAtRaw != null) {
+            long epochMillis = ((Number) lastSeenAtRaw).longValue();
+            if (epochMillis > 0) {
+                lastSeenAt = Instant.ofEpochMilli(epochMillis);
+            }
+        }
+
+        return new SendbirdUserStatus(userId, isOnline, lastSeenAt);
+    }
+
     // 채팅방 생성 - userIds 1명이면 1:1(is_distinct=true), 2명 이상이면 그룹
     @Override
     public String createChannel(List<Long> userIds, String name) {

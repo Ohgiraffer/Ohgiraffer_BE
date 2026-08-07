@@ -45,6 +45,9 @@ public interface SendbirdApiPort {
     // 온라인 상태 조회
     SendbirdUserStatus getUserStatus(Long userId);
 
+    // 여러 유저 온라인 상태 일괄 조회 (DM 목록 온라인 표시용, N+1 방지)
+    List<SendbirdUserStatus> getUserStatuses(List<Long> userIds);
+
     // 웹훅 서명 검증
     boolean verifyWebhookSignature(String payload, String signature);
 

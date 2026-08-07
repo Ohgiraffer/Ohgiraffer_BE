@@ -67,6 +67,13 @@ public class ChatChannelMemberRepositoryAdapter implements ChatChannelMemberRepo
                 ));
     }
 
+    // 여러 채널의 멤버 일괄 조회
+    @Override
+    public List<ChatChannelMember> findAllByChatChannelIdInAndLeftAtIsNull(List<Long> chatChannelIds) {
+        return jpaRepository.findAllByChatChannelIdInAndLeftAtIsNull(chatChannelIds)
+                .stream().map(ChatChannelMemberJpaEntity::toDomain).toList();
+    }
+
     // 유저 기준 채널별 안읽음수 일괄 조회 - 네이티브쿼리 결과(Projection)를 Map으로 변환
     @Override
     public List<ChatChannelMember> findAllByUserIdAndLeftAtIsNull(Long userId) {

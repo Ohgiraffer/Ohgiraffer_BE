@@ -1,7 +1,9 @@
 package com.ohgiraffer.chat.application.service;
 
+import com.ohgiraffer.chat.application.port.SendbirdApiPort;
 import com.ohgiraffer.chat.application.result.ChatChannelDetailResult;
 import com.ohgiraffer.chat.application.result.ChatChannelListItemResult;
+import com.ohgiraffer.chat.application.result.SendbirdUserStatus;
 import com.ohgiraffer.chat.application.usecase.ChatChannelQueryUseCase;
 import com.ohgiraffer.chat.domain.model.ChatChannel;
 import com.ohgiraffer.chat.domain.model.ChatChannelMember;
@@ -12,11 +14,14 @@ import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
 import com.ohgiraffer.chat.domain.repository.ChatMessageMirrorRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -28,6 +33,7 @@ import java.util.stream.Collectors;
  *  최신 메시지 id 이상이면 읽음으로 판단함 (최신 메시지가 없으면 전원 읽음)
  */
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -37,6 +43,7 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
     private final ChatChannelMemberRepository chatChannelMemberRepository;
     private final ChatMessageMirrorRepository chatMessageMirrorRepository;
     private final UserRepository userRepository;
+    private final SendbirdApiPort sendbirdApiPort;
 
     // 그룹 채팅방 상세 조회 - 참여자 목록 + 최신메시지 기준 읽음 인원 계산
     @Override
@@ -61,16 +68,21 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
         List<Long> memberUserIds = chatChannelMembers.stream()
                 .map(ChatChannelMember::getUserId)
                 .toList();
-        Map<Long, String> memberNamesById = userRepository.findByIdIn(memberUserIds).stream()
-                .collect(Collectors.toMap(user -> user.getId(), user -> user.getName()));
+        Map<Long, User> usersById = userRepository.findByIdIn(memberUserIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
 
         List<ChatChannelDetailResult.ChatChannelMemberResult> members = chatChannelMembers.stream()
-                .map(m -> new ChatChannelDetailResult.ChatChannelMemberResult(
-                        m.getUserId(),
-                        memberNamesById.get(m.getUserId()),
-                        m.getJoinedAt(), m.getLastReadMessageId(),
-                        isRead(m.getLastReadMessageId(), latestMessageId)
-                ))
+                .map(m -> {
+                    User user = usersById.get(m.getUserId());
+                    return new ChatChannelDetailResult.ChatChannelMemberResult(
+                            m.getUserId(),
+                            user != null ? user.getName() : null,
+                            user != null ? user.getEmail() : null,
+                            user != null ? user.getRole().name() : null,
+                            m.getJoinedAt(), m.getLastReadMessageId(),
+                            isRead(m.getLastReadMessageId(), latestMessageId)
+                    );
+                })
                 .toList();
 
         List<Long> readUserIds = members.stream()
@@ -119,6 +131,7 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
 
         Map<String, ChannelLastMessage> lastMessages = chatMessageMirrorRepository.findLatestMessagesByChannelIds(sendbirdUrls);
         Map<Long, Long> unreadCounts = chatChannelMemberRepository.findUnreadCountsByUserId(userId);
+        Map<String, Boolean> onlineByChannelUrl = buildOnlineStatusForDmChannels(channels, userId);
 
         return channels.stream()
                 .map(channel -> {
@@ -127,7 +140,8 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
                             channel.getSendbirdChannelUrl(), channel.getName(), channel.getChannelType().name(),
                             last != null ? last.content() : null,
                             last != null ? last.sentAt() : null,
-                            unreadCounts.getOrDefault(channel.getId(), 0L)
+                            unreadCounts.getOrDefault(channel.getId(), 0L),
+                            onlineByChannelUrl.get(channel.getSendbirdChannelUrl()) // DM 아니면 null
                     );
                 })
                 .toList();
@@ -138,6 +152,54 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
     public long getTotalUnreadCount(Long userId) {
         Map<Long, Long> unreadCounts = chatChannelMemberRepository.findUnreadCountsByUserId(userId);
         return unreadCounts.values().stream().mapToLong(Long::longValue).sum();
+    }
+
+    // DM 채널만 골라 상대방(나 아닌 멤버) userId를 찾고, Sendbird 온라인 상태를 배치 조회
+    // GROUP 채널은 대상에서 제외 (목록 화면에서 굳이 온라인 표시 안 함)
+    private Map<String, Boolean> buildOnlineStatusForDmChannels(List<ChatChannel> channels, Long userId) {
+        List<ChatChannel> dmChannels = channels.stream()
+                .filter(c -> c.getChannelType() == ChatChannel.ChannelType.DM)
+                .toList();
+        if (dmChannels.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> dmChannelIds = dmChannels.stream().map(ChatChannel::getId).toList();
+        List<ChatChannelMember> dmMembers = chatChannelMemberRepository.findAllByChatChannelIdInAndLeftAtIsNull(dmChannelIds);
+
+        // 채널별로 "나 아닌 멤버"(상대방) userId 매핑
+        Map<Long, Long> otherUserIdByChannelId = dmMembers.stream()
+                .filter(m -> !m.getUserId().equals(userId))
+                .collect(Collectors.toMap(ChatChannelMember::getChatChannelId, ChatChannelMember::getUserId, (a, b) -> a));
+
+        List<Long> otherUserIds = otherUserIdByChannelId.values().stream().distinct().toList();
+        Map<Long, Boolean> onlineByUserId = fetchOnlineStatuses(otherUserIds);
+
+        Map<Long, String> channelIdToUrl = dmChannels.stream()
+                .collect(Collectors.toMap(ChatChannel::getId, ChatChannel::getSendbirdChannelUrl));
+
+        Map<String, Boolean> result = new HashMap<>();
+        otherUserIdByChannelId.forEach((chatChannelId, otherUserId) -> {
+            String url = channelIdToUrl.get(chatChannelId);
+            if (url != null) {
+                result.put(url, onlineByUserId.getOrDefault(otherUserId, false));
+            }
+        });
+        return result;
+    }
+
+    // Sendbird 온라인 상태 일괄 조회 - 실패하면 전원 offline으로 기본 처리 (목록 조회 자체를 막지 않음)
+    private Map<Long, Boolean> fetchOnlineStatuses(List<Long> userIds) {
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            return sendbirdApiPort.getUserStatuses(userIds).stream()
+                    .collect(Collectors.toMap(SendbirdUserStatus::userId, SendbirdUserStatus::isOnline));
+        } catch (BusinessException e) {
+            log.warn("[Chat] DM 온라인 상태 일괄 조회 실패 - 전원 offline으로 처리 | userIds={}", userIds);
+            return Map.of();
+        }
     }
 
     // 검색어/채널명 비교용 정규화. 공백 제거 + 소문자 변환(Locale.ROOT로 JVM 기본 로케일 영향 배제, 터키어 로케일 등에서 i/I 변환 오류 방지)

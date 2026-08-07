@@ -34,6 +34,9 @@ public interface ChatChannelMemberRepository {
     // 유저가 현재 참여중인 채널 멤버십 전체 조회 - 채널목록에서 channelId 목록 뽑는 용도
     List<ChatChannelMember> findAllByUserIdAndLeftAtIsNull(Long userId);
 
+    // 여러 채널의 멤버를 한 번에 조회 (DM 상대방 찾기용 배치 조회, N+1 방지)
+    List<ChatChannelMember> findAllByChatChannelIdInAndLeftAtIsNull(List<Long> chatChannelIds);
+
     // 활성 멤버십 여부만 빠르게 확인 (IDOR 방지용) - 상세/이력/답글/검색 조회 전 필수 체크
     boolean existsActiveMembership(Long chatChannelId, Long userId);
 }
