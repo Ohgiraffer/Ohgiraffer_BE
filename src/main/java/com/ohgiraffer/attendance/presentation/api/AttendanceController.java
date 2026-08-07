@@ -55,7 +55,7 @@ public class AttendanceController {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 학생"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     @GetMapping("/monthly/{studentId}")
     public ResponseEntity<MonthlyAttendanceResponse> getStudentCalendar(
             @AuthenticationPrincipal CustomUserPrincipal principal,
@@ -90,7 +90,7 @@ public class AttendanceController {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 학생"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     @GetMapping("/summary/{studentId}")
     public ResponseEntity<AttendanceSummaryResponse> getStudentSummary(
             @AuthenticationPrincipal CustomUserPrincipal principal,
