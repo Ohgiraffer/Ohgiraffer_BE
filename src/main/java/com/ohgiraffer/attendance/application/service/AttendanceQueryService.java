@@ -1,14 +1,12 @@
 package com.ohgiraffer.attendance.application.service;
 
 import com.ohgiraffer.attendance.application.usecase.AttendanceQueryUsecase;
-import com.ohgiraffer.attendance.domain.model.AttendanceCalendarView;
-import com.ohgiraffer.attendance.domain.model.AttendanceRiskLevel;
-import com.ohgiraffer.attendance.domain.model.AttendanceSummaryView;
-import com.ohgiraffer.attendance.domain.model.CalendarStatusGroup;
+import com.ohgiraffer.attendance.domain.model.*;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.presentation.api.response.AttendanceSummaryResponse;
 import com.ohgiraffer.attendance.presentation.api.response.MonthlyAttendanceResponse;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
+import com.ohgiraffer.bootcamp.domain.model.AttendancePeriodResult;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePolicyResult;
 import com.ohgiraffer.bootcamp.domain.model.BootcampPeriodResult;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
@@ -49,23 +47,28 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
         List<AttendanceCalendarView> views =
                 attendanceRepository.findCalendarByUserIdAndDateRange(userId, start, end);
 
-        Map<LocalDate, CalendarStatusGroup> statusByDate = views.stream()
+        Map<LocalDate, AttendanceCalendarView> viewByDate = views.stream()
                 .collect(Collectors.toMap(
                         AttendanceCalendarView::attendanceDate,
-                        v -> CalendarStatusGroup.from(v.status()),
+                        v -> v,
                         (existing, duplicate) -> {
                             log.warn("[getMonthlyAttendance] 동일 날짜 출결 중복 발견, 기존 값 유지 | userId={}, date={}",
-                                    userId, existing);
+                                    userId, existing.attendanceDate());
                             return existing;
                         }
                 ));
 
         List<MonthlyAttendanceResponse.DayInfo> days = Stream.iterate(start, d -> d.plusDays(1))
                 .limit(end.getDayOfMonth())
-                .map(date -> new MonthlyAttendanceResponse.DayInfo(
-                        date,
-                        statusByDate.get(date)
-                ))
+                .map(date -> {
+                    AttendanceCalendarView view = viewByDate.get(date);
+                    return new MonthlyAttendanceResponse.DayInfo(
+                            date,
+                            view != null ? CalendarStatusGroup.from(view.status()) : null,
+                            view != null ? view.checkInTime() : null,
+                            view != null ? view.checkOutTime() : null
+                    );
+                })
                 .toList();
 
         return new MonthlyAttendanceResponse(yearMonth.toString(), days);
@@ -81,7 +84,7 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
         LocalDate today = LocalDate.now();
 
         if (today.isBefore(bootcampPeriod.startDate())) {
-            return AttendanceSummaryResponse.of(AttendanceSummaryView.empty(), null, null);
+            return AttendanceSummaryResponse.of(AttendanceSummaryView.empty(), null, null, List.of());
         }
 
         LocalDate start = bootcampPeriod.startDate();
@@ -93,7 +96,30 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
         BigDecimal attendanceRate = calculateAttendanceRate(summary, totalDays);
         AttendanceRiskLevel riskLevel = calculateRiskLevel(attendanceRate, policy);
 
-        return AttendanceSummaryResponse.of(summary, attendanceRate, riskLevel);
+        List<PeriodAttendanceRate> periodRates = calculatePeriodRates(userId, bootcampId, today);
+
+        return AttendanceSummaryResponse.of(summary, attendanceRate, riskLevel, periodRates);
+    }
+
+    private List<PeriodAttendanceRate> calculatePeriodRates(
+            Long userId, Long bootcampId, LocalDate today
+    ) {
+        List<AttendancePeriodResult> periods = bootcampQueryUsecase.getAttendancePeriods(bootcampId);
+
+        return periods.stream()
+                .filter(period -> !today.isBefore(period.startDate()))
+                .map(period -> {
+                    LocalDate periodEnd = today.isBefore(period.endDate()) ? today : period.endDate();
+
+                    AttendanceSummaryView periodSummary =
+                            attendanceRepository.countByUserAndDateRange(userId, period.startDate(), periodEnd);
+
+                    long periodTotalDays = countWeekdays(period.startDate(), periodEnd);
+                    BigDecimal periodRate = calculateAttendanceRate(periodSummary, periodTotalDays);
+
+                    return new PeriodAttendanceRate(period.periodNo(), periodRate);
+                })
+                .toList();
     }
 
     private BigDecimal calculateAttendanceRate(AttendanceSummaryView summary, long totalDays) {

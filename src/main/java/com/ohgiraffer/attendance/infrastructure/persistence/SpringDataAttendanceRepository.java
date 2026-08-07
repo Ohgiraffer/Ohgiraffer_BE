@@ -12,11 +12,12 @@ import java.util.List;
 public interface SpringDataAttendanceRepository extends JpaRepository<AttendanceJpaEntity, Long> {
 
     @Query("""
-        SELECT a.attendanceDate AS attendanceDate, a.status AS status
-        FROM AttendanceJpaEntity a
-        WHERE a.userId = :userId
-          AND a.attendanceDate BETWEEN :start AND :end
-        """)
+    SELECT a.attendanceDate AS attendanceDate, a.status AS status,
+           a.checkInTime AS checkInTime, a.checkOutTime AS checkOutTime
+    FROM AttendanceJpaEntity a
+    WHERE a.userId = :userId
+      AND a.attendanceDate BETWEEN :start AND :end
+    """)
     List<AttendanceCalendarProjection> findCalendarByUserIdAndDateRange(
             @Param("userId") Long userId,
             @Param("start") LocalDate start,

@@ -12,7 +12,9 @@ import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializ
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
+import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.List;
 
 @Configuration
 @EnableCaching
@@ -21,7 +23,9 @@ public class CacheConfig {
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         BasicPolymorphicTypeValidator typeValidator = BasicPolymorphicTypeValidator.builder()
-                .allowIfBaseType(AttendanceSummaryResponse.class)
+                .allowIfSubType("com.ohgiraffer.")
+                .allowIfBaseType(BigDecimal.class)
+                .allowIfBaseType(List.class)
                 .build();
 
         GenericJacksonJsonRedisSerializer serializer = GenericJacksonJsonRedisSerializer.builder()

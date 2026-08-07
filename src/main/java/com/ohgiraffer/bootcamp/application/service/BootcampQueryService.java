@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -97,5 +98,13 @@ public class BootcampQueryService implements BootcampQueryUsecase {
                 policy.getWarningThresholdPct(),
                 policy.getPeriodExpulsionPct()
         );
+    }
+
+    @Override
+    public List<AttendancePeriodResult> getAttendancePeriods(Long bootcampId) {
+        return attendancePeriodRepository.findAllByBootcampId(bootcampId).stream()
+                .map(p -> new AttendancePeriodResult(p.getId(), p.getPeriodNo(), p.getPeriodStart(), p.getPeriodEnd()))
+                .sorted(Comparator.comparing(AttendancePeriodResult::periodNo))
+                .toList();
     }
 }

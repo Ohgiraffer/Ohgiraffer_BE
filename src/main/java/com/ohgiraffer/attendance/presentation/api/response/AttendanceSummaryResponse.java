@@ -2,8 +2,10 @@ package com.ohgiraffer.attendance.presentation.api.response;
 
 import com.ohgiraffer.attendance.domain.model.AttendanceRiskLevel;
 import com.ohgiraffer.attendance.domain.model.AttendanceSummaryView;
+import com.ohgiraffer.attendance.domain.model.PeriodAttendanceRate;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record AttendanceSummaryResponse(
         long presentDays,
@@ -14,21 +16,17 @@ public record AttendanceSummaryResponse(
         long leaveDays,
         long sickDays,
         BigDecimal attendanceRate,
-        AttendanceRiskLevel riskLevel  // null이면 정상
+        AttendanceRiskLevel riskLevel,
+        List<PeriodAttendanceRate> periodRates
 ) {
     public static AttendanceSummaryResponse of(
-            AttendanceSummaryView view, BigDecimal attendanceRate, AttendanceRiskLevel riskLevel
+            AttendanceSummaryView view, BigDecimal attendanceRate,
+            AttendanceRiskLevel riskLevel, List<PeriodAttendanceRate> periodRates
     ) {
         return new AttendanceSummaryResponse(
-                view.presentDays(),
-                view.lateCount(),
-                view.earlyLeaveCount(),
-                view.outingCount(),
-                view.absentDays(),
-                view.leaveDays(),
-                view.sickDays(),
-                attendanceRate,
-                riskLevel
+                view.presentDays(), view.lateCount(), view.earlyLeaveCount(),
+                view.outingCount(), view.absentDays(), view.leaveDays(), view.sickDays(),
+                attendanceRate, riskLevel, periodRates
         );
     }
 }

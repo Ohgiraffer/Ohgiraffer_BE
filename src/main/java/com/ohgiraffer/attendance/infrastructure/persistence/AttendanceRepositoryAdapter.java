@@ -20,7 +20,9 @@ public class AttendanceRepositoryAdapter implements AttendanceRepository {
     public List<AttendanceCalendarView> findCalendarByUserIdAndDateRange(Long userId, LocalDate start, LocalDate end) {
         return springDataAttendanceRepository.findCalendarByUserIdAndDateRange(userId, start, end)
                 .stream()
-                .map(p -> new AttendanceCalendarView(p.getAttendanceDate(), p.getStatus()))
+                .map(p -> new AttendanceCalendarView(
+                        p.getAttendanceDate(), p.getStatus(), p.getCheckInTime(), p.getCheckOutTime()
+                ))
                 .toList();
     }
 
