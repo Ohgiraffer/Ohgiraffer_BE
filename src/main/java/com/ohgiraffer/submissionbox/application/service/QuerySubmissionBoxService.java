@@ -20,12 +20,15 @@ import com.ohgiraffer.submissionbox.application.usecase.SubmissionStatusResult;
 
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
+
 
 
 @Service
@@ -71,33 +74,64 @@ public class QuerySubmissionBoxService
                     .toList();
         }
 
-        int individualTargetCount =
+        Set<Long> activeStudentIds =
                 userRepository
                         .findAllByRoleAndStatus(
                                 Role.STUDENT,
                                 UserStatus.ACTIVE
                         )
-                        .size();
+                        .stream()
+                        .map(user -> user.getId())
+                        .collect(
+                                Collectors.toUnmodifiableSet()
+                        );
 
-        int teamTargetCount =
+        Set<Long> activeTeamIds =
                 submissionTeamTargetPort
                         .findActiveTeams()
-                        .size();
+                        .stream()
+                        .map(team -> team.teamId())
+                        .collect(
+                                Collectors.toUnmodifiableSet()
+                        );
 
         return submissionBoxes.stream()
                 .map(submissionBox -> {
-                    int submittedCount =
+                    boolean teamSubmission =
+                            submissionBox.getTargetScope()
+                                    == SubmissionTargetScope.TEAM;
+
+                    Set<Long> activeTargetIds =
+                            teamSubmission
+                                    ? activeTeamIds
+                                    : activeStudentIds;
+
+                    List<Submission> submissions =
                             submissionRepository
                                     .findAllBySubmissionBoxId(
                                             submissionBox.getId()
-                                    )
-                                    .size();
+                                    );
+
+                    int submittedCount =
+                            Math.toIntExact(
+                                    submissions.stream()
+                                            .map(submission ->
+                                                    teamSubmission
+                                                            ? submission.getTeamId()
+                                                            : submission.getOwnerUserId()
+                                            )
+                                            .filter(
+                                                    targetId ->
+                                                            targetId != null
+                                                                    && activeTargetIds
+                                                                    .contains(targetId)
+                                            )
+                                            .distinct()
+                                            .count()
+                            );
 
                     int targetCount =
-                            submissionBox.getTargetScope()
-                                    == SubmissionTargetScope.TEAM
-                                    ? teamTargetCount
-                                    : individualTargetCount;
+                            activeTargetIds.size();
 
                     return SubmissionBoxListResult
                             .forStaff(
