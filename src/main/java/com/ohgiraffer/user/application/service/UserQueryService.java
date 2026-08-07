@@ -6,6 +6,7 @@ import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.user.application.helper.UserFileParserResolver;
 import com.ohgiraffer.user.application.policy.UserSheetValidationPolicy;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
+import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import com.ohgiraffer.user.presentation.api.response.UserResponse;
@@ -66,9 +67,10 @@ public class UserQueryService implements UserQueryUsecase {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
-    private List<String> extractColumns(List<Object> headerRow) {
-        return headerRow.stream()
-                .map(cell -> cell == null ? "" : cell.toString().trim())
-                .toList();
+    @Override
+    public Role getRole(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        return user.getRole();
     }
 }

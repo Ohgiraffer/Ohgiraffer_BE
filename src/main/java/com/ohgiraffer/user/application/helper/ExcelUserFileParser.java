@@ -2,6 +2,7 @@ package com.ohgiraffer.user.application.helper;
 
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import org.apache.poi.EncryptedDocumentException;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -56,6 +57,8 @@ public class ExcelUserFileParser implements UserFileParser {
                     rows.add(rowData);
                 }
             }
+        } catch (EncryptedDocumentException e) {
+            throw new BusinessException(ErrorCode.FILE_PARSE_FAILED, "암호가 설정된 엑셀 파일은 업로드할 수 없습니다.");
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.FILE_PARSE_FAILED);
         }

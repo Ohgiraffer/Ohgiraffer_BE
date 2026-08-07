@@ -2,10 +2,12 @@ package com.ohgiraffer.user.application.helper;
 
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -14,8 +16,6 @@ import java.util.List;
 
 @Component
 public class CsvUserFileParser implements UserFileParser {
-
-    private static final String DELIMITER = ",";
 
     @Override
     public boolean supports(String filename) {
@@ -26,20 +26,16 @@ public class CsvUserFileParser implements UserFileParser {
     public List<List<Object>> parse(MultipartFile file) {
         List<List<Object>> rows = new ArrayList<>();
 
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+        try (InputStreamReader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
+             CSVParser csvParser = CSVFormat.DEFAULT.builder()
+                     .setIgnoreEmptyLines(true)
+                     .setTrim(true)
+                     .build()
+                     .parse(reader)) {
 
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank()) {
-                    continue;
-                }
-
-                String[] tokens = line.split(DELIMITER, -1);
+            for (CSVRecord record : csvParser) {
                 List<Object> row = new ArrayList<>();
-                for (String token : tokens) {
-                    row.add(token.trim());
-                }
+                record.forEach(row::add);
                 rows.add(row);
             }
         } catch (IOException e) {
