@@ -36,7 +36,7 @@ public class BudgetController {
     }
 
     @PostMapping("/sheets/settings")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     public ResponseEntity<BudgetSyncResponse> saveBudgetSheetSettings(
             @Valid @RequestBody SaveBudgetSheetSettingsRequest request
     ) {
@@ -53,7 +53,7 @@ public class BudgetController {
     }
 
     @PostMapping("/sync")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     public ResponseEntity<BudgetSyncResponse> syncBudgetSheet() {
         BudgetSyncResult result =
                 syncBudgetSheetUseCase.sync();
@@ -66,7 +66,7 @@ public class BudgetController {
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     public ResponseEntity<BudgetSummaryResponse> getBudgetSummary() {
         BudgetSummaryResult result =
                 getBudgetSummaryUseCase.getSummary();
