@@ -16,4 +16,8 @@ public interface NotificationQuerydslRepository {
     // isRead/notificationType 조건별 동적 필터 + createdAt 최신순 정렬, 페이징 없이 전체 반환
     List<Notification> search(NotificationSearchCondition condition);
 
+    // 안읽음 개수 조회 - COUNT 단일 쿼리
+    long countUnread(Long userId);
+
+
 }

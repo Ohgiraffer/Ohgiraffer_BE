@@ -16,4 +16,7 @@ public interface NotificationQueryUseCase {
     // 목록 조회 - isRead/notificationType은 필터 미전달 시 null, 페이징 없이 전체 반환
     List<NotificationResult> getNotifications(Long userId, Boolean isRead, NotificationType notificationType);
 
+    // 안읽음 개수 조회
+    long getUnreadCount(Long userId);
+
 }

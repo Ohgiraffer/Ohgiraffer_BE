@@ -37,4 +37,10 @@ public class NotificationQueryService implements NotificationQueryUseCase {
                 .toList();
     }
 
+    // 안읽음 개수 조회 - 상단바 배지용, 리포지토리 count 위임
+    @Override
+    public long getUnreadCount(Long userId) {
+        return notificationRepository.countUnread(userId);
+    }
+
 }

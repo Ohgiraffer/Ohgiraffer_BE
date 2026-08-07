@@ -10,6 +10,7 @@ import com.ohgiraffer.notification.presentation.api.request.NotificationBulkDele
 import com.ohgiraffer.notification.presentation.api.request.NotificationCreateRequest;
 import com.ohgiraffer.notification.presentation.api.response.BulkDeleteResponse;
 import com.ohgiraffer.notification.presentation.api.response.NotificationResponse;
+import com.ohgiraffer.notification.presentation.api.response.UnreadCountResponse;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -93,5 +94,13 @@ public class NotificationController {
         return ResponseEntity.ok(NotificationResponse.from(result));
     }
 
+    // 안읽음 개수 조회 - 상단바 배지용
+    @GetMapping("/unread-count")
+    public ResponseEntity<UnreadCountResponse> getUnreadCount(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        long unreadCount = notificationQueryUseCase.getUnreadCount(principal.getId());
+        return ResponseEntity.ok(new UnreadCountResponse(unreadCount));
+    }
 
 }

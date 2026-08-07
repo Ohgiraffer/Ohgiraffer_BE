@@ -57,4 +57,10 @@ public class NotificationRepositoryAdapter implements NotificationRepository {
         return jpaRepository.deleteByIdInAndUserId(notificationIds, userId);
     }
 
+    // 안읽음 개수 조회 - Querydsl count 위임
+    @Override
+    public long countUnread(Long userId) {
+        return jpaRepository.countUnread(userId);
+    }
+
 }

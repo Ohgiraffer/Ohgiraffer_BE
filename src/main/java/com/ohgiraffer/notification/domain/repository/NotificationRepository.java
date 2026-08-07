@@ -28,4 +28,7 @@ public interface NotificationRepository {
     // 선택 삭제 - 본인 소유 검증까지 포함해서 삭제, 실제 삭제된 개수 반환
     long deleteByIdsAndUserId(List<Long> notificationIds, Long userId);
 
+    // 안읽음 개수 조회
+    long countUnread(Long userId);
+
 }
