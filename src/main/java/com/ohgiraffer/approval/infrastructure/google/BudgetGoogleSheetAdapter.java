@@ -3,10 +3,11 @@ package com.ohgiraffer.approval.infrastructure.google;
 import com.ohgiraffer.approval.application.command.BudgetColumnMapping;
 import com.ohgiraffer.approval.application.port.BudgetSheetPort;
 import com.ohgiraffer.approval.application.port.BudgetSheetRow;
-import com.ohgiraffer.approval.application.query.BudgetSheetColumn;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.global.google.sheets.ExternalSheetPort;
 import com.ohgiraffer.global.google.sheets.GoogleSheetsClient;
+import com.ohgiraffer.global.google.sheets.SheetColumn;
 import com.ohgiraffer.global.google.sheets.SpreadsheetIdExtractor;
 import org.springframework.stereotype.Component;
 
@@ -17,9 +18,10 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class BudgetGoogleSheetAdapter implements BudgetSheetPort {
+public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetPort {
 
-    private static final int MIN_HEADER_COLUMN_COUNT = 4;
+    private static final int MIN_HEADER_COLUMN_COUNT = 1;
+    private static final int REQUIRED_BUDGET_MAPPING_COUNT = 4;
 
     private final GoogleSheetsClient googleSheetsClient;
     private final SpreadsheetIdExtractor spreadsheetIdExtractor;
@@ -51,14 +53,14 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort {
     }
 
     @Override
-    public List<BudgetSheetColumn> getSheetColumns(
+    public List<SheetColumn> getSheetColumns(
             String spreadsheetId
     ) {
         List<String> sheetNames = googleSheetsClient.getSheetNames(
                 spreadsheetId
         );
 
-        List<BudgetSheetColumn> result = new ArrayList<>();
+        List<SheetColumn> result = new ArrayList<>();
 
         for (String sheetName : sheetNames) {
             List<List<Object>> rows = googleSheetsClient.readRange(
@@ -69,7 +71,7 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort {
             );
 
             result.add(
-                    new BudgetSheetColumn(
+                    new SheetColumn(
                             sheetName,
                             findColumnCandidates(
                                     rows
@@ -313,7 +315,7 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort {
                 .distinct()
                 .count();
 
-        if (uniqueColumnCount != MIN_HEADER_COLUMN_COUNT) {
+        if (uniqueColumnCount != REQUIRED_BUDGET_MAPPING_COUNT) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "예산 컬럼은 서로 다른 값으로 매핑해야 합니다."

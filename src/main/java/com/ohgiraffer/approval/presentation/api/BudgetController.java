@@ -1,15 +1,11 @@
 package com.ohgiraffer.approval.presentation.api;
 
 import com.ohgiraffer.approval.application.query.BudgetSummaryResult;
-import com.ohgiraffer.approval.application.usecase.BudgetSheetValidationResult;
 import com.ohgiraffer.approval.application.usecase.BudgetSyncResult;
 import com.ohgiraffer.approval.application.usecase.GetBudgetSummaryUseCase;
 import com.ohgiraffer.approval.application.usecase.SaveBudgetSheetSettingsUseCase;
 import com.ohgiraffer.approval.application.usecase.SyncBudgetSheetUseCase;
-import com.ohgiraffer.approval.application.usecase.ValidateBudgetSheetUseCase;
 import com.ohgiraffer.approval.presentation.api.request.SaveBudgetSheetSettingsRequest;
-import com.ohgiraffer.approval.presentation.api.request.ValidateBudgetSheetRequest;
-import com.ohgiraffer.approval.presentation.api.response.BudgetSheetValidationResponse;
 import com.ohgiraffer.approval.presentation.api.response.BudgetSummaryResponse;
 import com.ohgiraffer.approval.presentation.api.response.BudgetSyncResponse;
 import jakarta.validation.Valid;
@@ -25,42 +21,22 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/budgets")
 public class BudgetController {
 
-    private final ValidateBudgetSheetUseCase validateBudgetSheetUseCase;
     private final SaveBudgetSheetSettingsUseCase saveBudgetSheetSettingsUseCase;
     private final SyncBudgetSheetUseCase syncBudgetSheetUseCase;
     private final GetBudgetSummaryUseCase getBudgetSummaryUseCase;
 
     public BudgetController(
-            ValidateBudgetSheetUseCase validateBudgetSheetUseCase,
             SaveBudgetSheetSettingsUseCase saveBudgetSheetSettingsUseCase,
             SyncBudgetSheetUseCase syncBudgetSheetUseCase,
             GetBudgetSummaryUseCase getBudgetSummaryUseCase
     ) {
-        this.validateBudgetSheetUseCase = validateBudgetSheetUseCase;
         this.saveBudgetSheetSettingsUseCase = saveBudgetSheetSettingsUseCase;
         this.syncBudgetSheetUseCase = syncBudgetSheetUseCase;
         this.getBudgetSummaryUseCase = getBudgetSummaryUseCase;
     }
 
-    @PostMapping("/sheets/validate")
-    @PreAuthorize("hasRole('MANAGER')")
-    public ResponseEntity<BudgetSheetValidationResponse> validateBudgetSheet(
-            @Valid @RequestBody ValidateBudgetSheetRequest request
-    ) {
-        BudgetSheetValidationResult result =
-                validateBudgetSheetUseCase.validate(
-                        request.spreadsheetUrl()
-                );
-
-        return ResponseEntity.ok(
-                BudgetSheetValidationResponse.from(
-                        result
-                )
-        );
-    }
-
     @PostMapping("/sheets/settings")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     public ResponseEntity<BudgetSyncResponse> saveBudgetSheetSettings(
             @Valid @RequestBody SaveBudgetSheetSettingsRequest request
     ) {
@@ -77,7 +53,7 @@ public class BudgetController {
     }
 
     @PostMapping("/sync")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     public ResponseEntity<BudgetSyncResponse> syncBudgetSheet() {
         BudgetSyncResult result =
                 syncBudgetSheetUseCase.sync();
@@ -90,7 +66,7 @@ public class BudgetController {
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     public ResponseEntity<BudgetSummaryResponse> getBudgetSummary() {
         BudgetSummaryResult result =
                 getBudgetSummaryUseCase.getSummary();
