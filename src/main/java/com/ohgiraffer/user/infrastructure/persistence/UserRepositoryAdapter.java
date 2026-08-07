@@ -60,5 +60,13 @@ public class UserRepositoryAdapter implements UserRepository {
                 .toList();
     }
 
+    @Override
+    public List<User> findByNameContaining(String keyword) {
+        return springDataUserRepository.findByNameContaining(keyword)
+                .stream()
+                .map(UserJpaEntity::toDomain)
+                .toList();
+    }
+
 
 }

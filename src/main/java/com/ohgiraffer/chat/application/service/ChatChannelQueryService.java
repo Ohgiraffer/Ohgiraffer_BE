@@ -12,6 +12,7 @@ import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
 import com.ohgiraffer.chat.domain.repository.ChatMessageMirrorRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
     private final ChatChannelRepository chatChannelRepository;
     private final ChatChannelMemberRepository chatChannelMemberRepository;
     private final ChatMessageMirrorRepository chatMessageMirrorRepository;
+    private final UserRepository userRepository;
 
     // 그룹 채팅방 상세 조회 - 참여자 목록 + 최신메시지 기준 읽음 인원 계산
     @Override
@@ -56,7 +58,9 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
 
         List<ChatChannelDetailResult.ChatChannelMemberResult> members = chatChannelMembers.stream()
                 .map(m -> new ChatChannelDetailResult.ChatChannelMemberResult(
-                        m.getUserId(), m.getJoinedAt(), m.getLastReadMessageId(),
+                        m.getUserId(),
+                        findMemberName(m.getUserId()),
+                        m.getJoinedAt(), m.getLastReadMessageId(),
                         isRead(m.getLastReadMessageId(), latestMessageId)
                 ))
                 .toList();
@@ -70,6 +74,13 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
                 channel.getSendbirdChannelUrl(), channel.getName(), channel.getChannelType().name(),
                 members, readUserIds.size(), readUserIds
         );
+    }
+
+    // userId로 users 테이블 조회해서 이름 매칭. 탈퇴 등으로 못 찾으면 null
+    private String findMemberName(Long userId) {
+        return userRepository.findById(userId)
+                .map(user -> user.getName())
+                .orElse(null);
     }
 
     // 최신 메시지가 없으면(빈 채팅방) 전원 읽음, 있으면 lastReadMessageId가 최신 메시지 id 이상인지로 판단

@@ -19,12 +19,12 @@ public record ChatChannelDetailResponse(
         List<Long> readUserIds
 ) {
 
-    public record MemberResponse(Long userId, Instant joinedAt, boolean isRead) {
+    public record MemberResponse(Long userId, String memberName, Instant joinedAt, boolean isRead) {
     }
 
     public static ChatChannelDetailResponse from(ChatChannelDetailResult result) {
         List<MemberResponse> members = result.members().stream()
-                .map(m -> new MemberResponse(m.userId(), m.joinedAt(), m.isRead()))
+                .map(m -> new MemberResponse(m.userId(), m.memberName(), m.joinedAt(), m.isRead()))
                 .toList();
         return new ChatChannelDetailResponse(
                 result.channelId(), result.name(), result.channelType(),
