@@ -1,20 +1,20 @@
-package com.ohgiraffer.approval.presentation.api.response;
+package com.ohgiraffer.global.google.sheets.presentation.response;
 
-import com.ohgiraffer.approval.application.query.BudgetSheetColumn;
-import com.ohgiraffer.approval.application.usecase.BudgetSheetValidationResult;
+import com.ohgiraffer.global.google.sheets.ExternalSheetValidationResult;
+import com.ohgiraffer.global.google.sheets.SheetColumn;
 
 import java.util.List;
 
-public record BudgetSheetValidationResponse(
+public record ExternalSheetValidationResponse(
         String spreadsheetId,
         String spreadsheetTitle,
         List<SheetColumnResponse> sheets
 ) {
 
-    public static BudgetSheetValidationResponse from(
-            BudgetSheetValidationResult result
+    public static ExternalSheetValidationResponse from(
+            ExternalSheetValidationResult result
     ) {
-        return new BudgetSheetValidationResponse(
+        return new ExternalSheetValidationResponse(
                 result.spreadsheetId(),
                 result.spreadsheetTitle(),
                 result.sheets()
@@ -32,7 +32,7 @@ public record BudgetSheetValidationResponse(
     ) {
 
         public static SheetColumnResponse from(
-                BudgetSheetColumn sheetColumn
+                SheetColumn sheetColumn
         ) {
             return new SheetColumnResponse(
                     sheetColumn.sheetName(),

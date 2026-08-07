@@ -1,8 +1,8 @@
-package com.ohgiraffer.approval.application.query;
+package com.ohgiraffer.global.google.sheets;
 
 import java.util.List;
 
-public record BudgetSheetColumn(
+public record SheetColumn(
         String sheetName,
         List<String> columns
 ) {

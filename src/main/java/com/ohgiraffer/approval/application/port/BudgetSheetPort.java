@@ -1,7 +1,7 @@
 package com.ohgiraffer.approval.application.port;
 
 import com.ohgiraffer.approval.application.command.BudgetColumnMapping;
-import com.ohgiraffer.approval.application.query.BudgetSheetColumn;
+import com.ohgiraffer.global.google.sheets.SheetColumn;
 
 import java.util.List;
 
@@ -15,7 +15,7 @@ public interface BudgetSheetPort {
             String spreadsheetId
     );
 
-    List<BudgetSheetColumn> getSheetColumns(
+    List<SheetColumn> getSheetColumns(
             String spreadsheetId
     );
 
