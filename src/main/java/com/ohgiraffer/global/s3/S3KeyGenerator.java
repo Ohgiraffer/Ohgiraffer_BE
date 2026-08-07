@@ -16,6 +16,28 @@ public class S3KeyGenerator {
         return "chatAttachments/" + channelId + "/" + UUID.randomUUID() + "_" + safeFileName;
     }
 
+    // 공지 본문에 삽입하는 이미지 - 글을 쓰는 중에 올라와 아직 공지 번호가 없다.
+    // 그래서 공지별로 묶지 못하고 한 prefix 아래에 UUID로만 구분한다.
+    public static String noticeImageKey(String originalFileName) {
+        return "noticeImages/"
+                + UUID.randomUUID()
+                + extractSafeExtension(originalFileName);
+    }
+
+    // 공지 첨부파일 - 공지별로 묶고, UUID를 붙여 같은 이름의 파일을 덮어쓰지 않게 한다
+    public static String noticeAttachmentKey(
+            Long noticeId,
+            String originalFileName
+    ) {
+        String extension = extractSafeExtension(originalFileName);
+
+        return "noticeAttachments/"
+                + noticeId
+                + "/"
+                + UUID.randomUUID()
+                + extension;
+    }
+
     public static String submissionFileKey(
             Long submissionBoxId,
             Long submittedBy,

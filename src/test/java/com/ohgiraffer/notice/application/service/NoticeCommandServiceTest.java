@@ -2,11 +2,13 @@ package com.ohgiraffer.notice.application.service;
 
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.global.s3.S3FileHandler;
 import com.ohgiraffer.notice.application.command.CreateNoticeCommand;
 import com.ohgiraffer.notice.application.command.UpdateNoticeCommand;
 import com.ohgiraffer.notice.application.query.NoticeConfirmationView;
 import com.ohgiraffer.notice.domain.model.Notice;
 import com.ohgiraffer.notice.domain.model.ViewerRole;
+import com.ohgiraffer.notice.domain.repository.NoticeAttachmentRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeCategoryRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeConfirmationRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeRepository;
@@ -50,6 +52,12 @@ class NoticeCommandServiceTest {
     @Mock
     private NoticeConfirmationRepository noticeConfirmationRepository;
 
+    @Mock
+    private NoticeAttachmentRepository noticeAttachmentRepository;
+
+    @Mock
+    private S3FileHandler s3FileHandler;
+
     private NoticeCommandService noticeCommandService;
 
     @BeforeEach
@@ -57,7 +65,9 @@ class NoticeCommandServiceTest {
         noticeCommandService = new NoticeCommandService(
                 noticeRepository,
                 noticeCategoryRepository,
-                noticeConfirmationRepository
+                noticeConfirmationRepository,
+                noticeAttachmentRepository,
+                s3FileHandler
         );
     }
 
