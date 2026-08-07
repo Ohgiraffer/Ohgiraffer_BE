@@ -2,6 +2,7 @@ package com.ohgiraffer.notification.presentation.api.request;
 
 import com.ohgiraffer.notification.domain.model.NotificationType;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 /*
  * comment.
