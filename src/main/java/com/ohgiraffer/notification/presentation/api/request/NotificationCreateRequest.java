@@ -11,7 +11,7 @@ import jakarta.validation.constraints.NotNull;
 public record NotificationCreateRequest(
         @NotNull Long userId,
         @NotNull NotificationType notificationType,
-        @NotNull String title,
+        @NotNull @Size(max = 100) String title,
         @NotNull String content,
         String relatedEntityType,
         Long relatedEntityId

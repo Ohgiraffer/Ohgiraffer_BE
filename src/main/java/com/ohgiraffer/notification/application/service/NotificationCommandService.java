@@ -49,8 +49,14 @@ public class NotificationCommandService implements NotificationCommandUseCase {
         Notification saved = notificationRepository.save(notification);
         NotificationResult result = NotificationResult.from(saved);
 
+        // 커밋 후에만 push - 롤백되면 이 콜백 자체가 실행되지 않음
         if (userNotificationSettingPort.isNotificationOn(command.userId())) {
-            sseEventPublisher.publish(command.userId(), "notification", result);
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    sseEventPublisher.publish(command.userId(), "notification", result);
+                }
+            });
         }
 
         log.info("[Notification] 알림 생성 완료 | userId={}, type={}, notificationId={}",
