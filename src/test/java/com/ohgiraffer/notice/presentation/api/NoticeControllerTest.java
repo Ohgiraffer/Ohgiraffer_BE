@@ -239,7 +239,8 @@ class NoticeControllerTest {
                 TITLE,
                 CONTENT,
                 false,
-                true
+                true,
+                List.of()
         );
     }
 

@@ -24,6 +24,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -64,6 +65,40 @@ class NoticeAttachmentCommandServiceTest {
 
         when(noticeRepository.findById(NOTICE_ID))
                 .thenReturn(Optional.of(notice()));
+    }
+
+    @Test
+    @DisplayName("공지 등록 전에는 공지 번호 없이 올리고 저장 키만 돌려받는다")
+    void uploadBeforeNoticeReturnsKeys() {
+        var uploaded = noticeAttachmentCommandService.uploadBeforeNotice(
+                List.of(file("안내문.pdf"), file("일정표.png"))
+        );
+
+        assertEquals(2, uploaded.size());
+        assertTrue(uploaded.get(0).fileKey().startsWith("noticeAttachments/"));
+
+        /*
+         * 아직 공지에 이어지지 않았으므로 DB 에는 아무것도 남기지 않는다.
+         * 등록 요청에 이 키를 실어 보낼 때 공지와 함께 저장된다.
+         */
+        verify(noticeAttachmentRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("등록 전 업로드도 형식을 어기면 한 건도 올리지 않는다")
+    void uploadBeforeNoticeRejectsUnsupportedType() {
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> noticeAttachmentCommandService.uploadBeforeNotice(
+                        List.of(file("안내문.pdf"), file("악성코드.exe"))
+                )
+        );
+
+        assertEquals(
+                ErrorCode.NOTICE_ATTACHMENT_TYPE_NOT_ALLOWED,
+                exception.getErrorCode()
+        );
+        verify(s3FileHandler, never()).upload(any(), anyString());
     }
 
     @Test

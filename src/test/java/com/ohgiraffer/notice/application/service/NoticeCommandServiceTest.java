@@ -12,6 +12,7 @@ import com.ohgiraffer.notice.domain.repository.NoticeAttachmentRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeCategoryRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeConfirmationRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeRepository;
+import com.ohgiraffer.notice.application.command.NoticeAttachmentCommand;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -113,6 +115,70 @@ class NoticeCommandServiceTest {
     }
 
     @Test
+    @DisplayName("미리 올려 둔 첨부는 공지와 같은 흐름에서 함께 저장한다")
+    void createSavesAttachmentsWithNotice() {
+        when(noticeCategoryRepository.existsById(CATEGORY_ID))
+                .thenReturn(true);
+        when(noticeRepository.save(any(Notice.class)))
+                .thenAnswer(invocation -> saved(invocation.getArgument(0)));
+
+        noticeCommandService.create(new CreateNoticeCommand(
+                AUTHOR_ID,
+                CATEGORY_ID,
+                TITLE,
+                CONTENT,
+                false,
+                true,
+                List.of(new NoticeAttachmentCommand(
+                        "noticeAttachments/3f2504e0-4f89-41d3-9a0c-0305e82c3301.pdf",
+                        "안내문.pdf",
+                        1024L,
+                        "application/pdf"
+                ))
+        ));
+
+        /*
+         * 공지를 먼저 저장하고 첨부를 따로 올리면 그 사이에 실패했을 때 첨부 없는 공지가 남는다.
+         * 화면의 등록 버튼이 하나이므로 같은 흐름에서 끝나야 한다.
+         */
+        verify(noticeAttachmentRepository).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("남의 폴더 저장 키를 보내면 거절한다")
+    void createRejectsForeignFileKey() {
+        when(noticeCategoryRepository.existsById(CATEGORY_ID))
+                .thenReturn(true);
+        when(noticeRepository.save(any(Notice.class)))
+                .thenAnswer(invocation -> saved(invocation.getArgument(0)));
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> noticeCommandService.create(new CreateNoticeCommand(
+                        AUTHOR_ID,
+                        CATEGORY_ID,
+                        TITLE,
+                        CONTENT,
+                        false,
+                        true,
+                        List.of(new NoticeAttachmentCommand(
+                                "profileImg/1",
+                                "남의파일",
+                                1024L,
+                                "image/png"
+                        ))
+                ))
+        );
+
+        /*
+         * 저장 키는 클라이언트를 거쳐 들어온다. 검사하지 않으면 남의 폴더 파일을
+         * 자기 공지에 붙여 내려받을 수 있다.
+         */
+        assertEquals(ErrorCode.INVALID_INPUT_VALUE, exception.getErrorCode());
+        verify(noticeAttachmentRepository, never()).saveAll(any());
+    }
+
+    @Test
     @DisplayName("업무 규칙을 어기면 저장소를 호출하지 않는다")
     void createDoesNotTouchRepositoryWhenDomainRuleFails() {
         when(noticeCategoryRepository.existsById(CATEGORY_ID))
@@ -124,7 +190,8 @@ class NoticeCommandServiceTest {
                 "   ",
                 CONTENT,
                 false,
-                true
+                true,
+                List.of()
         );
 
         assertThrows(
@@ -388,7 +455,8 @@ class NoticeCommandServiceTest {
                 TITLE,
                 CONTENT,
                 pinned,
-                visibleToTrainee
+                visibleToTrainee,
+                List.of()
         );
     }
 

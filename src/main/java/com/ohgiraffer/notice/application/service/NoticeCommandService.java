@@ -51,6 +51,7 @@ public class NoticeCommandService implements NoticeCommandUseCase {
     @Override
     public Notice create(CreateNoticeCommand command) {
         validateCategoryExists(command.categoryId());
+        validateAttachmentCount(command.attachments().size());
 
         Notice notice = Notice.create(
                 command.authorId(),
@@ -61,7 +62,39 @@ public class NoticeCommandService implements NoticeCommandUseCase {
                 command.visibleToTrainee()
         );
 
-        return noticeRepository.save(notice);
+        Notice saved = noticeRepository.save(notice);
+
+        /*
+         * 파일은 등록 화면에서 고를 때 이미 저장소에 올라가 있고, 여기서는 그것을 공지에 잇는다.
+         * 공지 저장과 같은 트랜잭션이라 둘 중 하나만 남는 일이 없다.
+         */
+        if (!command.attachments().isEmpty()) {
+            noticeAttachmentRepository.saveAll(
+                    command.attachments().stream()
+                            .map(attachment -> NoticeAttachment.create(
+                                    saved.getId(),
+                                    attachment.fileKey(),
+                                    attachment.fileName(),
+                                    attachment.fileSizeBytes() == null
+                                            ? 0L : attachment.fileSizeBytes(),
+                                    attachment.fileType()
+                            ))
+                            .toList()
+            );
+        }
+
+        return saved;
+    }
+
+    private void validateAttachmentCount(int count) {
+        if (count > NoticeAttachment.MAX_COUNT_PER_NOTICE) {
+            throw new BusinessException(
+                    ErrorCode.NOTICE_ATTACHMENT_COUNT_EXCEEDED,
+                    "공지 하나에는 첨부파일을 "
+                            + NoticeAttachment.MAX_COUNT_PER_NOTICE
+                            + "개까지 올릴 수 있습니다."
+            );
+        }
     }
 
     @Override

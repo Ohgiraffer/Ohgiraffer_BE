@@ -6,6 +6,7 @@ import com.ohgiraffer.global.exception.ErrorCode;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * 공지에 붙는 첨부파일. JPA와 무관한 순수 객체다.
@@ -48,6 +49,11 @@ public class NoticeAttachment {
             "xls", "xlsx",
             "hwp", "hwpx",
             "jpg", "jpeg", "png"
+    );
+
+    /** 우리가 만드는 저장 키의 모양. {@code noticeAttachments/UUID.확장자} 뿐이다. */
+    private static final Pattern FILE_KEY_PATTERN = Pattern.compile(
+            "^noticeAttachments/[a-fA-F0-9-]{36}(\\.[a-z0-9]{1,20})?$"
     );
 
     private static final int FILE_KEY_MAX_LENGTH = 500;
@@ -198,6 +204,13 @@ public class NoticeAttachment {
         }
     }
 
+    /**
+     * 저장 키가 우리가 만든 모양인지 확인한다.
+     *
+     * <p>등록 화면은 파일을 먼저 올려 키를 받아 두었다가 공지를 저장할 때 그 키를 함께 보낸다.
+     * 즉 이 값은 클라이언트를 거쳐 들어오므로, 검사하지 않으면 {@code profileImg/1} 같은
+     * 남의 폴더 키를 보내 그 파일을 자기 공지에 붙일 수 있다.
+     */
     private static void validateFileKey(String fileKey) {
         if (fileKey == null || fileKey.isBlank()) {
             throw new BusinessException(
@@ -210,6 +223,13 @@ public class NoticeAttachment {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "파일 저장 키가 너무 깁니다."
+            );
+        }
+
+        if (!FILE_KEY_PATTERN.matcher(fileKey).matches()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "올바른 파일 저장 키가 아닙니다."
             );
         }
     }

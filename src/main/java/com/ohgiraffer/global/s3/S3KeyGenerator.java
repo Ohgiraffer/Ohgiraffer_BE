@@ -24,18 +24,12 @@ public class S3KeyGenerator {
                 + extractSafeExtension(originalFileName);
     }
 
-    // 공지 첨부파일 - 공지별로 묶고, UUID를 붙여 같은 이름의 파일을 덮어쓰지 않게 한다
-    public static String noticeAttachmentKey(
-            Long noticeId,
-            String originalFileName
-    ) {
-        String extension = extractSafeExtension(originalFileName);
-
+    // 공지 첨부파일 - 등록 화면에서 파일을 고르는 순간 올라오므로 아직 공지 번호가 없다.
+    // 그래서 공지별로 묶지 못하고 본문 이미지와 마찬가지로 UUID 로만 구분한다.
+    public static String noticeAttachmentKey(String originalFileName) {
         return "noticeAttachments/"
-                + noticeId
-                + "/"
                 + UUID.randomUUID()
-                + extension;
+                + extractSafeExtension(originalFileName);
     }
 
     public static String submissionFileKey(

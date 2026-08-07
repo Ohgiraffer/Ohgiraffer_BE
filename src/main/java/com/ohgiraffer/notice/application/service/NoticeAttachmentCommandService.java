@@ -41,6 +41,45 @@ public class NoticeAttachmentCommandService
     }
 
     @Override
+    public List<UploadedNoticeAttachment> uploadBeforeNotice(
+            List<MultipartFile> files
+    ) {
+        validateEachFile(files);
+
+        if (files.size() > NoticeAttachment.MAX_COUNT_PER_NOTICE) {
+            throw countExceeded(0);
+        }
+
+        List<String> uploadedKeys = new ArrayList<>();
+
+        try {
+            List<UploadedNoticeAttachment> uploaded = new ArrayList<>();
+
+            for (MultipartFile file : files) {
+                String key = S3KeyGenerator.noticeAttachmentKey(
+                        file.getOriginalFilename()
+                );
+
+                s3FileHandler.upload(file, key);
+                uploadedKeys.add(key);
+
+                uploaded.add(new UploadedNoticeAttachment(
+                        key,
+                        file.getOriginalFilename(),
+                        file.getSize(),
+                        file.getContentType()
+                ));
+            }
+
+            return uploaded;
+
+        } catch (RuntimeException exception) {
+            deleteQuietly(uploadedKeys);
+            throw exception;
+        }
+    }
+
+    @Override
     public List<NoticeAttachment> upload(
             Long noticeId,
             Long requesterId,
@@ -63,7 +102,6 @@ public class NoticeAttachmentCommandService
 
             for (MultipartFile file : files) {
                 String key = S3KeyGenerator.noticeAttachmentKey(
-                        noticeId,
                         file.getOriginalFilename()
                 );
 
@@ -119,6 +157,23 @@ public class NoticeAttachmentCommandService
     }
 
     private void validateFiles(Long noticeId, List<MultipartFile> files) {
+        validateEachFile(files);
+
+        long existingCount =
+                noticeAttachmentRepository.countByNoticeId(noticeId);
+
+        if (existingCount + files.size()
+                > NoticeAttachment.MAX_COUNT_PER_NOTICE) {
+            throw countExceeded(existingCount);
+        }
+    }
+
+    /**
+     * 크기와 형식은 한 건이라도 올리기 전에 전부 확인한다.
+     *
+     * <p>올리면서 검사하면 마지막 파일에서 걸렸을 때 앞의 파일들이 이미 저장소에 남는다.
+     */
+    private void validateEachFile(List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
@@ -126,24 +181,6 @@ public class NoticeAttachmentCommandService
             );
         }
 
-        long existingCount =
-                noticeAttachmentRepository.countByNoticeId(noticeId);
-
-        if (existingCount + files.size()
-                > NoticeAttachment.MAX_COUNT_PER_NOTICE) {
-            throw new BusinessException(
-                    ErrorCode.NOTICE_ATTACHMENT_COUNT_EXCEEDED,
-                    "공지 하나에는 첨부파일을 "
-                            + NoticeAttachment.MAX_COUNT_PER_NOTICE
-                            + "개까지 올릴 수 있습니다. 현재 "
-                            + existingCount + "개가 있습니다."
-            );
-        }
-
-        /*
-         * 크기는 한 건이라도 올리기 전에 전부 확인한다. 올리면서 검사하면
-         * 마지막 파일에서 걸렸을 때 앞의 파일들을 되돌려야 한다.
-         */
         for (MultipartFile file : files) {
             if (file == null || file.isEmpty()) {
                 throw new BusinessException(
@@ -155,6 +192,16 @@ public class NoticeAttachmentCommandService
             NoticeAttachment.validateFileSize(file.getSize());
             NoticeAttachment.validateFileType(file.getOriginalFilename());
         }
+    }
+
+    private BusinessException countExceeded(long existingCount) {
+        return new BusinessException(
+                ErrorCode.NOTICE_ATTACHMENT_COUNT_EXCEEDED,
+                "공지 하나에는 첨부파일을 "
+                        + NoticeAttachment.MAX_COUNT_PER_NOTICE
+                        + "개까지 올릴 수 있습니다. 현재 "
+                        + existingCount + "개가 있습니다."
+        );
     }
 
     /**
