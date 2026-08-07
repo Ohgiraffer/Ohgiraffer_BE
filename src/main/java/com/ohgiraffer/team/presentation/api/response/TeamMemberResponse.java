@@ -1,6 +1,7 @@
 package com.ohgiraffer.team.presentation.api.response;
 
 import com.ohgiraffer.team.application.usecase.TeamMemberResult;
+import com.ohgiraffer.user.domain.model.Role;
 
 import java.time.LocalDateTime;
 
@@ -13,14 +14,29 @@ public record TeamMemberResponse(
 ) {
 
     public static TeamMemberResponse from(
-            TeamMemberResult result
+            TeamMemberResult result,
+            Role requesterRole
     ) {
         return new TeamMemberResponse(
                 result.teamMemberId(),
                 result.userId(),
                 result.userName(),
-                result.email(),
+                maskEmail(
+                        result.email(),
+                        requesterRole
+                ),
                 result.joinedAt()
         );
+    }
+
+    private static String maskEmail(
+            String email,
+            Role requesterRole
+    ) {
+        if (requesterRole == Role.STUDENT) {
+            return null;
+        }
+
+        return email;
     }
 }
