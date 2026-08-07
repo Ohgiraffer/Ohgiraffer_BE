@@ -53,6 +53,38 @@ public class TeamJpaEntity {
     @Column(name = "dissolved_at")
     private LocalDateTime dissolvedAt;
 
+    private TeamJpaEntity(
+            Long id,
+            String name,
+            String sendbirdChannelUrl,
+            String notionPageId,
+            LocalDate startDate,
+            LocalDate endDate,
+            LocalDateTime dissolvedAt
+    ) {
+        this.id = id;
+        this.name = name;
+        this.sendbirdChannelUrl = sendbirdChannelUrl;
+        this.notionPageId = notionPageId;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.dissolvedAt = dissolvedAt;
+    }
+
+    public static TeamJpaEntity from(
+            Team team
+    ) {
+        return new TeamJpaEntity(
+                team.getId(),
+                team.getName(),
+                team.getSendbirdChannelUrl(),
+                team.getNotionPageId(),
+                team.getStartDate(),
+                team.getEndDate(),
+                team.getDissolvedAt()
+        );
+    }
+
     public Team toDomain() {
         return Team.restore(
                 id,

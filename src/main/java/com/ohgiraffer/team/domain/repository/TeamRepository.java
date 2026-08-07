@@ -9,6 +9,14 @@ import java.util.Optional;
 
 public interface TeamRepository {
 
+    Team save(
+            Team team
+    );
+
+    TeamMember saveMember(
+            TeamMember teamMember
+    );
+
     List<Team> findAll();
 
     Optional<Team> findById(
@@ -23,9 +31,30 @@ public interface TeamRepository {
             List<Long> teamIds
     );
 
+    Optional<TeamMember> findMemberById(
+            Long teamMemberId
+    );
+
+    Optional<TeamMember> findMemberByIdForUpdate(
+            Long teamMemberId
+    );
+
     boolean existsActiveMember(
             Long teamId,
             Long userId
+    );
+
+    boolean existsActiveMemberByUserId(
+            Long userId
+    );
+
+    boolean existsByName(
+            String name
+    );
+
+    boolean existsByNameAndIdNot(
+            String name,
+            Long teamId
     );
 
     List<UnassignedStudent> findUnassignedStudents();

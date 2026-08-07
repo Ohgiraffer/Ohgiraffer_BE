@@ -19,6 +19,34 @@ public class TeamRepositoryAdapter
     private final SpringDataTeamMemberRepository springDataTeamMemberRepository;
 
     @Override
+    public Team save(
+            Team team
+    ) {
+        TeamJpaEntity savedEntity =
+                springDataTeamRepository.save(
+                        TeamJpaEntity.from(
+                                team
+                        )
+                );
+
+        return savedEntity.toDomain();
+    }
+
+    @Override
+    public TeamMember saveMember(
+            TeamMember teamMember
+    ) {
+        TeamMemberViewJpaEntity savedEntity =
+                springDataTeamMemberRepository.save(
+                        TeamMemberViewJpaEntity.from(
+                                teamMember
+                        )
+                );
+
+        return savedEntity.toDomain();
+    }
+
+    @Override
     public List<Team> findAll() {
         return springDataTeamRepository.findAllByOrderByIdAsc()
                 .stream()
@@ -62,6 +90,15 @@ public class TeamRepositoryAdapter
     }
 
     @Override
+    public Optional<TeamMember> findMemberById(
+            Long teamMemberId
+    ) {
+        return springDataTeamMemberRepository
+                .findById(teamMemberId)
+                .map(TeamMemberViewJpaEntity::toDomain);
+    }
+
+    @Override
     public boolean existsActiveMember(
             Long teamId,
             Long userId
@@ -71,6 +108,36 @@ public class TeamRepositoryAdapter
                         teamId,
                         userId
                 );
+    }
+
+    @Override
+    public boolean existsActiveMemberByUserId(
+            Long userId
+    ) {
+        return springDataTeamMemberRepository
+                .existsByUserIdAndLeftAtIsNull(
+                        userId
+                );
+    }
+
+    @Override
+    public boolean existsByName(
+            String name
+    ) {
+        return springDataTeamRepository.existsByName(
+                name
+        );
+    }
+
+    @Override
+    public boolean existsByNameAndIdNot(
+            String name,
+            Long teamId
+    ) {
+        return springDataTeamRepository.existsByNameAndIdNot(
+                name,
+                teamId
+        );
     }
 
     @Override
@@ -104,5 +171,16 @@ public class TeamRepositoryAdapter
                 projection.getName(),
                 projection.getEmail()
         );
+    }
+
+    @Override
+    public Optional<TeamMember> findMemberByIdForUpdate(
+            Long teamMemberId
+    ) {
+        return springDataTeamMemberRepository
+                .findByIdForUpdate(
+                        teamMemberId
+                )
+                .map(TeamMemberViewJpaEntity::toDomain);
     }
 }

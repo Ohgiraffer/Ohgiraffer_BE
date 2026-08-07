@@ -1,10 +1,13 @@
 package com.ohgiraffer.team.infrastructure.persistence;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface SpringDataTeamMemberRepository
         extends JpaRepository<TeamMemberViewJpaEntity, Long> {
@@ -54,6 +57,10 @@ public interface SpringDataTeamMemberRepository
             Long userId
     );
 
+    boolean existsByUserIdAndLeftAtIsNull(
+            Long userId
+    );
+
     @Query("""
             SELECT
                 u.id AS userId,
@@ -71,4 +78,14 @@ public interface SpringDataTeamMemberRepository
             ORDER BY u.name ASC, u.id ASC
             """)
     List<UnassignedStudentProjection> findUnassignedStudents();
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT tm
+        FROM TeamMemberViewJpaEntity tm
+        WHERE tm.id = :teamMemberId
+        """)
+    Optional<TeamMemberViewJpaEntity> findByIdForUpdate(
+            @Param("teamMemberId") Long teamMemberId
+    );
 }

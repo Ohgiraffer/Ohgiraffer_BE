@@ -8,4 +8,13 @@ public interface SpringDataTeamRepository
         extends JpaRepository<TeamJpaEntity, Long> {
 
     List<TeamJpaEntity> findAllByOrderByIdAsc();
+
+    boolean existsByName(
+            String name
+    );
+
+    boolean existsByNameAndIdNot(
+            String name,
+            Long id
+    );
 }
