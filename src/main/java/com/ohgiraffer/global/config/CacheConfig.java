@@ -1,5 +1,6 @@
 package com.ohgiraffer.global.config;
 
+import com.ohgiraffer.attendance.presentation.api.response.AttendanceSummaryResponse;
 import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -20,7 +21,7 @@ public class CacheConfig {
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         BasicPolymorphicTypeValidator typeValidator = BasicPolymorphicTypeValidator.builder()
-                .allowIfBaseType(Object.class)
+                .allowIfBaseType(AttendanceSummaryResponse.class)
                 .build();
 
         GenericJacksonJsonRedisSerializer serializer = GenericJacksonJsonRedisSerializer.builder()

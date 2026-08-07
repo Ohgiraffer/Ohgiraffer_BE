@@ -9,4 +9,7 @@ public record AttendanceSummaryView(
         long leaveDays,
         long sickDays
 ) {
+    public static AttendanceSummaryView empty() {
+        return new AttendanceSummaryView(0, 0, 0, 0, 0, 0, 0);
+    }
 }

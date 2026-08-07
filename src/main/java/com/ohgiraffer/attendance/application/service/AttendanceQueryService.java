@@ -79,12 +79,17 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
         AttendancePolicyResult policy = bootcampQueryUsecase.getPolicy(bootcampId);
 
         LocalDate today = LocalDate.now();
+
+        if (today.isBefore(bootcampPeriod.startDate())) {
+            return AttendanceSummaryResponse.of(AttendanceSummaryView.empty(), null, null);
+        }
+
         LocalDate start = bootcampPeriod.startDate();
         LocalDate end = today.isBefore(bootcampPeriod.endDate()) ? today : bootcampPeriod.endDate();
 
         AttendanceSummaryView summary = attendanceRepository.countByUserAndDateRange(userId, start, end);
 
-        long totalDays = countWeekdays(start, end);   // ← 변경: ChronoUnit.DAYS.between 대신 이걸로
+        long totalDays = countWeekdays(start, end);
         BigDecimal attendanceRate = calculateAttendanceRate(summary, totalDays);
         AttendanceRiskLevel riskLevel = calculateRiskLevel(attendanceRate, policy);
 
