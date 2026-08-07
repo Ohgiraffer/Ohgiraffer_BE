@@ -5,6 +5,8 @@ import com.ohgiraffer.bootcamp.domain.repository.AttendancePolicyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 @RequiredArgsConstructor
 public class AttendancePolicyRepositoryAdapter implements AttendancePolicyRepository {
@@ -16,5 +18,11 @@ public class AttendancePolicyRepositoryAdapter implements AttendancePolicyReposi
         AttendancePolicyJpaEntity saved = springDataAttendancePolicyRepository
                 .save(AttendancePolicyJpaEntity.fromDomain(policy));
         return saved.toDomain();
+    }
+
+    @Override
+    public Optional<AttendancePolicy> findByBootcampId(Long bootcampId) {
+        return springDataAttendancePolicyRepository.findByBootcampId(bootcampId)
+                .map(AttendancePolicyJpaEntity::toDomain);
     }
 }
