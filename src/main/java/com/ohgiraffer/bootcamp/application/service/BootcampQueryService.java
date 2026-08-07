@@ -8,6 +8,7 @@ import com.ohgiraffer.bootcamp.domain.repository.AttendancePeriodRepository;
 import com.ohgiraffer.bootcamp.domain.repository.AttendancePolicyRepository;
 import com.ohgiraffer.bootcamp.domain.repository.BootcampRepository;
 import com.ohgiraffer.bootcamp.domain.repository.SettingChangeLogRepository;
+import com.ohgiraffer.bootcamp.presentation.api.response.BootcampLoginBasicResponse;
 import com.ohgiraffer.bootcamp.presentation.api.response.BootcampSettingsResponse;
 import com.ohgiraffer.bootcamp.presentation.api.response.SettingChangeLogResponse;
 import com.ohgiraffer.global.exception.BusinessException;
@@ -106,5 +107,16 @@ public class BootcampQueryService implements BootcampQueryUsecase {
                 .map(p -> new AttendancePeriodResult(p.getId(), p.getPeriodNo(), p.getPeriodStart(), p.getPeriodEnd()))
                 .sorted(Comparator.comparing(AttendancePeriodResult::periodNo))
                 .toList();
+    }
+
+    @Override
+    public BootcampLoginBasicResponse getBasicInfo(Long userId) {
+        Long bootcampId = getUserBootcampIdPort.findBootcampIdByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+
+        Bootcamp bootcamp = bootcampRepository.findById(bootcampId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+
+        return new BootcampLoginBasicResponse(bootcamp.getOrgName(), bootcamp.getProName());
     }
 }
