@@ -2,6 +2,7 @@ package com.ohgiraffer.survey.application.usecase;
 
 import com.ohgiraffer.survey.domain.model.SurveyForm;
 import com.ohgiraffer.survey.domain.model.SurveyFormStatus;
+import com.ohgiraffer.survey.domain.model.sheet.SurveySheetLink;
 import com.ohgiraffer.user.domain.model.Role;
 
 import java.time.Instant;
@@ -17,16 +18,25 @@ public record SurveyFormDetailResult(
         String responseUrl,
         Long createdBy,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        SurveySheetLinkResult sheetLink
 ) {
 
     public static SurveyFormDetailResult from(
             SurveyForm surveyForm,
-            Role requesterRole
+            Role requesterRole,
+            SurveySheetLink surveySheetLink
     ) {
         boolean staff =
                 requesterRole == Role.MANAGER
                         || requesterRole == Role.INSTRUCTOR;
+
+        SurveySheetLinkResult sheetLinkResult =
+                staff && surveySheetLink != null
+                        ? SurveySheetLinkResult.from(
+                        surveySheetLink
+                )
+                        : null;
 
         return new SurveyFormDetailResult(
                 surveyForm.getId(),
@@ -50,7 +60,8 @@ public record SurveyFormDetailResult(
                         : null,
                 staff
                         ? surveyForm.getUpdatedAt()
-                        : null
+                        : null,
+                sheetLinkResult
         );
     }
 }
