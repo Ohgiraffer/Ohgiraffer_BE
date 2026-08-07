@@ -1,31 +1,24 @@
-package com.ohgiraffer.approval.application.service;
+package com.ohgiraffer.global.google.sheets;
 
-import com.ohgiraffer.approval.application.port.BudgetSheetPort;
-import com.ohgiraffer.approval.application.query.BudgetSheetColumn;
-import com.ohgiraffer.approval.application.usecase.BudgetSheetValidationResult;
-import com.ohgiraffer.approval.application.usecase.ValidateBudgetSheetUseCase;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
-public class ValidateBudgetSheetService
-        implements ValidateBudgetSheetUseCase {
+public class ValidateExternalSheetService implements ValidateExternalSheetUseCase {
 
-    private final BudgetSheetPort budgetSheetPort;
+    private final ExternalSheetPort externalSheetPort;
 
-    public ValidateBudgetSheetService(
-            BudgetSheetPort budgetSheetPort
+    public ValidateExternalSheetService(
+            ExternalSheetPort externalSheetPort
     ) {
-        this.budgetSheetPort = budgetSheetPort;
+        this.externalSheetPort = externalSheetPort;
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public BudgetSheetValidationResult validate(
+    public ExternalSheetValidationResult validate(
             String spreadsheetUrl
     ) {
         if (spreadsheetUrl == null
@@ -36,17 +29,17 @@ public class ValidateBudgetSheetService
         }
 
         String spreadsheetId =
-                budgetSheetPort.extractSpreadsheetId(
+                externalSheetPort.extractSpreadsheetId(
                         spreadsheetUrl
                 );
 
         String spreadsheetTitle =
-                budgetSheetPort.getSpreadsheetTitle(
+                externalSheetPort.getSpreadsheetTitle(
                         spreadsheetId
                 );
 
-        List<BudgetSheetColumn> sheetColumns =
-                budgetSheetPort.getSheetColumns(
+        List<SheetColumn> sheetColumns =
+                externalSheetPort.getSheetColumns(
                         spreadsheetId
                 );
 
@@ -57,7 +50,7 @@ public class ValidateBudgetSheetService
             );
         }
 
-        return new BudgetSheetValidationResult(
+        return new ExternalSheetValidationResult(
                 spreadsheetId,
                 spreadsheetTitle,
                 sheetColumns
