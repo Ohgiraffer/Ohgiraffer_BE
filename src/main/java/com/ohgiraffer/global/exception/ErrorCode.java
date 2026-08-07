@@ -58,6 +58,12 @@ public enum ErrorCode {
     CHAT_SENDBIRD_API_ERROR(HttpStatus.BAD_GATEWAY, "CHAT_006", "Sendbird API 호출 중 오류가 발생했습니다."),
     CHAT_WEBHOOK_SIGNATURE_INVALID(HttpStatus.BAD_REQUEST, "CHAT_007", "웹훅 서명 검증에 실패했습니다."),
 
+    NOTI_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTI_001", "알림을 찾을 수 없습니다."),
+    NOTI_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTI_002", "본인의 알림만 접근할 수 있습니다."),
+    NOTI_ALREADY_DELETED(HttpStatus.BAD_REQUEST, "NOTI_003", "이미 삭제된 알림입니다."),
+    NOTI_IDS_REQUIRED(HttpStatus.BAD_REQUEST, "NOTI_004", "삭제할 알림을 선택해주세요."),
+    NOTI_SSE_CONNECTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "NOTI_005", "실시간 알림 연결에 실패했습니다."),
+
     GOOGLE_FORM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "FORM_001", "Google Form에 접근할 권한이 없습니다."),
     GOOGLE_FORM_NOT_FOUND(HttpStatus.NOT_FOUND, "FORM_002", "Google Form을 찾을 수 없습니다."),
     GOOGLE_FORM_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "FORM_003", "Google Forms API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요."),
