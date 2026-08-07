@@ -5,7 +5,6 @@ import com.ohgiraffer.user.application.usecase.UserCommandUsecase;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import com.ohgiraffer.user.presentation.api.request.AddUserRequest;
 import com.ohgiraffer.user.presentation.api.request.SetPasswordRequest;
-import com.ohgiraffer.user.presentation.api.request.UserSheetConnectionRequest;
 import com.ohgiraffer.user.presentation.api.request.UserStatusChangeRequest;
 import com.ohgiraffer.user.presentation.api.response.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -129,24 +128,23 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "구글시트 연결 확인", description = "관리자가 입력한 스프레드시트 URL의 접근 가능 여부와 시트명, 컬럼 목록을 조회합니다.")
+    @Operation(summary = "사용자 일괄등록 파일 미리보기", description = "CSV/엑셀 파일을 업로드해 등록 대상 학생 목록을 검증하고 미리보기로 반환합니다.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "URL 형식이 올바르지 않음"),
+            @ApiResponse(responseCode = "200", description = "검증 성공"),
+            @ApiResponse(responseCode = "400", description = "파일 형식 오류 또는 파싱 실패"),
             @ApiResponse(responseCode = "401", description = "인증되지 않음"),
-            @ApiResponse(responseCode = "403", description = "서비스 계정에 시트가 공유되지 않음"),
-            @ApiResponse(responseCode = "404", description = "시트를 찾을 수 없음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @PreAuthorize("hasRole('MANAGER')")
-    @PostMapping("/sheet/info")
-    public ResponseEntity<UserSheetConnectionResponse> checkSheetConnection(
-            @Valid @RequestBody UserSheetConnectionRequest request
+    @PostMapping(value = "/file/info", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UserSheetConnectionResponse> checkFileConnection(
+            @RequestParam("file") MultipartFile file
     ) {
-        return ResponseEntity.ok(userQueryUsecase.checkSheetConnection(request.spreadsheetUrl()));
+        return ResponseEntity.ok(userQueryUsecase.checkFileConnection(file));
     }
 
-    @Operation(summary = "구글시트 사용자 일괄 등록 확정", description = "사용자를 목록에 실제로 등록합니다.")
+    @Operation(summary = "사용자 일괄 등록", description = "사용자를 목록에 실제로 등록합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "등록 성공"),
             @ApiResponse(responseCode = "400", description = "요청 목록이 비어있음"),
