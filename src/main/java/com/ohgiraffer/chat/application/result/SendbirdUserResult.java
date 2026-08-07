@@ -10,6 +10,7 @@ public record SendbirdUserResult(
         Long userId,
         String name,
         String profileUrl,
-        boolean isOnline
+        boolean isOnline,
+        String role
 ) {
 }

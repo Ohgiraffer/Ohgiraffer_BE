@@ -1,0 +1,65 @@
+package com.ohgiraffer.team.presentation.api.response;
+
+import com.ohgiraffer.team.application.usecase.TeamDetailResult;
+import com.ohgiraffer.user.domain.model.Role;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+public record TeamDetailResponse(
+        Long teamId,
+        String name,
+        LocalDate startDate,
+        LocalDate endDate,
+        boolean dissolved,
+        LocalDateTime dissolvedAt,
+        String sendbirdChannelUrl,
+        String notionPageId,
+        int memberCount,
+        List<TeamMemberResponse> members
+) {
+
+    public static TeamDetailResponse from(
+            TeamDetailResult result,
+            Role requesterRole
+    ) {
+        return new TeamDetailResponse(
+                result.teamId(),
+                result.name(),
+                result.startDate(),
+                result.endDate(),
+                result.dissolved(),
+                result.dissolvedAt(),
+                maskExternalIdentifier(
+                        result.sendbirdChannelUrl(),
+                        requesterRole
+                ),
+                maskExternalIdentifier(
+                        result.notionPageId(),
+                        requesterRole
+                ),
+                result.memberCount(),
+                result.members()
+                        .stream()
+                        .map(member ->
+                                TeamMemberResponse.from(
+                                        member,
+                                        requesterRole
+                                )
+                        )
+                        .toList()
+        );
+    }
+
+    private static String maskExternalIdentifier(
+            String value,
+            Role requesterRole
+    ) {
+        if (requesterRole == Role.STUDENT) {
+            return null;
+        }
+
+        return value;
+    }
+}

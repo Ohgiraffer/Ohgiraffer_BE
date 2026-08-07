@@ -54,12 +54,13 @@ public class ChatController {
     @GetMapping("/channels")
     public ResponseEntity<List<ChatChannelListItemResponse>> getChannelList(
             @AuthenticationPrincipal CustomUserPrincipal principal,
-            @RequestParam(required = false) String type
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String search
     ) {
         ChatChannel.ChannelType channelType = parseChannelType(type);
 
         List<ChatChannelListItemResponse> result = chatChannelQueryUseCase
-                .getChannelList(principal.getId(), channelType)
+                .getChannelList(principal.getId(), channelType, search)
                 .stream()
                 .map(ChatChannelListItemResponse::from)
                 .toList();
@@ -201,6 +202,15 @@ public class ChatController {
                 .map(ChatMessageResponse::from);
 
         return ResponseEntity.ok(result);
+    }
+
+    // 헤더 상시 노출용 - 전체 채널 안읽은 메시지 합계 (알림 도메인의 안읽은 개수 API와 동일한 패턴)
+    @GetMapping("/unread-count")
+    public ResponseEntity<ChatUnreadCountResponse> getTotalUnreadCount(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        long totalUnreadCount = chatChannelQueryUseCase.getTotalUnreadCount(principal.getId());
+        return ResponseEntity.ok(new ChatUnreadCountResponse(totalUnreadCount));
     }
 
     // 온라인 상태 조회

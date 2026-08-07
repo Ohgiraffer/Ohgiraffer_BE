@@ -122,10 +122,14 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     public List<SendbirdUserResult> searchUsers(String query) {
         try {
             Map<String, Object> response = restClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/users")
-                            .queryParam("nickname_startswith", query)
-                            .build())
+                    .uri(uriBuilder -> {
+                        java.net.URI uri = uriBuilder
+                                .path("/users")
+                                .queryParam("nickname_startswith", query)
+                                .build();
+                        log.info("[searchUsers] Sendbird 요청 URI={}", uri); // 실제 인코딩된 URL 확인용
+                        return uri;
+                    })
                     .retrieve()
                     .body(Map.class);
 
@@ -140,6 +144,50 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
             throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 유저 검색 실패");
         }
 
+    }
+
+    // 여러 유저 온라인 상태 일괄 조회 (user_ids 파라미터로 한 번에, N+1 방지)
+    @Override
+    public List<SendbirdUserStatus> getUserStatuses(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        try {
+            String idsParam = userIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+
+            Map<String, Object> response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/users")
+                            .queryParam("user_ids", idsParam)
+                            .build())
+                    .retrieve()
+                    .body(Map.class);
+
+            List<Map<String, Object>> users = (List<Map<String, Object>>) response.get("users");
+
+            return users.stream()
+                    .map(this::toUserStatus)
+                    .toList();
+        } catch (RestClientException e) {
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 온라인 상태 일괄 조회 실패");
+        }
+    }
+
+    // Sendbird 유저 응답(raw Map)을 SendbirdUserStatus로 변환 (getUserStatus 단건 조회 로직과 동일)
+    private SendbirdUserStatus toUserStatus(Map<String, Object> raw) {
+        Long userId = Long.parseLong((String) raw.get("user_id"));
+        boolean isOnline = Boolean.TRUE.equals(raw.get("is_online"));
+        Object lastSeenAtRaw = raw.get("last_seen_at");
+        Instant lastSeenAt = null;
+
+        if (!isOnline && lastSeenAtRaw != null) {
+            long epochMillis = ((Number) lastSeenAtRaw).longValue();
+            if (epochMillis > 0) {
+                lastSeenAt = Instant.ofEpochMilli(epochMillis);
+            }
+        }
+
+        return new SendbirdUserStatus(userId, isOnline, lastSeenAt);
     }
 
     // 채팅방 생성 - userIds 1명이면 1:1(is_distinct=true), 2명 이상이면 그룹
@@ -415,12 +463,14 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     }
 
     // Sendbird 유저 검색 응답(raw Map)을 SendbirdUserResult로 변환
+    // role은 Sendbird 원본 데이터에 없는 우리 서비스 도메인 개념이라 여기선 null, ChatUserQueryService에서 채움
     private SendbirdUserResult toUserResult(Map<String, Object> raw) {
         return new SendbirdUserResult(
                 Long.parseLong((String) raw.get("user_id")),
                 (String) raw.get("nickname"),
                 (String) raw.get("profile_url"),
-                Boolean.TRUE.equals(raw.get("is_online"))
+                Boolean.TRUE.equals(raw.get("is_online")),
+                null
         );
     }
 

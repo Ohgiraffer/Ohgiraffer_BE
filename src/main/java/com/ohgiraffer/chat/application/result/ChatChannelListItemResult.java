@@ -13,6 +13,7 @@ public record ChatChannelListItemResult(
         String channelType,
         String lastMessageContent,
         Instant lastMessageSentAt,
-        long unreadCount
+        long unreadCount,
+        Boolean isOnline
 ) {
 }

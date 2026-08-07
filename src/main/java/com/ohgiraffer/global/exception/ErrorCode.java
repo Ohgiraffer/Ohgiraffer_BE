@@ -42,6 +42,9 @@ public enum ErrorCode {
     GOOGLE_SHEET_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "SHEET_004", "Google Sheets API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요."),
     GOOGLE_SHEET_API_ERROR(HttpStatus.BAD_GATEWAY, "SHEET_005", "Google Sheets API 호출 중 오류가 발생했습니다."),
 
+    FILE_PARSE_FAILED(HttpStatus.BAD_REQUEST, "FILE_001", "파일을 읽는 중 오류가 발생했습니다."),
+    UNSUPPORTED_FILE_TYPE(HttpStatus.BAD_REQUEST, "FILE_002", "지원하지 않는 파일 형식입니다. CSV 또는 엑셀 파일만 업로드 가능합니다."),
+
     APPROVAL_NOT_FOUND(HttpStatus.NOT_FOUND, "APPROVAL_001", "결재 요청을 찾을 수 없습니다."),
     APPROVAL_INVALID_STATUS(HttpStatus.BAD_REQUEST, "APPROVAL_002", "현재 상태에서는 처리할 수 없는 결재 요청입니다."),
     APPROVAL_ACCESS_DENIED(HttpStatus.FORBIDDEN, "APPROVAL_003", "해당 결재 요청을 처리할 권한이 없습니다."),
@@ -59,6 +62,12 @@ public enum ErrorCode {
     CHAT_SENDBIRD_API_ERROR(HttpStatus.BAD_GATEWAY, "CHAT_006", "Sendbird API 호출 중 오류가 발생했습니다."),
     CHAT_WEBHOOK_SIGNATURE_INVALID(HttpStatus.BAD_REQUEST, "CHAT_007", "웹훅 서명 검증에 실패했습니다."),
 
+    NOTI_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTI_001", "알림을 찾을 수 없습니다."),
+    NOTI_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTI_002", "본인의 알림만 접근할 수 있습니다."),
+    NOTI_ALREADY_DELETED(HttpStatus.BAD_REQUEST, "NOTI_003", "이미 삭제된 알림입니다."),
+    NOTI_IDS_REQUIRED(HttpStatus.BAD_REQUEST, "NOTI_004", "삭제할 알림을 선택해주세요."),
+    NOTI_SSE_CONNECTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "NOTI_005", "실시간 알림 연결에 실패했습니다."),
+
     GOOGLE_FORM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "FORM_001", "Google Form에 접근할 권한이 없습니다."),
     GOOGLE_FORM_NOT_FOUND(HttpStatus.NOT_FOUND, "FORM_002", "Google Form을 찾을 수 없습니다."),
     GOOGLE_FORM_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "FORM_003", "Google Forms API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요."),
@@ -67,6 +76,9 @@ public enum ErrorCode {
     SURVEY_FORM_INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "SURVEY_002", "변경할 수 없는 설문 상태입니다."),
     SURVEY_FORM_HAS_RESPONSES(HttpStatus.CONFLICT, "SURVEY_003", "응답이 존재하는 설문은 삭제할 수 없습니다."),
     SURVEY_FORM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SURVEY_005", "해당 설문에 접근할 권한이 없습니다."),
+    SURVEY_SHEET_LINK_NOT_FOUND(HttpStatus.NOT_FOUND, "SURVEY_006", "설문에 연결된 Google Sheet가 없습니다."),
+    SURVEY_RESPONSE_NOT_FOUND(HttpStatus.BAD_REQUEST, "SURVEY_007", "요약할 설문 응답이 없습니다."),
+    SURVEY_PDF_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SURVEY_008", "설문 결과 PDF 생성에 실패했습니다."),
 
     SUBMISSION_BOX_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_001", "제출함을 찾을 수 없습니다."),
     SUBMISSION_BOX_HAS_SUBMISSIONS(HttpStatus.CONFLICT, "SUBMISSION_002", "제출물이 존재하는 제출함은 삭제할 수 없습니다."),
@@ -85,8 +97,21 @@ public enum ErrorCode {
     SUBMISSION_FILE_UPLOAD_FAILED(HttpStatus.BAD_GATEWAY, "SUBMISSION_015", "파일 저장소에 파일을 업로드하지 못했습니다."),
     SUBMISSION_TEAM_DATA_INCONSISTENT(HttpStatus.INTERNAL_SERVER_ERROR, "SUBMISSION_016", "학생의 팀 소속 정보가 올바르지 않습니다."),
     SUBMISSION_FILE_DOWNLOAD_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "SUBMISSION_017", "파일 제출 항목만 다운로드할 수 있습니다."),
-
     SUBMISSION_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_018", "제출 파일을 찾을 수 없습니다."),
+    SUBMISSION_FILE_PREVIEW_NOT_SUPPORTED(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "SUBMISSION_019", "미리보기를 지원하지 않는 파일 형식입니다."),
+
+    TEAM_DUPLICATE_NAME(HttpStatus.CONFLICT, "TEAM_003", "이미 존재하는 팀명입니다."),
+    TEAM_INVALID_PERIOD(HttpStatus.BAD_REQUEST, "TEAM_004", "팀 시작일은 종료일보다 늦을 수 없습니다."),
+    TEAM_ALREADY_DISSOLVED(HttpStatus.CONFLICT, "TEAM_005", "이미 해체된 팀입니다."),
+    TEAM_MEMBER_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "TEAM_006", "이미 팀에 배정된 훈련생입니다."),
+    TEAM_MEMBER_INVALID_USER(HttpStatus.BAD_REQUEST, "TEAM_008", "팀에는 활성 훈련생만 배정할 수 있습니다."),
+    TEAM_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "TEAM_007", "팀원 배정 정보를 찾을 수 없습니다."),
+    TEAM_MEMBER_ALREADY_LEFT(HttpStatus.CONFLICT, "TEAM_009", "이미 종료된 팀원 배정입니다."),
+    TEAM_MEMBER_TEAM_MISMATCH(HttpStatus.BAD_REQUEST, "TEAM_010", "팀원 배정 정보가 요청한 팀과 일치하지 않습니다."),
+    TEAM_SAME_TARGET(HttpStatus.BAD_REQUEST, "TEAM_011", "같은 팀으로는 이동할 수 없습니다."),
+    TEAM_NOT_FOUND(HttpStatus.NOT_FOUND, "TEAM_001", "팀을 찾을 수 없습니다."),
+    TEAM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "TEAM_002", "팀 관리에 접근할 권한이 없습니다."),
+    ATTENDANCE_PERIOD_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_001", "존재하지 않거나 소속 부트캠프의 단위기간이 아닙니다."),
   
     BOOTCAMP_NOT_FOUND(HttpStatus.NOT_FOUND, "BOOTCAMP_001", "부트캠프를 찾을 수 없습니다."),
     INVALID_PERIOD_RANGE(HttpStatus.BAD_REQUEST, "BOOTCAMP_002", "단위기간 시작일이 종료일보다 늦을 수 없습니다."),
@@ -95,6 +120,7 @@ public enum ErrorCode {
     INVALID_POLICY_THRESHOLD_ORDER(HttpStatus.BAD_REQUEST, "BOOTCAMP_005", "출석률 기준은 주의 > 경고 > 제적위험 순이어야 합니다."),
     INVALID_POLICY_THRESHOLD_RANGE(HttpStatus.BAD_REQUEST, "BOOTCAMP_006", "출석률 기준은 0 이상 100 이하여야 합니다."),
     BOOTCAMP_ALREADY_REGISTERED(HttpStatus.CONFLICT, "BOOTCAMP_007", "이미 등록된 부트캠프가 있습니다."),
+    BOOTCAMP_ACCESS_DENIED(HttpStatus.FORBIDDEN, "BOOTCAMP_008", "소속 부트캠프가 아닌 학생의 정보에는 접근할 수 없습니다."),
 
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_001", "존재하지 않는 공지입니다."),
     NOTICE_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_002", "존재하지 않는 공지 카테고리입니다."),

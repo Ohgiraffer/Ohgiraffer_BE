@@ -12,17 +12,23 @@ import com.ohgiraffer.submission.domain.model.Submission;
 import com.ohgiraffer.submission.domain.repository.StudentTeamRepository;
 import com.ohgiraffer.submission.domain.repository.SubmissionRepository;
 import com.ohgiraffer.submissionbox.domain.model.SubmissionTargetScope;
+import com.ohgiraffer.submissionbox.application.port.SubmissionTeamTargetPort;
+import com.ohgiraffer.user.domain.model.UserStatus;
+import com.ohgiraffer.user.domain.repository.UserRepository;
 import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.submissionbox.application.usecase.SubmissionStatusResult;
 
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
+
 
 
 @Service
@@ -35,35 +41,105 @@ public class QuerySubmissionBoxService
     private final SubmissionBoxRepository submissionBoxRepository;
     private final SubmissionRepository submissionRepository;
     private final StudentTeamRepository studentTeamRepository;
+    private final UserRepository userRepository;
+    private final SubmissionTeamTargetPort submissionTeamTargetPort;
 
     @Override
     public List<SubmissionBoxListResult> getSubmissionBoxes(
             Long userId,
             Role role
     ) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now =
+                LocalDateTime.now();
 
-        return submissionBoxRepository.findAll()
-                .stream()
-                .map(submissionBox -> {
-                    if (role != Role.STUDENT) {
-                        return SubmissionBoxListResult.from(
-                                submissionBox,
-                                now
+        List<SubmissionBox> submissionBoxes =
+                submissionBoxRepository.findAll();
+
+        if (role == Role.STUDENT) {
+            return submissionBoxes.stream()
+                    .map(submissionBox -> {
+                        Long submissionId =
+                                findStudentSubmissionId(
+                                        submissionBox,
+                                        userId
+                                );
+
+                        return SubmissionBoxListResult
+                                .forStudent(
+                                        submissionBox,
+                                        now,
+                                        submissionId
+                                );
+                    })
+                    .toList();
+        }
+
+        Set<Long> activeStudentIds =
+                userRepository
+                        .findAllByRoleAndStatus(
+                                Role.STUDENT,
+                                UserStatus.ACTIVE
+                        )
+                        .stream()
+                        .map(user -> user.getId())
+                        .collect(
+                                Collectors.toUnmodifiableSet()
                         );
-                    }
 
-                    Long submissionId =
-                            findStudentSubmissionId(
-                                    submissionBox,
-                                    userId
+        Set<Long> activeTeamIds =
+                submissionTeamTargetPort
+                        .findActiveTeams()
+                        .stream()
+                        .map(team -> team.teamId())
+                        .collect(
+                                Collectors.toUnmodifiableSet()
+                        );
+
+        return submissionBoxes.stream()
+                .map(submissionBox -> {
+                    boolean teamSubmission =
+                            submissionBox.getTargetScope()
+                                    == SubmissionTargetScope.TEAM;
+
+                    Set<Long> activeTargetIds =
+                            teamSubmission
+                                    ? activeTeamIds
+                                    : activeStudentIds;
+
+                    List<Submission> submissions =
+                            submissionRepository
+                                    .findAllBySubmissionBoxId(
+                                            submissionBox.getId()
+                                    );
+
+                    int submittedCount =
+                            Math.toIntExact(
+                                    submissions.stream()
+                                            .map(submission ->
+                                                    teamSubmission
+                                                            ? submission.getTeamId()
+                                                            : submission.getOwnerUserId()
+                                            )
+                                            .filter(
+                                                    targetId ->
+                                                            targetId != null
+                                                                    && activeTargetIds
+                                                                    .contains(targetId)
+                                            )
+                                            .distinct()
+                                            .count()
                             );
 
-                    return SubmissionBoxListResult.from(
-                            submissionBox,
-                            now,
-                            submissionId
-                    );
+                    int targetCount =
+                            activeTargetIds.size();
+
+                    return SubmissionBoxListResult
+                            .forStaff(
+                                    submissionBox,
+                                    now,
+                                    submittedCount,
+                                    targetCount
+                            );
                 })
                 .toList();
     }

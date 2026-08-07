@@ -21,6 +21,9 @@ public record ChatChannelDetailResult(
 
     public record ChatChannelMemberResult(
             Long userId,
+            String memberName,
+            String email,
+            String role,
             Instant joinedAt,
             Long lastReadMessageId,
             boolean isRead

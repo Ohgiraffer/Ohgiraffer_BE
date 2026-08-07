@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>CampFlow 설문 결과 요약</title>
+
+    <style>
+        @page {
+            size: A4;
+            margin: 16mm 14mm 20mm 14mm;
+
+            @bottom-left {
+                content: "CampFlow Survey Report";
+                color: #89928d;
+                font-family: "Noto Sans KR";
+                font-size: 8pt;
+            }
+
+            @bottom-right {
+                content: counter(page) " / " counter(pages);
+                color: #89928d;
+                font-family: "Noto Sans KR";
+                font-size: 8pt;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            color: #202722;
+            background: #ffffff;
+            font-family: "Noto Sans KR", sans-serif;
+            font-size: 10pt;
+            line-height: 1.6;
+        }
+
+        .header {
+            width: 100%;
+            margin-bottom: 22px;
+            border-collapse: collapse;
+        }
+
+        .header td {
+            vertical-align: middle;
+        }
+
+        .brand-cell {
+            width: 55%;
+        }
+
+        .meta-cell {
+            width: 45%;
+            text-align: right;
+            color: #747d78;
+            font-size: 8.5pt;
+        }
+
+        .brand-mark {
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            margin-right: 8px;
+            border-radius: 8px;
+            color: #ffffff;
+            background: #314d3f;
+            font-size: 12pt;
+            font-weight: 700;
+            line-height: 32px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .brand-name {
+            display: inline-block;
+            color: #314d3f;
+            font-size: 16pt;
+            font-weight: 700;
+            vertical-align: middle;
+        }
+
+        .hero {
+            padding: 24px 26px;
+            margin-bottom: 18px;
+            border-radius: 12px;
+            color: #ffffff;
+            background: #314d3f;
+        }
+
+        .hero-label {
+            margin-bottom: 6px;
+            color: #dbe6df;
+            font-size: 8.5pt;
+            letter-spacing: 1px;
+        }
+
+        .hero-title {
+            margin: 0 0 8px 0;
+            color: #ffffff;
+            font-size: 22pt;
+            font-weight: 700;
+            line-height: 1.35;
+        }
+
+        .hero-description {
+            margin: 0;
+            color: #e8efea;
+            font-size: 9.5pt;
+        }
+
+        .summary-table {
+            width: 100%;
+            margin-bottom: 22px;
+            border-spacing: 8px 0;
+            table-layout: fixed;
+        }
+
+        .summary-card {
+            padding: 14px 16px;
+            border: 1px solid #dfe6e1;
+            border-radius: 9px;
+            background: #f6f8f6;
+            vertical-align: top;
+        }
+
+        .summary-label {
+            margin-bottom: 5px;
+            color: #7a837e;
+            font-size: 8pt;
+        }
+
+        .summary-value {
+            color: #314d3f;
+            font-size: 17pt;
+            font-weight: 700;
+        }
+
+        .section {
+            margin-top: 20px;
+        }
+
+        .section-title {
+            margin: 0 0 11px 0;
+            padding-bottom: 7px;
+            color: #263c31;
+            border-bottom: 2px solid #314d3f;
+            font-size: 14pt;
+            font-weight: 700;
+        }
+
+        .section-description {
+            margin: -4px 0 12px 0;
+            color: #768079;
+            font-size: 8.5pt;
+        }
+
+        .ai-overview {
+            padding: 16px 18px;
+            margin-bottom: 12px;
+            border-left: 5px solid #91a783;
+            border-radius: 8px;
+            background: #f1f5ef;
+        }
+
+        .ai-overview-title {
+            margin-bottom: 6px;
+            color: #314d3f;
+            font-size: 10pt;
+            font-weight: 700;
+        }
+
+        .ai-overview-text {
+            margin: 0;
+            color: #343c37;
+        }
+
+        .ai-grid {
+            width: 100%;
+            border-spacing: 8px;
+            table-layout: fixed;
+        }
+
+        .ai-card {
+            width: 50%;
+            padding: 13px 15px;
+            border: 1px solid #e2e7e4;
+            border-radius: 8px;
+            vertical-align: top;
+            background: #ffffff;
+        }
+
+        .ai-card.positive {
+            border-top: 4px solid #91a783;
+        }
+
+        .ai-card.improvement {
+            border-top: 4px solid #d6ad67;
+        }
+
+        .ai-card-title {
+            margin-bottom: 7px;
+            color: #314d3f;
+            font-size: 10pt;
+            font-weight: 700;
+        }
+
+        .bullet-list {
+            margin: 0;
+            padding-left: 16px;
+        }
+
+        .bullet-list li {
+            margin-bottom: 5px;
+        }
+
+        .recommendation-box {
+            padding: 14px 17px;
+            margin-top: 10px;
+            border-radius: 8px;
+            background: #fff8e9;
+            border: 1px solid #ead9b4;
+        }
+
+        .recommendation-title {
+            margin-bottom: 7px;
+            color: #695323;
+            font-weight: 700;
+        }
+
+        .question-card {
+            page-break-inside: avoid;
+            margin-bottom: 13px;
+            padding: 15px 17px;
+            border: 1px solid #dfe5e1;
+            border-radius: 9px;
+            background: #ffffff;
+        }
+
+        .question-header {
+            width: 100%;
+            margin-bottom: 10px;
+            border-collapse: collapse;
+        }
+
+        .question-number-cell {
+            width: 42px;
+            vertical-align: top;
+        }
+
+        .question-title-cell {
+            vertical-align: top;
+        }
+
+        .question-meta-cell {
+            width: 95px;
+            text-align: right;
+            vertical-align: top;
+        }
+
+        .question-number {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            color: #ffffff;
+            border-radius: 50%;
+            background: #314d3f;
+            line-height: 28px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .question-title {
+            color: #252c28;
+            font-size: 11pt;
+            font-weight: 700;
+            line-height: 1.45;
+        }
+
+        .question-type {
+            display: inline-block;
+            padding: 3px 7px;
+            margin-top: 5px;
+            border-radius: 10px;
+            color: #5d685f;
+            background: #edf1ee;
+            font-size: 7.5pt;
+        }
+
+        .question-type-unanswered {
+            color: #7d5b20;
+            background: #fff3d6;
+        }
+
+        .response-count {
+            color: #77817b;
+            font-size: 8pt;
+        }
+
+        .metric-table {
+            width: 100%;
+            margin: 8px 0 12px 0;
+            border-spacing: 6px 0;
+            table-layout: fixed;
+        }
+
+        .metric {
+            padding: 9px;
+            border-radius: 7px;
+            text-align: center;
+            background: #f4f7f4;
+        }
+
+        .metric-label {
+            color: #818a84;
+            font-size: 7.5pt;
+        }
+
+        .metric-value {
+            margin-top: 2px;
+            color: #314d3f;
+            font-size: 13pt;
+            font-weight: 700;
+        }
+
+        .distribution-row {
+            margin-bottom: 7px;
+        }
+
+        .distribution-label-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .distribution-name {
+            color: #414944;
+            font-size: 8.5pt;
+        }
+
+        .distribution-value {
+            text-align: right;
+            color: #707a74;
+            font-size: 8pt;
+        }
+
+        .bar-background {
+            width: 100%;
+            height: 7px;
+            margin-top: 3px;
+            border-radius: 4px;
+            background: #edf0ee;
+            overflow: hidden;
+        }
+
+        .bar-value {
+            height: 7px;
+            border-radius: 4px;
+            background: #91a783;
+        }
+
+        .text-response-notice {
+            padding: 9px 11px;
+            color: #68716c;
+            border-radius: 6px;
+            background: #f6f7f6;
+            font-size: 8.5pt;
+        }
+
+        .unanswered-notice {
+            padding: 9px 11px;
+            color: #7d652f;
+            border: 1px solid #eee0bd;
+            border-radius: 6px;
+            background: #fff9ea;
+            font-size: 8.5pt;
+        }
+
+        .question-summary {
+            page-break-inside: avoid;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            border-left: 4px solid #91a783;
+            background: #f7f9f7;
+        }
+
+        .question-summary-number {
+            margin-bottom: 4px;
+            color: #314d3f;
+            font-size: 8pt;
+            font-weight: 700;
+        }
+
+        .question-summary-text {
+            margin: 0;
+            color: #39423d;
+        }
+
+        .ai-unavailable {
+            padding: 13px 15px;
+            color: #6c746f;
+            border: 1px solid #e0e4e1;
+            border-radius: 8px;
+            background: #f7f8f7;
+        }
+
+        .notice {
+            margin-top: 22px;
+            padding: 11px 14px;
+            color: #737c76;
+            border-top: 1px solid #e2e6e3;
+            font-size: 7.5pt;
+        }
+    </style>
+</head>
+
+<body>
+
+<table class="header">
+    <tr>
+        <td class="brand-cell">
+            <span class="brand-mark">CF</span>
+            <span class="brand-name">CampFlow</span>
+        </td>
+
+        <td class="meta-cell">
+            <div>설문 결과 분석 보고서</div>
+            <div th:text="${generatedAt}">
+                2026년 08월 07일 14:00
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div class="hero">
+    <div class="hero-label">
+        SURVEY INSIGHT REPORT
+    </div>
+
+    <h1 class="hero-title"
+        th:text="${surveyTitle}">
+        7월 동료 평가
+    </h1>
+
+    <p class="hero-description">
+        응답 데이터를 기반으로 생성된 CampFlow 설문 결과 요약입니다.
+    </p>
+</div>
+
+<table class="summary-table">
+    <tr>
+        <td class="summary-card">
+            <div class="summary-label">
+                전체 응답
+            </div>
+
+            <div class="summary-value">
+                <span th:text="${statistics.totalResponseCount}">
+                    14
+                </span>
+                <span style="font-size: 9pt;">건</span>
+            </div>
+        </td>
+
+        <td class="summary-card">
+            <div class="summary-label">
+                분석 문항
+            </div>
+
+            <div class="summary-value">
+                <span th:text="${statistics.totalQuestionCount}">
+                    5
+                </span>
+                <span style="font-size: 9pt;">개</span>
+            </div>
+        </td>
+
+        <td class="summary-card">
+            <div class="summary-label">
+                AI 분석
+            </div>
+
+            <div class="summary-value"
+                 style="font-size: 11pt;"
+                 th:text="${aiSummary.generated
+                    ? '분석 완료'
+                    : '기본 통계'}">
+                분석 완료
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div class="section"
+     th:if="${aiSummary.generated}">
+
+    <h2 class="section-title">
+        AI 핵심 요약
+    </h2>
+
+    <div class="ai-overview">
+        <div class="ai-overview-title">
+            전체 결과 요약
+        </div>
+
+        <p class="ai-overview-text"
+           th:text="${aiSummary.overview}">
+            전체 설문 결과에 대한 요약입니다.
+        </p>
+    </div>
+
+    <div th:if="${!aiSummary.keyInsights.isEmpty()}">
+        <div class="recommendation-box">
+            <div class="recommendation-title">
+                핵심 인사이트
+            </div>
+
+            <ul class="bullet-list">
+                <li th:each="insight : ${aiSummary.keyInsights}"
+                    th:text="${insight}">
+                    핵심 인사이트
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <table class="ai-grid">
+        <tr>
+            <td class="ai-card positive">
+                <div class="ai-card-title">
+                    주요 강점
+                </div>
+
+                <ul class="bullet-list"
+                    th:if="${!aiSummary.strengths.isEmpty()}">
+                    <li th:each="strength : ${aiSummary.strengths}"
+                        th:text="${strength}">
+                        주요 강점
+                    </li>
+                </ul>
+
+                <div th:if="${aiSummary.strengths.isEmpty()}">
+                    확인된 강점이 없습니다.
+                </div>
+            </td>
+
+            <td class="ai-card improvement">
+                <div class="ai-card-title">
+                    개선 필요 사항
+                </div>
+
+                <ul class="bullet-list"
+                    th:if="${!aiSummary.improvements.isEmpty()}">
+                    <li th:each="improvement : ${aiSummary.improvements}"
+                        th:text="${improvement}">
+                        개선 필요 사항
+                    </li>
+                </ul>
+
+                <div th:if="${aiSummary.improvements.isEmpty()}">
+                    확인된 개선 사항이 없습니다.
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="recommendation-box"
+         th:if="${!aiSummary.recommendations.isEmpty()}">
+
+        <div class="recommendation-title">
+            운영 권고사항
+        </div>
+
+        <ul class="bullet-list">
+            <li th:each="recommendation
+                    : ${aiSummary.recommendations}"
+                th:text="${recommendation}">
+                운영 권고사항
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="section"
+     th:unless="${aiSummary.generated}">
+
+    <h2 class="section-title">
+        기본 통계 요약
+    </h2>
+
+    <div class="ai-unavailable">
+        AI 분석을 사용할 수 없어 기본 통계 결과만 제공합니다.
+    </div>
+</div>
+
+<div class="section">
+    <h2 class="section-title">
+        문항별 응답 현황
+    </h2>
+
+    <p class="section-description">
+        응답자 식별 정보와 응답 일시는 분석에서 제외되었습니다.
+    </p>
+
+    <div class="question-card"
+         th:each="question : ${questions}">
+
+        <table class="question-header">
+            <tr>
+                <td class="question-number-cell">
+                    <span class="question-number"
+                          th:text="${question.questionNumber}">
+                        1
+                    </span>
+                </td>
+
+                <td class="question-title-cell">
+                    <div class="question-title"
+                         th:text="${question.question}">
+                        문항 제목
+                    </div>
+
+                    <span class="question-type"
+                          th:if="${question.numeric}">
+                        숫자형
+                    </span>
+
+                    <span class="question-type"
+                          th:if="${question.choice}">
+                        선택형
+                    </span>
+
+                    <span class="question-type"
+                          th:if="${question.text}">
+                        서술형
+                    </span>
+
+                    <span class="question-type question-type-unanswered"
+                          th:if="${question.unanswered}">
+                        미응답
+                    </span>
+                </td>
+
+                <td class="question-meta-cell">
+                    <span class="response-count">
+                        응답
+                        <span th:text="${question.responseCount}">
+                            0
+                        </span>
+                        건
+                    </span>
+                </td>
+            </tr>
+        </table>
+
+        <table class="metric-table"
+               th:if="${question.numeric}">
+            <tr>
+                <td class="metric">
+                    <div class="metric-label">
+                        평균
+                    </div>
+
+                    <div class="metric-value"
+                         th:text="${question.average}">
+                        4.25
+                    </div>
+                </td>
+
+                <td class="metric">
+                    <div class="metric-label">
+                        최솟값
+                    </div>
+
+                    <div class="metric-value"
+                         th:text="${question.minimum}">
+                        1
+                    </div>
+                </td>
+
+                <td class="metric">
+                    <div class="metric-label">
+                        최댓값
+                    </div>
+
+                    <div class="metric-value"
+                         th:text="${question.maximum}">
+                        5
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <div th:if="${(question.numeric
+                or question.choice)
+                and question.responseCount > 0}">
+
+            <div class="distribution-row"
+                 th:each="entry
+                    : ${question.distribution.entrySet()}">
+
+                <table class="distribution-label-table">
+                    <tr>
+                        <td class="distribution-name"
+                            th:text="${entry.key}">
+                            매우 만족
+                        </td>
+
+                        <td class="distribution-value">
+                            <span th:text="${entry.value}">
+                                8
+                            </span>
+                            건
+                            (
+                            <span th:text="${#numbers.formatDecimal(
+                                entry.value * 100.0
+                                / question.responseCount,
+                                1,
+                                1
+                            )}">
+                                57.1
+                            </span>
+                            %)
+                        </td>
+                    </tr>
+                </table>
+
+                <div class="bar-background">
+                    <div class="bar-value"
+                         th:style="${'width:'
+                            + (entry.value * 100.0
+                            / question.responseCount)
+                            + '%'}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-response-notice"
+             th:if="${question.text}">
+            서술형 응답
+            <span th:text="${question.responseCount}">
+                10
+            </span>
+            건이 수집되었습니다.
+            개인정보 보호를 위해 원문은 보고서에 표시하지 않습니다.
+        </div>
+
+        <div class="unanswered-notice"
+             th:if="${question.unanswered}">
+            이 문항에는 수집된 응답이 없습니다.
+        </div>
+    </div>
+</div>
+
+<div class="section"
+     th:if="${aiSummary.generated
+        and !aiSummary.questionSummaries.isEmpty()}">
+
+    <h2 class="section-title">
+        문항별 AI 분석
+    </h2>
+
+    <div class="question-summary"
+         th:each="summary
+            : ${aiSummary.questionSummaries}">
+
+        <div class="question-summary-number">
+            문항
+            <span th:text="${summary.questionNumber}">
+                1
+            </span>
+        </div>
+
+        <p class="question-summary-text"
+           th:text="${summary.summary}">
+            문항별 분석 내용
+        </p>
+    </div>
+</div>
+
+<div class="notice">
+    본 보고서는 Google Sheet에 연결된 설문 응답을 기준으로 생성되었습니다.
+    AI 분석 내용은 운영 의사결정을 보조하기 위한 참고 자료이며,
+    원본 응답 및 실제 운영 상황과 함께 검토해야 합니다.
+</div>
+
+</body>
+</html>

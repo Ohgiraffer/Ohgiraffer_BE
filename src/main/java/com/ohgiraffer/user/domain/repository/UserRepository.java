@@ -17,6 +17,8 @@ public interface UserRepository {
     void save(User user);
     List<User> findAllByRoleAndStatus(Role role, UserStatus status);
 
+    List<User> findByNameContaining(String keyword);
+
     boolean existsByEmail(String email);
 
     void saveAll(List<User> users);

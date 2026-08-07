@@ -22,6 +22,17 @@ import com.ohgiraffer.survey.application.usecase.GetSurveyResponsesUseCase;
 import com.ohgiraffer.survey.application.usecase.SurveyResponseDetailResult;
 import com.ohgiraffer.survey.application.usecase.SurveyResponseStatus;
 import com.ohgiraffer.survey.presentation.api.response.SurveyResponseDetailResponse;
+import com.ohgiraffer.survey.application.usecase.SurveySheetValidationResult;
+import com.ohgiraffer.survey.application.usecase.ValidateSurveySheetUseCase;
+import com.ohgiraffer.survey.presentation.api.request.ValidateSurveySheetRequest;
+import com.ohgiraffer.survey.presentation.api.response.SurveySheetValidationResponse;
+import com.ohgiraffer.survey.application.command.SaveSurveySheetLinkCommand;
+import com.ohgiraffer.survey.application.usecase.SaveSurveySheetLinkResult;
+import com.ohgiraffer.survey.application.usecase.SaveSurveySheetLinkUseCase;
+import com.ohgiraffer.survey.presentation.api.request.SaveSurveySheetLinkRequest;
+import com.ohgiraffer.survey.presentation.api.response.SaveSurveySheetLinkResponse;
+import com.ohgiraffer.survey.application.usecase.GenerateSurveySummaryPdfUseCase;
+import com.ohgiraffer.survey.application.usecase.SurveySummaryPdfResult;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -37,8 +48,14 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 import java.util.List;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/survey-forms")
@@ -51,6 +68,9 @@ public class SurveyFormController {
     private final UpdateSurveyFormUseCase updateSurveyFormUseCase;
     private final DeleteSurveyFormUseCase deleteSurveyFormUseCase;
     private final GetSurveyResponsesUseCase getSurveyResponsesUseCase;
+    private final ValidateSurveySheetUseCase validateSurveySheetUseCase;
+    private final SaveSurveySheetLinkUseCase saveSurveySheetLinkUseCase;
+    private final GenerateSurveySummaryPdfUseCase generateSurveySummaryPdfUseCase;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
@@ -95,17 +115,25 @@ public class SurveyFormController {
     }
 
     @GetMapping("/{surveyFormId}")
-    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR', 'STUDENT')"
+    )
     public ResponseEntity<SurveyFormDetailResponse> getSurveyForm(
-            @PathVariable Long surveyFormId
+            @PathVariable Long surveyFormId,
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
     ) {
         SurveyFormDetailResult result =
                 getSurveyFormDetailUseCase.getSurveyForm(
-                        surveyFormId
+                        surveyFormId,
+                        principal.getId(),
+                        principal.getRole()
                 );
 
         return ResponseEntity.ok(
-                SurveyFormDetailResponse.from(result)
+                SurveyFormDetailResponse.from(
+                        result
+                )
         );
     }
 
@@ -216,6 +244,125 @@ public class SurveyFormController {
                         result
                 )
         );
+    }
+
+    @PostMapping("/{surveyFormId}/sheet-link/validate")
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR')"
+    )
+    public ResponseEntity<SurveySheetValidationResponse>
+    validateSurveySheet(
+            @PathVariable Long surveyFormId,
+
+            @Valid
+            @RequestBody
+            ValidateSurveySheetRequest request,
+
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
+    ) {
+        SurveySheetValidationResult result =
+                validateSurveySheetUseCase.validate(
+                        surveyFormId,
+                        request.spreadsheetUrl(),
+                        request.sheetName(),
+                        principal.getId(),
+                        principal.getRole()
+                );
+
+        return ResponseEntity.ok(
+                SurveySheetValidationResponse.from(
+                        result
+                )
+        );
+    }
+
+    @PutMapping("/{surveyFormId}/sheet-link")
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR')"
+    )
+    public ResponseEntity<SaveSurveySheetLinkResponse>
+    saveSurveySheetLink(
+            @PathVariable Long surveyFormId,
+
+            @Valid
+            @RequestBody
+            SaveSurveySheetLinkRequest request,
+
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
+    ) {
+        SaveSurveySheetLinkCommand command =
+                new SaveSurveySheetLinkCommand(
+                        surveyFormId,
+                        request.spreadsheetUrl(),
+                        request.sheetName(),
+                        request.respondentColumn(),
+                        request.submittedAtColumn()
+                );
+
+        SaveSurveySheetLinkResult result =
+                saveSurveySheetLinkUseCase.save(
+                        command,
+                        principal.getId(),
+                        principal.getRole()
+                );
+
+        return ResponseEntity.ok(
+                SaveSurveySheetLinkResponse.from(
+                        result
+                )
+        );
+    }
+
+    @PostMapping(
+            value = "/{surveyFormId}/summary",
+            produces = MediaType.APPLICATION_PDF_VALUE
+    )
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR')"
+    )
+    public ResponseEntity<byte[]>
+    generateSurveySummaryPdf(
+            @PathVariable Long surveyFormId,
+
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
+    ) {
+        SurveySummaryPdfResult result =
+                generateSurveySummaryPdfUseCase
+                        .generate(
+                                surveyFormId,
+                                principal.getId(),
+                                principal.getRole()
+                        );
+
+        byte[] content =
+                result.content();
+
+        ContentDisposition contentDisposition =
+                ContentDisposition.attachment()
+                        .filename(
+                                result.fileName(),
+                                StandardCharsets.UTF_8
+                        )
+                        .build();
+
+        return ResponseEntity.ok()
+                .contentType(
+                        MediaType.APPLICATION_PDF
+                )
+                .contentLength(
+                        content.length
+                )
+                .cacheControl(
+                        CacheControl.noStore()
+                )
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        contentDisposition.toString()
+                )
+                .body(content);
     }
 
 }

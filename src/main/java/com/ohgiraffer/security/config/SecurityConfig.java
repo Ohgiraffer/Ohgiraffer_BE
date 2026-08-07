@@ -41,14 +41,15 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:3000",
-                "https://campflow.co.kr"
+                "https://campflow.co.kr",
+                "https://www.campflow.co.kr"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(
                 "Authorization", "Content-Type", "Accept", "X-Requested-With", "Cache-Control", "Idempotency-Key","X-Refresh-Token","Origin",
                 "Access-Control-Request-Method", "Access-Control-Request-Headers", "Refresh-Token"
         ));
-        configuration.setExposedHeaders(List.of("Authorization","New-Access-Token"));
+        configuration.setExposedHeaders(List.of("Authorization","New-Access-Token", "Content-Disposition"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
