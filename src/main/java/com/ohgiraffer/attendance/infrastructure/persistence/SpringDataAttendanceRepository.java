@@ -17,6 +17,7 @@ public interface SpringDataAttendanceRepository extends JpaRepository<Attendance
     FROM AttendanceJpaEntity a
     WHERE a.userId = :userId
       AND a.attendanceDate BETWEEN :start AND :end
+    ORDER BY a.attendanceDate ASC, a.id ASC
     """)
     List<AttendanceCalendarProjection> findCalendarByUserIdAndDateRange(
             @Param("userId") Long userId,
@@ -25,18 +26,19 @@ public interface SpringDataAttendanceRepository extends JpaRepository<Attendance
     );
 
     @Query("""
-        SELECT
-            COALESCE(SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END), 0)     AS presentDays,
-            COALESCE(SUM(CASE WHEN a.status = 'LATE' THEN 1 ELSE 0 END), 0)        AS lateCount,
-            COALESCE(SUM(CASE WHEN a.status = 'EARLY_LEAVE' THEN 1 ELSE 0 END), 0) AS earlyLeaveCount,
-            COALESCE(SUM(CASE WHEN a.status = 'OUTING' THEN 1 ELSE 0 END), 0)      AS outingCount,
-            COALESCE(SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END), 0)      AS absentDays,
-            COALESCE(SUM(CASE WHEN a.status = 'LEAVE' THEN 1 ELSE 0 END), 0)       AS leaveDays,
-            COALESCE(SUM(CASE WHEN a.status = 'SICK' THEN 1 ELSE 0 END), 0)        AS sickDays
-        FROM AttendanceJpaEntity a
-        WHERE a.userId = :userId
-          AND a.attendanceDate BETWEEN :start AND :end
-        """)
+    SELECT
+        COALESCE(SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END), 0)     AS presentDays,
+        COALESCE(SUM(CASE WHEN a.status = 'LATE' THEN 1 ELSE 0 END), 0)        AS lateCount,
+        COALESCE(SUM(CASE WHEN a.status = 'EARLY_LEAVE' THEN 1 ELSE 0 END), 0) AS earlyLeaveCount,
+        COALESCE(SUM(CASE WHEN a.status = 'OUTING' THEN 1 ELSE 0 END), 0)      AS outingCount,
+        COALESCE(SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END), 0)      AS absentDays,
+        COALESCE(SUM(CASE WHEN a.status = 'LEAVE' THEN 1 ELSE 0 END), 0)       AS leaveDays,
+        COALESCE(SUM(CASE WHEN a.status = 'SICK' THEN 1 ELSE 0 END), 0)        AS sickDays
+    FROM AttendanceJpaEntity a
+    WHERE a.userId = :userId
+      AND a.attendanceDate BETWEEN :start AND :end
+      AND FUNCTION('WEEKDAY', a.attendanceDate) < 5
+    """)
     AttendanceSummaryProjection countByUserAndDateRange(
             @Param("userId") Long userId,
             @Param("start") LocalDate start,
