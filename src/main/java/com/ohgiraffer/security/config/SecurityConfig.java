@@ -48,7 +48,7 @@ public class SecurityConfig {
                 "Authorization", "Content-Type", "Accept", "X-Requested-With", "Cache-Control", "Idempotency-Key","X-Refresh-Token","Origin",
                 "Access-Control-Request-Method", "Access-Control-Request-Headers", "Refresh-Token"
         ));
-        configuration.setExposedHeaders(List.of("Authorization","New-Access-Token"));
+        configuration.setExposedHeaders(List.of("Authorization","New-Access-Token", "Content-Disposition"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

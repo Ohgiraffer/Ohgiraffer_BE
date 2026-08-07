@@ -31,6 +31,8 @@ import com.ohgiraffer.survey.application.usecase.SaveSurveySheetLinkResult;
 import com.ohgiraffer.survey.application.usecase.SaveSurveySheetLinkUseCase;
 import com.ohgiraffer.survey.presentation.api.request.SaveSurveySheetLinkRequest;
 import com.ohgiraffer.survey.presentation.api.response.SaveSurveySheetLinkResponse;
+import com.ohgiraffer.survey.application.usecase.GenerateSurveySummaryPdfUseCase;
+import com.ohgiraffer.survey.application.usecase.SurveySummaryPdfResult;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -47,8 +49,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 import java.util.List;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/survey-forms")
@@ -63,6 +70,7 @@ public class SurveyFormController {
     private final GetSurveyResponsesUseCase getSurveyResponsesUseCase;
     private final ValidateSurveySheetUseCase validateSurveySheetUseCase;
     private final SaveSurveySheetLinkUseCase saveSurveySheetLinkUseCase;
+    private final GenerateSurveySummaryPdfUseCase generateSurveySummaryPdfUseCase;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
@@ -297,6 +305,56 @@ public class SurveyFormController {
                         result
                 )
         );
+    }
+
+    @PostMapping(
+            value = "/{surveyFormId}/summary",
+            produces = MediaType.APPLICATION_PDF_VALUE
+    )
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR')"
+    )
+    public ResponseEntity<byte[]>
+    generateSurveySummaryPdf(
+            @PathVariable Long surveyFormId,
+
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
+    ) {
+        SurveySummaryPdfResult result =
+                generateSurveySummaryPdfUseCase
+                        .generate(
+                                surveyFormId,
+                                principal.getId(),
+                                principal.getRole()
+                        );
+
+        byte[] content =
+                result.content();
+
+        ContentDisposition contentDisposition =
+                ContentDisposition.attachment()
+                        .filename(
+                                result.fileName(),
+                                StandardCharsets.UTF_8
+                        )
+                        .build();
+
+        return ResponseEntity.ok()
+                .contentType(
+                        MediaType.APPLICATION_PDF
+                )
+                .contentLength(
+                        content.length
+                )
+                .cacheControl(
+                        CacheControl.noStore()
+                )
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        contentDisposition.toString()
+                )
+                .body(content);
     }
 
 }
