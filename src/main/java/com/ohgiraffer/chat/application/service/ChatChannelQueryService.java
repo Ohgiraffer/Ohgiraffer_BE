@@ -84,17 +84,9 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
         );
     }
 
-    // 최신 메시지가 없으면(빈 채팅방) 전원 읽음, 있으면 lastReadMessageId가 최신 메시지 id 이상인지로 판단
-    private boolean isRead(Long lastReadMessageId, Long latestMessageId) {
-        if (latestMessageId == null) {
-            return true;
-        }
-        return lastReadMessageId != null && lastReadMessageId >= latestMessageId;
-    }
-
     // 참여 채팅방 목록 조회 - 멤버십/채널/최신메시지·안읽음수를 쿼리 3~4번으로 고정해서 조합
     @Override
-    public List<ChatChannelListItemResult> getChannelList(Long userId, ChatChannel.ChannelType type) {
+    public List<ChatChannelListItemResult> getChannelList(Long userId, ChatChannel.ChannelType type, String search) {
         // 1) 멤버십 - 채널 id 목록 확보용
         List<ChatChannelMember> memberships = chatChannelMemberRepository.findAllByUserIdAndLeftAtIsNull(userId);
         if (memberships.isEmpty()) {
@@ -107,6 +99,14 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
         List<ChatChannel> channels = chatChannelRepository.findAllByIdIn(channelIds);
         if (type != null) {
             channels = channels.stream().filter(c -> c.getChannelType() == type).toList();
+        }
+
+        // search가 있으면 채널 이름 부분검색으로 추가 필터 (대소문자/공백 무관)
+        if (search != null && !search.isBlank()) {
+            String keyword = normalizeForSearch(search);
+            channels = channels.stream()
+                    .filter(c -> c.getName() != null && normalizeForSearch(c.getName()).contains(keyword))
+                    .toList();
         }
 
         List<String> sendbirdUrls = channels.stream().map(ChatChannel::getSendbirdChannelUrl).toList();
@@ -131,6 +131,26 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
                     );
                 })
                 .toList();
+    }
+
+    // 헤더 상시 노출용 - 전체 채널의 안읽은 메시지 합계만 가볍게 계산 (채널/최신메시지 조회 없이)
+    @Override
+    public long getTotalUnreadCount(Long userId) {
+        Map<Long, Long> unreadCounts = chatChannelMemberRepository.findUnreadCountsByUserId(userId);
+        return unreadCounts.values().stream().mapToLong(Long::longValue).sum();
+    }
+
+    // 검색어/채널명 비교용 정규화. 공백 제거 + 소문자 변환(Locale.ROOT로 JVM 기본 로케일 영향 배제, 터키어 로케일 등에서 i/I 변환 오류 방지)
+    private String normalizeForSearch(String text) {
+        return text.replaceAll("\\s+", "").toLowerCase(java.util.Locale.ROOT);
+    }
+
+    // 최신 메시지가 없으면(빈 채팅방) 전원 읽음, 있으면 lastReadMessageId가 최신 메시지 id 이상인지로 판단
+    private boolean isRead(Long lastReadMessageId, Long latestMessageId) {
+        if (latestMessageId == null) {
+            return true;
+        }
+        return lastReadMessageId != null && lastReadMessageId >= latestMessageId;
     }
 
 }
