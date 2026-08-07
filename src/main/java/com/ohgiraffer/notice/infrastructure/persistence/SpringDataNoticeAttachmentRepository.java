@@ -13,4 +13,6 @@ public interface SpringDataNoticeAttachmentRepository
     List<NoticeAttachmentJpaEntity> findAllByNoticeIdOrderByIdAsc(Long noticeId);
 
     long countByNoticeId(Long noticeId);
+
+    boolean existsByFileKey(String fileKey);
 }

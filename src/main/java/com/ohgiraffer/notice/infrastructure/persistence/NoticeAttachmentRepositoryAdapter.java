@@ -61,4 +61,9 @@ public class NoticeAttachmentRepositoryAdapter
     public long countByNoticeId(Long noticeId) {
         return springDataNoticeAttachmentRepository.countByNoticeId(noticeId);
     }
+
+    @Override
+    public boolean existsByFileKey(String fileKey) {
+        return springDataNoticeAttachmentRepository.existsByFileKey(fileKey);
+    }
 }

@@ -19,7 +19,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@Transactional
+/**
+ * 트랜잭션을 클래스가 아니라 메서드마다 건다.
+ *
+ * <p>업로드는 저장소에 파일을 올리는 동안 수 초가 걸릴 수 있는데, 그 시간 내내 DB 커넥션을
+ * 붙들고 있으면 여러 사람이 동시에 올릴 때 커넥션이 동난다. 올리는 일은 DB 와 무관하다.
+ */
 public class NoticeAttachmentCommandService
         implements NoticeAttachmentCommandUseCase {
 
@@ -95,6 +100,10 @@ public class NoticeAttachmentCommandService
          * 올린 키를 들고 있다가 실패하면 직접 지운다. 순서를 뒤집어 DB 를 먼저 쓰면
          * 업로드 실패 시 실체 없는 행이 남아 더 나쁘다.
          */
+        /*
+         * 저장은 saveAll 한 번뿐이고 그 자체가 하나의 트랜잭션이라, 올리는 동안 커넥션을
+         * 잡고 있을 이유가 없다. 실패하면 아래에서 올린 것을 되돌린다.
+         */
         List<String> uploadedKeys = new ArrayList<>();
 
         try {
@@ -125,7 +134,11 @@ public class NoticeAttachmentCommandService
         }
     }
 
+    /**
+     * 여기는 트랜잭션이 필요하다. 행을 지운 뒤 커밋된 것을 확인하고 저장소 파일을 지워야 한다.
+     */
     @Override
+    @Transactional
     public void delete(
             Long noticeId,
             Long noticeAttachmentId,
@@ -150,10 +163,11 @@ public class NoticeAttachmentCommandService
         noticeAttachmentRepository.deleteById(noticeAttachmentId);
 
         /*
-         * S3 삭제는 DB 삭제 뒤에 한다. 반대로 하면 DB 삭제가 실패했을 때
-         * 파일 없는 첨부 행이 화면에 남는다.
+         * 저장소 삭제는 커밋된 뒤에 한다. 커밋 전에 지우면 그 뒤 트랜잭션이 되돌아갔을 때
+         * 행은 살아나는데 파일은 사라져, 목록에는 보이지만 내려받을 수 없는 첨부가 남는다.
          */
-        deleteQuietly(List.of(attachment.getFileKey()));
+        String fileKey = attachment.getFileKey();
+        AfterCommit.run(() -> deleteQuietly(List.of(fileKey)));
     }
 
     private void validateFiles(Long noticeId, List<MultipartFile> files) {

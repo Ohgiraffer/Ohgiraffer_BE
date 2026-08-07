@@ -22,4 +22,12 @@ public interface NoticeAttachmentRepository {
      * 공지에 이미 붙어 있는 첨부 수. 개수 상한을 확인할 때 쓴다.
      */
     long countByNoticeId(Long noticeId);
+
+    /**
+     * 이미 어떤 공지가 쓰고 있는 저장 키인지 여부.
+     *
+     * <p>등록 요청의 저장 키는 클라이언트를 거쳐 들어오므로 같은 키가 두 공지에 붙을 수 있다.
+     * 그러면 한쪽 공지를 지울 때 저장소 객체가 사라져 다른 공지의 첨부가 깨진다.
+     */
+    boolean existsByFileKey(String fileKey);
 }

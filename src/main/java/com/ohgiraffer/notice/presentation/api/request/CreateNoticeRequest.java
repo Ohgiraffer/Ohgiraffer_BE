@@ -5,6 +5,7 @@ import com.ohgiraffer.notice.application.command.NoticeAttachmentCommand;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -72,6 +73,13 @@ public record CreateNoticeRequest(
 
             String fileName,
 
+            /*
+             * 미리 올릴 때 서버가 돌려준 값을 그대로 실어 보내므로 없을 수 없다.
+             * 빠뜨렸을 때 0 으로 채우면 "빈 파일" 이라는 엉뚱한 사유로 거절돼,
+             * 화면은 크기를 안 보낸 것이 원인인지 알 수 없다.
+             */
+            @NotNull(message = "파일 크기는 필수입니다.")
+            @Positive(message = "파일 크기는 0보다 커야 합니다.")
             Long fileSizeBytes,
 
             String fileType

@@ -13,7 +13,7 @@ package com.ohgiraffer.notice.application.command;
 public record NoticeAttachmentCommand(
         String fileKey,
         String fileName,
-        Long fileSizeBytes,
+        long fileSizeBytes,
         String fileType
 ) {
 }

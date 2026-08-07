@@ -96,6 +96,7 @@ public class NoticeAttachment {
         validateNoticeId(noticeId);
         validateFileKey(fileKey);
         validateFileSize(fileSizeBytes);
+        validateFileName(fileName);
 
         return new NoticeAttachment(
                 null,
@@ -193,6 +194,31 @@ public class NoticeAttachment {
         return originalFileName
                 .substring(dotIndex + 1)
                 .toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * 파일명에 제어 문자가 섞여 있으면 거절한다.
+     *
+     * <p>이 값은 다운로드 주소를 만들 때 {@code Content-Disposition} 의 파일명으로 들어간다.
+     * 줄바꿈(CR/LF)이 그대로 실리면 헤더 한 줄을 끊고 다른 내용을 끼워 넣을 수 있다.
+     *
+     * <p>업로드할 때만 검사해서는 부족하다. 등록 화면이 파일을 먼저 올리고 공지를 저장할 때
+     * 파일명을 함께 보내는 구조라, 이 값은 클라이언트를 거쳐 들어온다.
+     * 잘라내기 전에 확인하는 것도 잘린 뒤에는 무엇이 지워졌는지 알 수 없기 때문이다.
+     */
+    private static void validateFileName(String fileName) {
+        if (fileName == null) {
+            return;
+        }
+
+        for (int index = 0; index < fileName.length(); index++) {
+            if (Character.isISOControl(fileName.charAt(index))) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT_VALUE,
+                        "파일명에 사용할 수 없는 문자가 있습니다."
+                );
+            }
+        }
     }
 
     private static void validateNoticeId(Long noticeId) {

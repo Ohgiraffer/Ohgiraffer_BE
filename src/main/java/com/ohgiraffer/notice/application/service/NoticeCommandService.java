@@ -4,6 +4,7 @@ import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.global.s3.S3FileHandler;
 import com.ohgiraffer.notice.application.command.CreateNoticeCommand;
+import com.ohgiraffer.notice.application.command.NoticeAttachmentCommand;
 import com.ohgiraffer.notice.application.command.UpdateNoticeCommand;
 import com.ohgiraffer.notice.application.query.NoticeConfirmationView;
 import com.ohgiraffer.notice.application.usecase.NoticeCommandUseCase;
@@ -20,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -51,7 +54,7 @@ public class NoticeCommandService implements NoticeCommandUseCase {
     @Override
     public Notice create(CreateNoticeCommand command) {
         validateCategoryExists(command.categoryId());
-        validateAttachmentCount(command.attachments().size());
+        validateAttachments(command.attachments());
 
         Notice notice = Notice.create(
                 command.authorId(),
@@ -75,8 +78,7 @@ public class NoticeCommandService implements NoticeCommandUseCase {
                                     saved.getId(),
                                     attachment.fileKey(),
                                     attachment.fileName(),
-                                    attachment.fileSizeBytes() == null
-                                            ? 0L : attachment.fileSizeBytes(),
+                                    attachment.fileSizeBytes(),
                                     attachment.fileType()
                             ))
                             .toList()
@@ -86,14 +88,39 @@ public class NoticeCommandService implements NoticeCommandUseCase {
         return saved;
     }
 
-    private void validateAttachmentCount(int count) {
-        if (count > NoticeAttachment.MAX_COUNT_PER_NOTICE) {
+    private void validateAttachments(List<NoticeAttachmentCommand> attachments) {
+        if (attachments.size() > NoticeAttachment.MAX_COUNT_PER_NOTICE) {
             throw new BusinessException(
                     ErrorCode.NOTICE_ATTACHMENT_COUNT_EXCEEDED,
                     "공지 하나에는 첨부파일을 "
                             + NoticeAttachment.MAX_COUNT_PER_NOTICE
                             + "개까지 올릴 수 있습니다."
             );
+        }
+
+        /*
+         * 저장 키는 클라이언트를 거쳐 들어오므로 같은 키가 두 번 실려 올 수 있다.
+         * 그대로 두면 한쪽 공지를 지울 때 저장소 객체가 사라져 다른 공지의 첨부가 깨진다.
+         * 화면이 업로드 상태를 비우지 않고 공지를 연달아 등록하면 실제로 일어난다.
+         */
+        Set<String> fileKeys = attachments.stream()
+                .map(NoticeAttachmentCommand::fileKey)
+                .collect(Collectors.toSet());
+
+        if (fileKeys.size() != attachments.size()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "같은 파일을 두 번 첨부할 수 없습니다."
+            );
+        }
+
+        for (String fileKey : fileKeys) {
+            if (noticeAttachmentRepository.existsByFileKey(fileKey)) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT_VALUE,
+                        "이미 다른 공지가 사용 중인 파일입니다."
+                );
+            }
         }
     }
 
@@ -121,16 +148,21 @@ public class NoticeCommandService implements NoticeCommandUseCase {
 
         /*
          * 첨부 행은 외래키의 ON DELETE CASCADE 로 함께 지워지지만 S3 객체는 남는다.
-         * DB 가 정리해 주지 않는 쪽이라 지우기 전에 키를 읽어 두고 직접 지운다.
+         * DB 가 정리해 주지 않는 쪽이라 지우기 전에 키를 읽어 둔다.
          */
-        List<NoticeAttachment> attachments =
-                noticeAttachmentRepository.findAllByNoticeId(noticeId);
+        List<String> fileKeys = noticeAttachmentRepository
+                .findAllByNoticeId(noticeId)
+                .stream()
+                .map(NoticeAttachment::getFileKey)
+                .toList();
 
         noticeRepository.deleteById(noticeId);
 
-        for (NoticeAttachment attachment : attachments) {
-            deleteQuietly(attachment.getFileKey());
-        }
+        /*
+         * 저장소 삭제는 커밋된 뒤에 한다. 커밋 전에 지우면 그 뒤 트랜잭션이 되돌아갔을 때
+         * 공지와 첨부 행은 살아나는데 파일만 사라진다.
+         */
+        AfterCommit.run(() -> fileKeys.forEach(this::deleteQuietly));
     }
 
     /**

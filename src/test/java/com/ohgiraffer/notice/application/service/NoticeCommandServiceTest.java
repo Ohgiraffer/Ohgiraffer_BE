@@ -145,6 +145,91 @@ class NoticeCommandServiceTest {
     }
 
     @Test
+    @DisplayName("파일명에 줄바꿈이 섞여 있으면 거절한다")
+    void createRejectsFileNameWithControlCharacter() {
+        when(noticeCategoryRepository.existsById(CATEGORY_ID))
+                .thenReturn(true);
+        when(noticeRepository.save(any(Notice.class)))
+                .thenAnswer(invocation -> saved(invocation.getArgument(0)));
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> noticeCommandService.create(new CreateNoticeCommand(
+                        AUTHOR_ID,
+                        CATEGORY_ID,
+                        TITLE,
+                        CONTENT,
+                        false,
+                        true,
+                        List.of(new NoticeAttachmentCommand(
+                                "noticeAttachments/3f2504e0-4f89-41d3-9a0c-0305e82c3301.pdf",
+                                "안내문.pdf\r\nX-Injected: evil",
+                                1024L,
+                                "application/pdf"
+                        ))
+                ))
+        );
+
+        /*
+         * 파일명은 다운로드 주소의 Content-Disposition 에 들어간다.
+         * 줄바꿈이 실리면 헤더를 끊고 다른 내용을 끼워 넣을 수 있다.
+         */
+        assertEquals(ErrorCode.INVALID_INPUT_VALUE, exception.getErrorCode());
+        verify(noticeAttachmentRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("이미 다른 공지가 쓰는 저장 키는 거절한다")
+    void createRejectsFileKeyAlreadyInUse() {
+        when(noticeCategoryRepository.existsById(CATEGORY_ID))
+                .thenReturn(true);
+        when(noticeAttachmentRepository.existsByFileKey(any()))
+                .thenReturn(true);
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> noticeCommandService.create(commandWithAttachment(
+                        "noticeAttachments/3f2504e0-4f89-41d3-9a0c-0305e82c3301.pdf"))
+        );
+
+        /*
+         * 같은 키를 두 공지가 참조하면 한쪽을 지울 때 저장소 객체가 사라져
+         * 다른 공지의 첨부가 깨진다. file_url 에 유니크 제약이 없어 여기서 막는다.
+         */
+        assertEquals(ErrorCode.INVALID_INPUT_VALUE, exception.getErrorCode());
+        verify(noticeRepository, never()).save(any(Notice.class));
+    }
+
+    @Test
+    @DisplayName("한 요청에 같은 저장 키가 두 번 오면 거절한다")
+    void createRejectsDuplicateFileKeyInSameRequest() {
+        when(noticeCategoryRepository.existsById(CATEGORY_ID))
+                .thenReturn(true);
+
+        String sameKey =
+                "noticeAttachments/3f2504e0-4f89-41d3-9a0c-0305e82c3301.pdf";
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> noticeCommandService.create(new CreateNoticeCommand(
+                        AUTHOR_ID,
+                        CATEGORY_ID,
+                        TITLE,
+                        CONTENT,
+                        false,
+                        true,
+                        List.of(
+                                attachment(sameKey),
+                                attachment(sameKey)
+                        )
+                ))
+        );
+
+        assertEquals(ErrorCode.INVALID_INPUT_VALUE, exception.getErrorCode());
+        verify(noticeRepository, never()).save(any(Notice.class));
+    }
+
+    @Test
     @DisplayName("남의 폴더 저장 키를 보내면 거절한다")
     void createRejectsForeignFileKey() {
         when(noticeCategoryRepository.existsById(CATEGORY_ID))
@@ -442,6 +527,27 @@ class NoticeCommandServiceTest {
                 visibleToTrainee,
                 now,
                 now
+        );
+    }
+
+    private CreateNoticeCommand commandWithAttachment(String fileKey) {
+        return new CreateNoticeCommand(
+                AUTHOR_ID,
+                CATEGORY_ID,
+                TITLE,
+                CONTENT,
+                false,
+                true,
+                List.of(attachment(fileKey))
+        );
+    }
+
+    private NoticeAttachmentCommand attachment(String fileKey) {
+        return new NoticeAttachmentCommand(
+                fileKey,
+                "안내문.pdf",
+                1024L,
+                "application/pdf"
         );
     }
 
