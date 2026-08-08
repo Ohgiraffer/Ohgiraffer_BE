@@ -18,9 +18,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -118,5 +120,18 @@ public class BootcampQueryService implements BootcampQueryUsecase {
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
 
         return new BootcampLoginBasicResponse(bootcamp.getOrgName(), bootcamp.getProName());
+    }
+
+    @Override
+    public List<AttendancePeriodStartResult> getPeriodsStartingOn(LocalDate date) {
+        return attendancePeriodRepository.findAllByPeriodStart(date).stream()
+                .map(p -> new AttendancePeriodStartResult(
+                        p.getId(),
+                        p.getBootcampId(),
+                        p.getPeriodNo(),
+                        p.getPeriodStart(),
+                        p.getPeriodEnd()
+                ))
+                .toList();
     }
 }

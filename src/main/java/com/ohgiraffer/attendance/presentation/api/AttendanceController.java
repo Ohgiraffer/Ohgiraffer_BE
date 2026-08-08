@@ -1,6 +1,7 @@
 package com.ohgiraffer.attendance.presentation.api;
 
 import com.ohgiraffer.attendance.application.usecase.AttendanceQueryUsecase;
+import com.ohgiraffer.attendance.presentation.api.response.AttendanceBalanceResponse;
 import com.ohgiraffer.attendance.presentation.api.response.MonthlyAttendanceResponse;
 import com.ohgiraffer.attendance.presentation.api.response.AttendanceSummaryResponse;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
@@ -97,5 +98,38 @@ public class AttendanceController {
             @PathVariable Long studentId
     ) {
         return ResponseEntity.ok(attendanceQueryUsecase.getSummaryForManager(principal.getId(), studentId));
+    }
+
+    @Operation(summary = "잔여 휴가/병결 조회", description = "로그인한 사용자 본인의 잔여 휴가일수와 병결일수를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "404", description = "잔여 휴가/병결 정보 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/leave-sick/count")
+    public ResponseEntity<AttendanceBalanceResponse> getMyLeaveBalance(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        return ResponseEntity.ok(attendanceQueryUsecase.getLeaveBalance(principal.getId()));
+    }
+
+    @Operation(summary = "특정 학생 잔여 휴가/병결 조회 (관리자용)", description = "매니저/강사가 같은 부트캠프 소속 학생의 잔여 휴가일수와 병결일수를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음 또는 다른 부트캠프 소속 학생"),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 학생 또는 잔여 휴가/병결 정보 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    @GetMapping("/leave-sick/count/{studentId}")
+    public ResponseEntity<AttendanceBalanceResponse> getStudentLeaveBalance(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable Long studentId
+    ) {
+        return ResponseEntity.ok(
+                attendanceQueryUsecase.getLeaveBalanceForManager(principal.getId(), studentId)
+        );
     }
 }

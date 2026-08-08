@@ -5,8 +5,15 @@ import com.ohgiraffer.attendance.application.policy.BootcampAccessPolicy;
 import com.ohgiraffer.attendance.application.usecase.AttendanceQueryUsecase;
 import com.ohgiraffer.attendance.domain.model.*;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
+import com.ohgiraffer.attendance.domain.repository.LeaveBalanceRepository;
+import com.ohgiraffer.attendance.domain.repository.SickBalanceRepository;
+import com.ohgiraffer.attendance.presentation.api.response.AttendanceBalanceResponse;
 import com.ohgiraffer.attendance.presentation.api.response.AttendanceSummaryResponse;
 import com.ohgiraffer.attendance.presentation.api.response.MonthlyAttendanceResponse;
+import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,6 +36,10 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
     private final AttendanceRepository attendanceRepository;
     private final BootcampAccessPolicy bootcampAccessPolicy;
     private final AttendanceSummaryCache attendanceSummaryCache;
+    private final LeaveBalanceRepository leaveBalanceRepository;
+    private final SickBalanceRepository sickBalanceRepository;
+    private final UserQueryUsecase userQueryUsecase;
+    private final BootcampQueryUsecase bootcampQueryUsecase;
 
     @Override
     public MonthlyAttendanceResponse getMonthlyAttendance(Long userId, YearMonth yearMonth) {
@@ -50,6 +61,35 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
     public AttendanceSummaryResponse getSummaryForManager(Long requesterId, Long targetUserId) {
         bootcampAccessPolicy.validateSameBootcamp(requesterId, targetUserId);
         return attendanceSummaryCache.getCachedSummary(targetUserId);
+    }
+
+    @Override
+    public AttendanceBalanceResponse getLeaveBalance(Long userId) {
+        return buildBalance(userId);
+    }
+
+    @Override
+    public AttendanceBalanceResponse getLeaveBalanceForManager(Long requesterId, Long targetUserId) {
+        bootcampAccessPolicy.validateSameBootcamp(requesterId, targetUserId);
+        return buildBalance(targetUserId);
+    }
+
+    private AttendanceBalanceResponse buildBalance(Long userId) {
+        LocalDate today = LocalDate.now();
+
+        LeaveBalance leaveBalance = leaveBalanceRepository.findCurrentByUserId(userId, today)
+                .orElse(null);
+        SickBalance sickBalance = sickBalanceRepository.findCurrentByUserId(userId, today)
+                .orElse(null);
+
+        if (leaveBalance == null || sickBalance == null) {
+            return AttendanceBalanceResponse.of(0, 0);
+        }
+
+        return AttendanceBalanceResponse.of(
+                leaveBalance.remainingDays(),
+                sickBalance.remainingDays()
+        );
     }
 
     private MonthlyAttendanceResponse buildMonthlyAttendance(Long userId, YearMonth yearMonth) {
