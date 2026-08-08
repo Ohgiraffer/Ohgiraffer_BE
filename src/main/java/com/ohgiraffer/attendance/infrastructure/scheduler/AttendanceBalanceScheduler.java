@@ -31,6 +31,8 @@ public class AttendanceBalanceScheduler {
             return;
         }
 
+        int totalFailCount = 0;
+
         for (AttendancePeriodStartResult period : startingPeriods) {
             List<Long> studentIds = userQueryUsecase.getStudentIdsByBootcampId(period.bootcampId());
             int successCount = 0;
@@ -60,14 +62,30 @@ public class AttendanceBalanceScheduler {
             if (failCount > 0) {
                 log.warn("[rolloverBalances] 이월 처리 완료 (일부 실패) | bootcampId={}, periodNo={}, success={}, fail={}",
                         period.bootcampId(), period.periodNo(), successCount, failCount);
+                totalFailCount += failCount;
             } else {
                 log.info("[rolloverBalances] 이월 처리 완료 | bootcampId={}, periodNo={}, success={}",
                         period.bootcampId(), period.periodNo(), successCount);
             }
         }
+
+        if (totalFailCount > 0) {
+            throw new RuntimeException(
+                    String.format("[rolloverBalances] 일부 학생 처리 실패 | totalFail=%d", totalFailCount)
+            );
+        }
     }
 
     private boolean isDuplicateKeyException(DataIntegrityViolationException e) {
-        return e.getMessage() != null && e.getMessage().contains("Duplicate entry");
+        Throwable cause = e;
+        while (cause != null) {
+            String msg = cause.getMessage();
+            if (msg != null && msg.contains("Duplicate entry") &&
+                    (msg.contains("UQ_leave_balance_user_period") || msg.contains("UQ_sick_balance_user_period"))) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 }
