@@ -8,6 +8,7 @@ import com.ohgiraffer.bootcamp.domain.model.AttendancePeriodStartResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -21,15 +22,10 @@ public class AttendanceBalanceProcessor {
     private final LeaveBalanceRepository leaveBalanceRepository;
     private final SickBalanceRepository sickBalanceRepository;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processStudent(Long studentId, AttendancePeriodStartResult period) {
-        try {
-            createLeaveBalanceIfAbsent(studentId, period);
-            createSickBalanceIfAbsent(studentId, period);
-        } catch (Exception e) {
-            log.error("[rolloverBalances] 학생 처리 실패 | studentId={}, periodNo={}, error={}",
-                    studentId, period.periodNo(), e.getMessage());
-        }
+        createLeaveBalanceIfAbsent(studentId, period);
+        createSickBalanceIfAbsent(studentId, period);
     }
 
     private void createLeaveBalanceIfAbsent(Long userId, AttendancePeriodStartResult period) {
