@@ -90,6 +90,9 @@ dependencies {
     // Prometheus가 읽을 수 있는 포맷의 metric 생성
     implementation 'io.micrometer:micrometer-registry-prometheus'
 
+    // 엑셀/csv 파싱용
+    implementation 'org.apache.poi:poi-ooxml:5.2.5'
+    implementation 'org.apache.commons:commons-csv:1.11.0'
 }
 
 def querydslDir = "$buildDir/generated/querydsl"
