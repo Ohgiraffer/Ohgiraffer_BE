@@ -7,8 +7,8 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:9090"]
 
-  # campflow-app 컨테이너에 Micrometer(Spring Boot) 붙인 뒤 스크레이프 대상
-  # 같은 docker compose 프로젝트(같은 기본 네트워크)에 있으면 컨테이너명으로 접근 가능
+  # campflow-app이 로컬(맥)에서 bootRun으로 직접 실행 중인 경우
+  # host.docker.internal은 맥/윈도우 Docker에서 호스트 컴퓨터를 가리키는 특수 DNS 이름
   - job_name: "campflow-app"
     metrics_path: "/actuator/prometheus"
     static_configs:
