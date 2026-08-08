@@ -33,19 +33,41 @@ public class AttendanceBalanceScheduler {
 
         for (AttendancePeriodStartResult period : startingPeriods) {
             List<Long> studentIds = userQueryUsecase.getStudentIdsByBootcampId(period.bootcampId());
+            int successCount = 0;
+            int failCount = 0;
+
             for (Long studentId : studentIds) {
                 try {
                     processor.processStudent(studentId, period);
+                    successCount++;
                 } catch (DataIntegrityViolationException e) {
-                    log.warn("[rolloverBalances] 중복 키 — 이미 존재하는 잔액으로 처리 | studentId={}, periodNo={}",
-                            studentId, period.periodNo());
+                    if (isDuplicateKeyException(e)) {
+                        log.warn("[rolloverBalances] 중복 키 — 이미 존재하는 잔액으로 처리 | studentId={}, periodNo={}",
+                                studentId, period.periodNo());
+                        successCount++;
+                    } else {
+                        log.error("[rolloverBalances] 무결성 위반 처리 실패 | studentId={}, periodNo={}, error={}",
+                                studentId, period.periodNo(), e.getMessage());
+                        failCount++;
+                    }
                 } catch (Exception e) {
                     log.error("[rolloverBalances] 처리 실패 | studentId={}, periodNo={}, error={}",
                             studentId, period.periodNo(), e.getMessage());
+                    failCount++;
                 }
             }
-            log.info("[rolloverBalances] 이월 처리 완료 | bootcampId={}, periodNo={}, studentCount={}",
-                    period.bootcampId(), period.periodNo(), studentIds.size());
+
+            if (failCount > 0) {
+                log.warn("[rolloverBalances] 이월 처리 완료 (일부 실패) | bootcampId={}, periodNo={}, success={}, fail={}",
+                        period.bootcampId(), period.periodNo(), successCount, failCount);
+            } else {
+                log.info("[rolloverBalances] 이월 처리 완료 | bootcampId={}, periodNo={}, success={}",
+                        period.bootcampId(), period.periodNo(), successCount);
+            }
         }
+    }
+
+    private boolean isDuplicateKeyException(DataIntegrityViolationException e) {
+        return e.getMessage() != null && e.getMessage().contains("Duplicate entry");
     }
 }
