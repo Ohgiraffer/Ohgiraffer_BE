@@ -1,7 +1,10 @@
-package com.ohgiraffer.chat.infrastructure.persistence;
+package com.ohgiraffer.chat.infrastructure.adapter;
 
 import com.ohgiraffer.chat.domain.model.ChatChannelMember;
 import com.ohgiraffer.chat.domain.repository.ChatChannelMemberRepository;
+import com.ohgiraffer.chat.infrastructure.persistence.ChatChannelMemberJpaEntity;
+import com.ohgiraffer.chat.infrastructure.persistence.ChatChannelMemberJpaRepository;
+import com.ohgiraffer.chat.infrastructure.projection.ChannelUnreadCountProjection;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
