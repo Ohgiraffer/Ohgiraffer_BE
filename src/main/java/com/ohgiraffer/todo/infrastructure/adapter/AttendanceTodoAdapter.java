@@ -2,6 +2,9 @@ package com.ohgiraffer.todo.infrastructure.adapter;
 
 import com.ohgiraffer.attendance.domain.model.AttendanceSummaryView;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
+import com.ohgiraffer.bootcamp.application.port.GetUserBootcampIdPort;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.todo.application.port.AttendanceTodoPort;
 import com.ohgiraffer.todo.domain.model.TodoItemResponse;
 import com.ohgiraffer.todo.domain.model.TodoSourceDomain;
@@ -33,6 +36,7 @@ public class AttendanceTodoAdapter implements AttendanceTodoPort {
 
     private final AttendanceRepository attendanceRepository;  // 출결 도메인 Repository 직접 주입
     private final UserRepository userRepository;              // 담당 훈련생 목록 조회용
+    private final GetUserBootcampIdPort getUserBootcampIdPort;    // 요청자(강사/매니저)의 bootcampId 조회용
 
     private static final int WARNING_THRESHOLD = 3;   // 임시 기준: 지각+조퇴+결석 누적 3회부터 "주의"
     private static final int DANGER_THRESHOLD = 6;     // 임시 기준: 6회부터 "경고"
@@ -50,9 +54,14 @@ public class AttendanceTodoAdapter implements AttendanceTodoPort {
         LocalDate today = LocalDate.now();
         LocalDate monthStart = today.withDayOfMonth(1);
 
-        List<User> activeStudents = userRepository.findAllByRoleAndStatus(Role.STUDENT, UserStatus.ACTIVE);
+        Long bootcampId = getUserBootcampIdPort.findBootcampIdByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_ACCESS_DENIED));  // 소속 부트캠프 없으면 조회 자체를 막음
 
-        return activeStudents.stream()
+        List<User> scopedStudents = userRepository.findAllByRoleAndStatusAndBootcampId(
+                Role.STUDENT, UserStatus.ACTIVE, bootcampId
+        );
+
+        return scopedStudents.stream()
                 .map(student -> toRiskItem(student, monthStart, today))
                 .filter(item -> item != null)  // 정상인 학생은 TODO 노출 대상 아님
                 .toList();
