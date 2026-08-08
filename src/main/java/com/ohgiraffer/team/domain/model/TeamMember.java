@@ -1,5 +1,8 @@
 package com.ohgiraffer.team.domain.model;
 
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
+
 import java.time.LocalDateTime;
 
 public class TeamMember {
@@ -30,6 +33,21 @@ public class TeamMember {
         this.leftAt = leftAt;
     }
 
+    public static TeamMember create(
+            Long teamId,
+            Long userId
+    ) {
+        return new TeamMember(
+                null,
+                teamId,
+                userId,
+                null,
+                null,
+                LocalDateTime.now(),
+                null
+        );
+    }
+
     public static TeamMember restore(
             Long id,
             Long teamId,
@@ -48,6 +66,36 @@ public class TeamMember {
                 joinedAt,
                 leftAt
         );
+    }
+
+    public TeamMember leave(
+            LocalDateTime leftAt
+    ) {
+        if (!isActive()) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_MEMBER_ALREADY_LEFT
+            );
+        }
+
+        return new TeamMember(
+                id,
+                teamId,
+                userId,
+                userName,
+                email,
+                joinedAt,
+                leftAt
+        );
+    }
+
+    public void validateBelongsTo(
+            Long sourceTeamId
+    ) {
+        if (!teamId.equals(sourceTeamId)) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_MEMBER_TEAM_MISMATCH
+            );
+        }
     }
 
     public Long getId() {
