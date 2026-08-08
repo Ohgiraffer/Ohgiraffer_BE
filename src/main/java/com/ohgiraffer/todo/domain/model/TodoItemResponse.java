@@ -3,7 +3,7 @@ package com.ohgiraffer.todo.domain.model;
 import java.time.LocalDateTime;
 
 /* comment.
- *  TODO 도메인의 공통 응답 값 객체.
+ *  TODO 도메인의 공통 응답 값 객체
  *  - 6개 Port(SubmissionTodoPort 등)가 getPendingItems()에서 공통으로 반환하는 항목 단위
  *  - TodoQueryService가 6개 Port 결과를 이 타입 리스트로 취합해서 응답 조립
  *  - AI비서 BriefingDataGatheringAdapter도 이 타입을 그대로 재사용
