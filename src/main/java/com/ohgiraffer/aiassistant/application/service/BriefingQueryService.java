@@ -14,6 +14,7 @@ import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,8 +33,8 @@ public class BriefingQueryService implements BriefingQueryUseCase {
 
     private static final String LOCK_KEY_PREFIX = "ai:briefing:lock:";
     private static final Duration LOCK_TTL = Duration.ofSeconds(100);  // Gemini 기본 타임아웃(90s) + 여유분
-    private static final int MAX_RETRY = 10;
-    private static final long RETRY_INTERVAL_MS = 500; // 10회 x 500ms = 최대 5초 대기
+    private static final Duration MAX_WAIT = LOCK_TTL; // 재시도 전체 대기시간 = 락 TTL과 동일하게 맞춤
+    private static final long RETRY_INTERVAL_MS = 1000; // 1초 간격으로 캐시/락 재확인
 
     // 토큰이 일치할 때만 원자적으로 삭제 - GET+DELETE를 별도 호출하면 그 사이 TTL 만료로 다른 요청 락을 지울 수 있어 Lua로 원자화
     private static final RedisScript<Long> UNLOCK_SCRIPT = new DefaultRedisScript<>(
@@ -65,12 +66,17 @@ public class BriefingQueryService implements BriefingQueryUseCase {
                 redisTemplate.opsForValue().setIfAbsent(lockKey, lockToken, LOCK_TTL)
         );
 
-        if (!acquired) {
-            return waitForCacheOrFail(userId);
+        if (acquired) {
+            return generateWithLockHeld(userId, lockKey, lockToken);
         }
 
+        return waitAndRetryAcquire(userId, lockKey);
+
+    }
+
+    // 락을 이미 쥔 상태에서 더블 체크 후 생성, 끝나면 반드시 본인 락만 해제
+    private BriefingSummary generateWithLockHeld(Long userId, String lockKey, String lockToken) {
         try {
-            // 더블 체크 - 락 대기 사이 다른 스레드가 이미 채웠을 수 있음
             return briefingCachePort.find(userId)
                     .orElseGet(() -> briefingGenerator.generateAndCache(userId));
         } finally {
@@ -78,16 +84,31 @@ public class BriefingQueryService implements BriefingQueryUseCase {
         }
     }
 
-    // 락 획득 실패 시: 무단으로 생성하지 않고, 캐시가 채워질 때까지 제한된 횟수만 재시도. 끝까지 안 채워지면 명시적 실패
-    private BriefingSummary waitForCacheOrFail(Long userId) {
-        for (int attempt = 0; attempt < MAX_RETRY; attempt++) {
+    // 락 획득 실패 시: MAX_WAIT(=LOCK_TTL)만큼 대기하며 매 주기 (1)캐시 확인 (2)락 재획득 시도
+    // 원 소유자가 끝까지 못 채우고 락을 반납하면, 대기 중인 요청이 락을 넘겨받아 직접 생성함
+    private BriefingSummary waitAndRetryAcquire(Long userId, String lockKey) {
+        Instant deadline = Instant.now().plus(MAX_WAIT);
+
+        while (Instant.now().isBefore(deadline)) {
             sleep(RETRY_INTERVAL_MS);
+
             Optional<BriefingSummary> retryCached = briefingCachePort.find(userId);
             if (retryCached.isPresent()) {
                 return retryCached.get();
             }
+
+            // 캐시가 아직 없으면 락이 비어있는지(원 소유자가 실패해서 반납했는지) 확인차 재획득 시도
+            String retryToken = UUID.randomUUID().toString();
+            boolean reacquired = Boolean.TRUE.equals(
+                    redisTemplate.opsForValue().setIfAbsent(lockKey, retryToken, LOCK_TTL)
+            );
+            if (reacquired) {
+                log.info("[Briefing] 원 소유자 락 반납 감지, 락 재획득 후 직접 생성 | userId={}", userId);
+                return generateWithLockHeld(userId, lockKey, retryToken);
+            }
         }
-        log.warn("[Briefing] 락 대기 타임아웃, 브리핑 생성 실패로 처리 | userId={}", userId);
+
+        log.warn("[Briefing] 최대 대기시간({}s) 초과, 브리핑 생성 실패로 처리 | userId={}", MAX_WAIT.getSeconds(), userId);
         throw new BusinessException(ErrorCode.AI_API_CALL_FAILED, "브리핑 생성이 지연되고 있습니다. 잠시 후 다시 시도해주세요.");
     }
 
