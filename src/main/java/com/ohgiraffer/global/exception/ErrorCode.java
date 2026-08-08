@@ -97,6 +97,12 @@ public enum ErrorCode {
     SUBMISSION_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_018", "제출 파일을 찾을 수 없습니다."),
     SUBMISSION_FILE_PREVIEW_NOT_SUPPORTED(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "SUBMISSION_019", "미리보기를 지원하지 않는 파일 형식입니다."),
 
+    SPACE_NOT_FOUND(HttpStatus.NOT_FOUND, "SPACE_001", "공간을 찾을 수 없습니다."),
+    SPACE_NAME_DUPLICATED(HttpStatus.CONFLICT, "SPACE_002", "이미 사용 중인 공간명입니다."),
+    SPACE_HAS_OCCUPANTS(HttpStatus.CONFLICT, "SPACE_003", "현재 이용자가 있는 공간은 삭제할 수 없습니다."),
+    SPACE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SPACE_004", "공간을 관리할 권한이 없습니다."),
+    SPACE_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "SPACE_005", "해당 공간의 최대 수용 인원을 초과했습니다."),
+
     TEAM_NOT_FOUND(HttpStatus.NOT_FOUND, "TEAM_001", "팀을 찾을 수 없습니다."),
     TEAM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "TEAM_002", "팀 관리에 접근할 권한이 없습니다."),
     ATTENDANCE_PERIOD_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_001", "존재하지 않거나 소속 부트캠프의 단위기간이 아닙니다."),
