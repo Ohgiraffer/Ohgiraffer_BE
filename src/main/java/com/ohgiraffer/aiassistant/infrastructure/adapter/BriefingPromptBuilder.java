@@ -1,6 +1,7 @@
 package com.ohgiraffer.aiassistant.infrastructure.adapter;
 
 import com.ohgiraffer.aiassistant.domain.model.BriefingSourceData;
+import com.ohgiraffer.notification.application.result.NotificationResult;
 import com.ohgiraffer.todo.domain.model.TodoItemResponse;
 import org.springframework.stereotype.Component;
 
@@ -37,6 +38,7 @@ public class BriefingPromptBuilder {
                 - 출결 상태: %s
                 - 오늘 일정: %s
                 - 마감 임박 항목 (24시간 이내): %s
+                - 안읽은 알림: %s
                 - 그 외 대기 중 항목: %s
 
                 [3. 작성 규칙]
@@ -51,7 +53,8 @@ public class BriefingPromptBuilder {
                 6. 특별히 전달할 항목이 하나도 없다면, 브리핑 대신 짧고 담백한 격려 문구 한 줄을 자연스럽게 작성하세요. (매번 표현을 다르게)
                 7. 위급하지 않은 상황을 과장하지 말고, 사실을 담백하게 전달하세요.
                 8. 전체 분량은 4~6문장 내외로 간결하게 작성하세요.
-                9. 브리핑 첫 문장 시작 전에 오늘 날짜를 "%s" 형식으로 한 줄 표기하세요.
+                9. 안읽은 알림이 있다면 "그 외 대기 중인 항목" 문단에 함께 간단히 언급하세요. 별도의 최우선 순위로 다루지 마세요.
+                10. 브리핑 첫 문장 시작 전에 오늘 날짜를 "%s" 형식으로 한 줄 표기하세요.
 
                 [4. 출력 형식]
                 브리핑 텍스트만 출력, 부연설명 없이 바로 본문 시작
@@ -62,6 +65,7 @@ public class BriefingPromptBuilder {
                 formatAttendance(data),
                 formatTodayEvents(data),
                 formatDeadlineItems(data),
+                formatNotifications(data),
                 formatGeneralItems(data),
                 todayLabel
         );
@@ -119,6 +123,16 @@ public class BriefingPromptBuilder {
                 .toLocalTime()
                 .toString();
         return event.title() + "(" + time + ")";
+    }
+
+    // 안읽은 알림 - 제목 기준으로 포맷
+    private String formatNotifications(BriefingSourceData data) {
+        if (data.notifications() == null || data.notifications().isEmpty()) {
+            return "없음";
+        }
+        return data.notifications().stream()
+                .map(NotificationResult::title)
+                .collect(Collectors.joining(", "));
     }
 
 }

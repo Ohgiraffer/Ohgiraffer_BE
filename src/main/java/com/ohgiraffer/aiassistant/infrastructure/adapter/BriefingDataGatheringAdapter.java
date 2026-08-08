@@ -15,6 +15,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +31,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BriefingDataGatheringAdapter implements BriefingDataGatheringPort {
 
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
     private final SubmissionTodoPort submissionTodoPort;
     private final ApprovalTodoPort approvalTodoPort;
     private final NoticeTodoPort noticeTodoPort;
@@ -40,6 +44,11 @@ public class BriefingDataGatheringAdapter implements BriefingDataGatheringPort {
 
     @Override
     public BriefingSourceData gather(Long userId, Role role) {
+
+        ZonedDateTime nowKst = ZonedDateTime.now(KST);          // 기준 시각 한 번만 캡처 - 이후 전부 재사용
+        LocalDateTime now = nowKst.toLocalDateTime();
+        LocalDate today = nowKst.toLocalDate();
+
         List<TodoItemResponse> todoItems = new ArrayList<>();
 
         if (role == Role.STUDENT) {
@@ -53,7 +62,10 @@ public class BriefingDataGatheringAdapter implements BriefingDataGatheringPort {
 
         LocalDateTime deadline24h = LocalDateTime.now().plusHours(24);
         List<TodoItemResponse> oneDayDeadlineItems = todoItems.stream()
-                .filter(item -> item.dueOrEventTime() != null && item.dueOrEventTime().isBefore(deadline24h))
+                // 과거에 이미 지난 항목은 제외, "지금부터 24시간 이내"만 포함
+                .filter(item -> item.dueOrEventTime() != null
+                        && !item.dueOrEventTime().isBefore(now)
+                        && item.dueOrEventTime().isBefore(deadline24h))
                 .toList();
 
         String attendanceRiskLevel = todoItems.stream()
@@ -65,7 +77,7 @@ public class BriefingDataGatheringAdapter implements BriefingDataGatheringPort {
         return new BriefingSourceData(
                 userId,
                 role,
-                LocalDate.now(),
+                today,  // KST 기준 오늘 날짜
                 todoItems,
                 oneDayDeadlineItems,
                 attendanceRiskLevel,
