@@ -1,4 +1,4 @@
-package com.ohgiraffer.chat.infrastructure.persistence;
+package com.ohgiraffer.chat.infrastructure.projection;
 
 import java.time.Instant;
 
