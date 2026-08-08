@@ -24,11 +24,9 @@ public class AttendanceBalanceScheduler {
 
     private final BootcampQueryUsecase bootcampQueryUsecase;
     private final UserQueryUsecase userQueryUsecase;
-    private final LeaveBalanceRepository leaveBalanceRepository;
-    private final SickBalanceRepository sickBalanceRepository;
+    private final AttendanceBalanceProcessor processor;
 
     @Scheduled(cron = "0 5 0 * * *")
-    @Transactional
     public void rolloverBalances() {
         LocalDate today = LocalDate.now();
         List<AttendancePeriodStartResult> startingPeriods = bootcampQueryUsecase.getPeriodsStartingOn(today);
@@ -40,60 +38,11 @@ public class AttendanceBalanceScheduler {
 
         for (AttendancePeriodStartResult period : startingPeriods) {
             List<Long> studentIds = userQueryUsecase.getStudentIdsByBootcampId(period.bootcampId());
-
             for (Long studentId : studentIds) {
-                createLeaveBalanceIfAbsent(studentId, period);
-                createSickBalanceIfAbsent(studentId, period);
+                processor.processStudent(studentId, period);
             }
-
-            log.info("[rolloverBalances] 잔여 휴가/병결 이월 처리 완료 | bootcampId={}, periodNo={}, studentCount={}",
+            log.info("[rolloverBalances] 이월 처리 완료 | bootcampId={}, periodNo={}, studentCount={}",
                     period.bootcampId(), period.periodNo(), studentIds.size());
         }
-    }
-
-    private void createLeaveBalanceIfAbsent(Long userId, AttendancePeriodStartResult period) {
-        if (leaveBalanceRepository.existsByUserIdAndPeriodStart(userId, period.periodStart())) {
-            return;
-        }
-
-        BigDecimal carriedOver = resolveCarriedOverLeaveDays(userId, period);
-
-        leaveBalanceRepository.save(
-                LeaveBalance.create(userId, period.periodStart(), period.periodEnd(), BigDecimal.ONE, carriedOver)
-        );
-    }
-
-    private void createSickBalanceIfAbsent(Long userId, AttendancePeriodStartResult period) {
-        if (sickBalanceRepository.existsByUserIdAndPeriodStart(userId, period.periodStart())) {
-            return;
-        }
-
-        BigDecimal carriedOver = resolveCarriedOverSickDays(userId, period);
-
-        sickBalanceRepository.save(
-                SickBalance.create(userId, period.periodStart(), period.periodEnd(), BigDecimal.ONE, carriedOver)
-        );
-    }
-
-    private BigDecimal resolveCarriedOverLeaveDays(Long userId, AttendancePeriodStartResult period) {
-        if (period.periodNo() == 1) {
-            return BigDecimal.ZERO;
-        }
-        LocalDate previousPeriodEnd = period.periodStart().minusDays(1);
-        return leaveBalanceRepository.findByUserIdAndPeriodEnd(userId, previousPeriodEnd)
-                .map(LeaveBalance::remainingDays)
-                .map(BigDecimal::valueOf)
-                .orElse(BigDecimal.ZERO);
-    }
-
-    private BigDecimal resolveCarriedOverSickDays(Long userId, AttendancePeriodStartResult period) {
-        if (period.periodNo() == 1) {
-            return BigDecimal.ZERO;
-        }
-        LocalDate previousPeriodEnd = period.periodStart().minusDays(1);
-        return sickBalanceRepository.findByUserIdAndPeriodEnd(userId, previousPeriodEnd)
-                .map(SickBalance::remainingDays)
-                .map(BigDecimal::valueOf)
-                .orElse(BigDecimal.ZERO);
     }
 }

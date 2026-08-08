@@ -77,19 +77,15 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
     private AttendanceBalanceResponse buildBalance(Long userId) {
         LocalDate today = LocalDate.now();
 
-        LeaveBalance leaveBalance = leaveBalanceRepository.findCurrentByUserId(userId, today)
-                .orElse(null);
-        SickBalance sickBalance = sickBalanceRepository.findCurrentByUserId(userId, today)
-                .orElse(null);
+        int remainingLeave = leaveBalanceRepository.findCurrentByUserId(userId, today)
+                .map(LeaveBalance::remainingDays)
+                .orElse(0);
 
-        if (leaveBalance == null || sickBalance == null) {
-            return AttendanceBalanceResponse.of(0, 0);
-        }
+        int remainingSick = sickBalanceRepository.findCurrentByUserId(userId, today)
+                .map(SickBalance::remainingDays)
+                .orElse(0);
 
-        return AttendanceBalanceResponse.of(
-                leaveBalance.remainingDays(),
-                sickBalance.remainingDays()
-        );
+        return AttendanceBalanceResponse.of(remainingLeave, remainingSick);
     }
 
     private MonthlyAttendanceResponse buildMonthlyAttendance(Long userId, YearMonth yearMonth) {
