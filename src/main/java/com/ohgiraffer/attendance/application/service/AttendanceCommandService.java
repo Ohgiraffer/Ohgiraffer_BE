@@ -14,6 +14,7 @@ import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,8 +52,18 @@ public class AttendanceCommandService implements AttendanceCommandUsecase {
 
     private void applyLeaveDay(Long userId, LocalDate date, String externalRefId, List<AttendancePeriodResult> periods) {
         Optional<Attendance> existing = attendanceRepository.findByUserIdAndDate(userId, date);
-        if (existing.isPresent() && externalRefId.equals(existing.get().getExternalRefId())) {
-            return; // 재처리 방지
+
+        if (existing.isPresent()) {
+            Attendance existingAttendance = existing.get();
+
+            if (externalRefId.equals(existingAttendance.getExternalRefId())) {
+                return; // 같은 승인 건 재처리 방지
+            }
+
+            if (existingAttendance.getStatus() == AttendanceStatus.LEAVE
+                    || existingAttendance.getStatus() == AttendanceStatus.SICK) {
+                throw new BusinessException(ErrorCode.ATTENDANCE_APPROVAL_CONFLICT);
+            }
         }
 
         AttendancePeriodResult period = periods.stream()
@@ -70,6 +81,14 @@ public class AttendanceCommandService implements AttendanceCommandUsecase {
                 existing.get().getId(), userId, date, AttendanceStatus.LEAVE, null, null, externalRefId)
                 : Attendance.create(userId, date, AttendanceStatus.LEAVE, null, null, externalRefId);
 
-        attendanceRepository.save(attendance);
+        try {
+            attendanceRepository.save(attendance);
+        } catch (DataIntegrityViolationException e) {
+            Optional<Attendance> reloaded = attendanceRepository.findByUserIdAndDate(userId, date);
+            if (reloaded.isPresent() && externalRefId.equals(reloaded.get().getExternalRefId())) {
+                return;
+            }
+            throw new BusinessException(ErrorCode.ATTENDANCE_APPROVAL_CONFLICT, e);
+        }
     }
 }
