@@ -1,10 +1,7 @@
 package com.ohgiraffer.attendance.presentation.api;
 
 import com.ohgiraffer.attendance.application.usecase.AttendanceQueryUsecase;
-import com.ohgiraffer.attendance.presentation.api.response.AttendanceBalanceResponse;
-import com.ohgiraffer.attendance.presentation.api.response.MonthlyAttendanceResponse;
-import com.ohgiraffer.attendance.presentation.api.response.AttendanceSummaryResponse;
-import com.ohgiraffer.attendance.presentation.api.response.StudentAttendanceSummaryResponse;
+import com.ohgiraffer.attendance.presentation.api.response.*;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -148,5 +145,20 @@ public class AttendanceController {
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         return ResponseEntity.ok(attendanceQueryUsecase.getSummaries(principal.getId()));
+    }
+
+    @Operation(summary = "출결 대시보드 요약 조회 (관리자용)", description = "매니저/강사가 같은 부트캠프 소속 훈련생 전체를 대상으로 평균 출석률, 예상 수료율, 인원 통계를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/dashboard-summary")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<AttendanceDashboardSummaryResponse> getDashboardSummary(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        return ResponseEntity.ok(attendanceQueryUsecase.getDashboardSummary(principal.getId()));
     }
 }

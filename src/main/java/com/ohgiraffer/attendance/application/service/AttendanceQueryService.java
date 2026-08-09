@@ -9,21 +9,21 @@ import com.ohgiraffer.attendance.domain.repository.AttendancePeriodSummaryReposi
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.domain.repository.LeaveBalanceRepository;
 import com.ohgiraffer.attendance.domain.repository.SickBalanceRepository;
-import com.ohgiraffer.attendance.presentation.api.response.AttendanceBalanceResponse;
-import com.ohgiraffer.attendance.presentation.api.response.AttendanceSummaryResponse;
-import com.ohgiraffer.attendance.presentation.api.response.MonthlyAttendanceResponse;
-import com.ohgiraffer.attendance.presentation.api.response.StudentAttendanceSummaryResponse;
+import com.ohgiraffer.attendance.presentation.api.response.*;
 import com.ohgiraffer.attendance.application.port.GetUserNamesPort;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePolicyResult;
 import com.ohgiraffer.bootcamp.domain.model.BootcampPeriodResult;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
+import com.ohgiraffer.user.domain.model.StudentStatusView;
+import com.ohgiraffer.user.domain.model.UserStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
@@ -115,6 +115,71 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
                     return StudentAttendanceSummaryResponse.of(name, rate, counts, riskLevel);
                 })
                 .toList();
+    }
+
+    @Override
+    public AttendanceDashboardSummaryResponse getDashboardSummary(Long requesterId) {
+        Long bootcampId = userQueryUsecase.getBootcampId(requesterId);
+
+        List<StudentStatusView> statuses = userQueryUsecase.getStudentStatusesByBootcampId(bootcampId);
+
+        int totalStudents = statuses.size();
+
+        List<Long> activeIds = statuses.stream()
+                .filter(s -> s.status() == UserStatus.ACTIVE)
+                .map(StudentStatusView::userId)
+                .toList();
+        int activeStudents = activeIds.size();
+
+        int dropoutStudents = (int) statuses.stream()
+                .filter(s -> s.status() == UserStatus.WITHDRAWN || s.status() == UserStatus.EXPELLED)
+                .count();
+
+        Map<Long, StudentAttendanceCountsView> countsByUserId = attendancePeriodSummaryRepository
+                .aggregateByUserIds(activeIds).stream()
+                .collect(Collectors.toMap(StudentAttendanceCountsView::userId, Function.identity()));
+
+        AttendancePolicyResult policy = bootcampQueryUsecase.getPolicy(bootcampId);
+        BootcampPeriodResult bootcampPeriod = bootcampQueryUsecase.getPeriod(bootcampId);
+        LocalDate today = LocalDate.now();
+
+        List<BigDecimal> rates = new java.util.ArrayList<>();
+        int atRiskStudents = 0;
+
+        for (Long userId : activeIds) {
+            StudentAttendanceCountsView counts = countsByUserId
+                    .getOrDefault(userId, StudentAttendanceCountsView.empty(userId));
+
+            BigDecimal rate = AttendanceMetricsCalculator.calculateAttendanceRate(
+                    bootcampPeriod.startDate(), today,
+                    counts.absentDays(), counts.lateCount(), counts.earlyLeaveCount(), counts.outingCount(),
+                    LATE_EARLY_OUTING_CONVERSION_COUNT
+            );
+            rates.add(rate);
+
+            if (AttendanceMetricsCalculator.calculateRiskLevel(rate, policy) != null) {
+                atRiskStudents++;
+            }
+        }
+
+        BigDecimal averageAttendanceRate = rates.isEmpty()
+                ? BigDecimal.ZERO
+                : rates.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(rates.size()), 2, RoundingMode.HALF_UP);
+
+        int managedStudents = activeStudents - atRiskStudents;
+
+        BigDecimal expectedCompletionRate = totalStudents == 0
+                ? BigDecimal.ZERO
+                : BigDecimal.valueOf(totalStudents - dropoutStudents - atRiskStudents)
+                .divide(BigDecimal.valueOf(totalStudents), 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        return new AttendanceDashboardSummaryResponse(
+                averageAttendanceRate, expectedCompletionRate,
+                totalStudents, activeStudents, managedStudents, atRiskStudents, dropoutStudents
+        );
     }
 
     private AttendanceBalanceResponse buildBalance(Long userId) {

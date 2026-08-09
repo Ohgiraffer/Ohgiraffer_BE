@@ -33,4 +33,7 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, L
 
     @Query("SELECT u.id FROM UserJpaEntity u WHERE u.bootcampId = :bootcampId AND u.role = :role")
     List<Long> findIdsByBootcampIdAndRole(@Param("bootcampId") Long bootcampId, @Param("role") Role role);
+
+    @Query("SELECT u FROM UserJpaEntity u WHERE u.bootcampId = :bootcampId AND u.role = :role")
+    List<UserJpaEntity> findAllByBootcampIdAndRole(@Param("bootcampId") Long bootcampId, @Param("role") Role role);
 }
