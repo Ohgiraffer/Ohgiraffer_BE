@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +29,7 @@ public class UpdateSubmissionBoxService
         implements UpdateSubmissionBoxUseCase {
 
     private final SubmissionBoxRepository submissionBoxRepository;
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -51,6 +53,11 @@ public class UpdateSubmissionBoxService
         validateManagementAuthority(
                 requesterId,
                 requesterRole
+        );
+
+        validateStructureChange(
+                existingSubmissionBox,
+                command
         );
 
         Map<Long, SubmissionBoxItem> existingItemMap =
@@ -89,8 +96,152 @@ public class UpdateSubmissionBoxService
 
         return SubmissionBoxDetailResult.from(
                 savedSubmissionBox,
-                LocalDateTime.now()
+                LocalDateTime.now(clock)
         );
+    }
+
+    private void validateStructureChange(
+            SubmissionBox existingSubmissionBox,
+            UpdateSubmissionBoxCommand command
+    ) {
+        boolean hasSubmissions =
+                submissionBoxRepository.hasSubmissions(
+                        existingSubmissionBox.getId()
+                );
+
+        if (!hasSubmissions) {
+            return;
+        }
+
+        validateTargetScopeNotChanged(
+                existingSubmissionBox,
+                command
+        );
+
+        validateExistingItemStructureNotChanged(
+                existingSubmissionBox,
+                command.items()
+        );
+    }
+
+    private void validateTargetScopeNotChanged(
+            SubmissionBox existingSubmissionBox,
+            UpdateSubmissionBoxCommand command
+    ) {
+        if (existingSubmissionBox.getTargetScope()
+                != command.targetScope()) {
+            throw new BusinessException(
+                    ErrorCode
+                            .SUBMISSION_BOX_STRUCTURE_CHANGE_NOT_ALLOWED
+            );
+        }
+    }
+
+    private void validateExistingItemStructureNotChanged(
+            SubmissionBox existingSubmissionBox,
+            List<UpdateSubmissionBoxItemCommand>
+                    requestedItems
+    ) {
+        if (requestedItems == null) {
+            throw new BusinessException(
+                    ErrorCode
+                            .SUBMISSION_BOX_STRUCTURE_CHANGE_NOT_ALLOWED
+            );
+        }
+
+        Map<Long, SubmissionBoxItem> existingItemMap =
+                existingSubmissionBox.getItems()
+                        .stream()
+                        .collect(Collectors.toMap(
+                                SubmissionBoxItem::getId,
+                                Function.identity()
+                        ));
+
+        Map<Long, UpdateSubmissionBoxItemCommand>
+                requestedExistingItemMap =
+                requestedItems.stream()
+                        .filter(item ->
+                                item.submissionBoxItemId() != null
+                        )
+                        .collect(Collectors.toMap(
+                                UpdateSubmissionBoxItemCommand
+                                        ::submissionBoxItemId,
+                                Function.identity()
+                        ));
+
+        validateItemIdsNotChanged(
+                existingItemMap,
+                requestedExistingItemMap,
+                requestedItems
+        );
+
+        validateItemTypesNotChanged(
+                existingItemMap,
+                requestedExistingItemMap
+        );
+    }
+
+    private void validateItemIdsNotChanged(
+            Map<Long, SubmissionBoxItem> existingItemMap,
+            Map<Long, UpdateSubmissionBoxItemCommand>
+                    requestedExistingItemMap,
+            List<UpdateSubmissionBoxItemCommand>
+                    requestedItems
+    ) {
+        Set<Long> existingItemIds =
+                existingItemMap.keySet();
+
+        Set<Long> requestedExistingItemIds =
+                requestedExistingItemMap.keySet();
+
+        boolean existingItemRemoved =
+                !requestedExistingItemIds.equals(
+                        existingItemIds
+                );
+
+        boolean newItemAdded =
+                requestedItems.stream()
+                        .anyMatch(item ->
+                                item.submissionBoxItemId() == null
+                        );
+
+        if (existingItemRemoved || newItemAdded) {
+            throw new BusinessException(
+                    ErrorCode
+                            .SUBMISSION_BOX_STRUCTURE_CHANGE_NOT_ALLOWED
+            );
+        }
+    }
+
+    private void validateItemTypesNotChanged(
+            Map<Long, SubmissionBoxItem> existingItemMap,
+            Map<Long, UpdateSubmissionBoxItemCommand>
+                    requestedExistingItemMap
+    ) {
+        boolean itemTypeChanged =
+                existingItemMap.entrySet()
+                        .stream()
+                        .anyMatch(entry -> {
+                            SubmissionBoxItem existingItem =
+                                    entry.getValue();
+
+                            UpdateSubmissionBoxItemCommand
+                                    requestedItem =
+                                    requestedExistingItemMap.get(
+                                            entry.getKey()
+                                    );
+
+                            return requestedItem == null
+                                    || existingItem.getItemType()
+                                    != requestedItem.itemType();
+                        });
+
+        if (itemTypeChanged) {
+            throw new BusinessException(
+                    ErrorCode
+                            .SUBMISSION_BOX_STRUCTURE_CHANGE_NOT_ALLOWED
+            );
+        }
     }
 
     private void validateManagementAuthority(

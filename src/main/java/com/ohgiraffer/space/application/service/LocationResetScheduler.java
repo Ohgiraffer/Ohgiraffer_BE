@@ -8,18 +8,16 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 
 @Component
 @RequiredArgsConstructor
 public class LocationResetScheduler {
 
-    private static final ZoneId SERVICE_ZONE =
-            ZoneId.of("Asia/Seoul");
 
-    private final CurrentLocationRepository
-            currentLocationRepository;
+    private final CurrentLocationRepository currentLocationRepository;
+    private final Clock clock;
 
     @Scheduled(
             cron = "0 0 0 * * *",
@@ -27,14 +25,18 @@ public class LocationResetScheduler {
     )
     @Transactional
     public void resetAtMidnight() {
-        currentLocationRepository.clearAllLocations();
+        LocalDate today =
+                LocalDate.now(clock);
+
+        currentLocationRepository
+                .clearExpiredLocations(today);
     }
 
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void clearExpiredLocationsOnStartup() {
         LocalDate today =
-                LocalDate.now(SERVICE_ZONE);
+                LocalDate.now(clock);
 
         currentLocationRepository
                 .clearExpiredLocations(today);

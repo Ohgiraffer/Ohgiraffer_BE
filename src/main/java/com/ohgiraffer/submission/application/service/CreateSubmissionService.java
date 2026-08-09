@@ -28,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,18 +47,11 @@ public class CreateSubmissionService
         implements CreateSubmissionUseCase {
 
     private static final int MAX_FILE_COUNT = 10;
-
-    private static final long MAX_SINGLE_FILE_SIZE =
-            100L * 1024 * 1024;
-
-    private static final long MAX_TOTAL_FILE_SIZE =
-            110L * 1024 * 1024;
-
-    private static final int MAX_ORIGINAL_FILE_NAME_LENGTH =
-            255;
-
-    private final SubmissionBoxRepository
-            submissionBoxRepository;
+    private static final long MAX_SINGLE_FILE_SIZE = 100L * 1024 * 1024;
+    private static final long MAX_TOTAL_FILE_SIZE = 110L * 1024 * 1024;
+    private static final int MAX_ORIGINAL_FILE_NAME_LENGTH = 255;
+    private final SubmissionBoxRepository submissionBoxRepository;
+    private final Clock clock;
 
     /*
      * 제출 전 중복 확인에 사용합니다.
@@ -117,7 +111,7 @@ public class CreateSubmissionService
         );
 
         LocalDateTime submittedAt =
-                LocalDateTime.now();
+                LocalDateTime.now(clock);
 
         validateSubmissionPeriod(
                 submissionBox,

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class QuerySubmissionBoxService
     private final StudentTeamRepository studentTeamRepository;
     private final UserRepository userRepository;
     private final SubmissionTeamTargetPort submissionTeamTargetPort;
+    private final Clock clock;
 
     @Override
     public List<SubmissionBoxListResult> getSubmissionBoxes(
@@ -50,7 +52,7 @@ public class QuerySubmissionBoxService
             Role role
     ) {
         LocalDateTime now =
-                LocalDateTime.now();
+                LocalDateTime.now(clock);
 
         List<SubmissionBox> submissionBoxes =
                 submissionBoxRepository.findAll();
@@ -201,7 +203,7 @@ public class QuerySubmissionBoxService
                         );
 
         LocalDateTime now =
-                LocalDateTime.now();
+                LocalDateTime.now(clock);
 
         SubmissionBoxDetailResult basicDetail =
                 SubmissionBoxDetailResult.from(
