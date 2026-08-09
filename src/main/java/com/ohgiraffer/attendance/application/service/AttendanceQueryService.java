@@ -4,25 +4,31 @@ import com.ohgiraffer.attendance.application.cache.AttendanceSummaryCache;
 import com.ohgiraffer.attendance.application.policy.BootcampAccessPolicy;
 import com.ohgiraffer.attendance.application.usecase.AttendanceQueryUsecase;
 import com.ohgiraffer.attendance.domain.model.*;
+import com.ohgiraffer.attendance.domain.policy.AttendanceMetricsCalculator;
+import com.ohgiraffer.attendance.domain.repository.AttendancePeriodSummaryRepository;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.domain.repository.LeaveBalanceRepository;
 import com.ohgiraffer.attendance.domain.repository.SickBalanceRepository;
 import com.ohgiraffer.attendance.presentation.api.response.AttendanceBalanceResponse;
 import com.ohgiraffer.attendance.presentation.api.response.AttendanceSummaryResponse;
 import com.ohgiraffer.attendance.presentation.api.response.MonthlyAttendanceResponse;
+import com.ohgiraffer.attendance.presentation.api.response.StudentAttendanceSummaryResponse;
+import com.ohgiraffer.attendance.application.port.GetUserNamesPort;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
-import com.ohgiraffer.global.exception.BusinessException;
-import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.bootcamp.domain.model.AttendancePolicyResult;
+import com.ohgiraffer.bootcamp.domain.model.BootcampPeriodResult;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -40,6 +46,10 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
     private final SickBalanceRepository sickBalanceRepository;
     private final UserQueryUsecase userQueryUsecase;
     private final BootcampQueryUsecase bootcampQueryUsecase;
+    private final GetUserNamesPort getUserNamesPort;
+    private final AttendancePeriodSummaryRepository attendancePeriodSummaryRepository;
+
+    private static final int LATE_EARLY_OUTING_CONVERSION_COUNT = 3;
 
     @Override
     public MonthlyAttendanceResponse getMonthlyAttendance(Long userId, YearMonth yearMonth) {
@@ -72,6 +82,39 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
     public AttendanceBalanceResponse getLeaveBalanceForManager(Long requesterId, Long targetUserId) {
         bootcampAccessPolicy.validateSameBootcamp(requesterId, targetUserId);
         return buildBalance(targetUserId);
+    }
+
+    @Override
+    public List<StudentAttendanceSummaryResponse> getSummaries(Long requesterId) {
+        Long bootcampId = userQueryUsecase.getBootcampId(requesterId);
+
+        List<Long> studentIds = userQueryUsecase.getStudentIdsByBootcampId(bootcampId);
+        Map<Long, String> nameByUserId = getUserNamesPort.findNamesByUserIds(studentIds);
+
+        Map<Long, StudentAttendanceCountsView> countsByUserId = attendancePeriodSummaryRepository
+                .aggregateByUserIds(studentIds).stream()
+                .collect(Collectors.toMap(StudentAttendanceCountsView::userId, Function.identity()));
+
+        AttendancePolicyResult policy = bootcampQueryUsecase.getPolicy(bootcampId);
+        BootcampPeriodResult bootcampPeriod = bootcampQueryUsecase.getPeriod(bootcampId);
+        LocalDate today = LocalDate.now();
+
+        return studentIds.stream()
+                .map(userId -> {
+                    String name = nameByUserId.getOrDefault(userId, "알 수 없음");
+                    StudentAttendanceCountsView counts = countsByUserId
+                            .getOrDefault(userId, StudentAttendanceCountsView.empty(userId));
+
+                    BigDecimal rate = AttendanceMetricsCalculator.calculateAttendanceRate(
+                            bootcampPeriod.startDate(), today,
+                            counts.absentDays(), counts.lateCount(), counts.earlyLeaveCount(), counts.outingCount(),
+                            LATE_EARLY_OUTING_CONVERSION_COUNT
+                    );
+                    AttendanceRiskLevel riskLevel = AttendanceMetricsCalculator.calculateRiskLevel(rate, policy);
+
+                    return StudentAttendanceSummaryResponse.of(name, rate, counts, riskLevel);
+                })
+                .toList();
     }
 
     private AttendanceBalanceResponse buildBalance(Long userId) {
