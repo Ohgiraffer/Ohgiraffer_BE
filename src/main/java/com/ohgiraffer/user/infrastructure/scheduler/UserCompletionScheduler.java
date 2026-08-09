@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 @Slf4j
@@ -21,10 +22,10 @@ public class UserCompletionScheduler {
     private final SpringDataUserRepository springDataUserRepository;
     private final AttendanceCacheEvictUsecase attendanceCacheEvictUsecase;
 
-    @Scheduled(cron = "0 10 0 * * *")
+    @Scheduled(cron = "0 10 0 * * *", zone = "Asia/Seoul")
     @Transactional
     public void completeStudentsForEndedBootcamps() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
         List<Long> endingBootcampIds = getBootcampIdsEndingOnPort.findBootcampIdsEndingOn(today);
 
         if (endingBootcampIds.isEmpty()) {
