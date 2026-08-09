@@ -100,6 +100,12 @@ public enum ErrorCode {
     SUBMISSION_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_018", "제출 파일을 찾을 수 없습니다."),
     SUBMISSION_FILE_PREVIEW_NOT_SUPPORTED(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "SUBMISSION_019", "미리보기를 지원하지 않는 파일 형식입니다."),
 
+    SPACE_NOT_FOUND(HttpStatus.NOT_FOUND, "SPACE_001", "공간을 찾을 수 없습니다."),
+    SPACE_NAME_DUPLICATED(HttpStatus.CONFLICT, "SPACE_002", "이미 사용 중인 공간명입니다."),
+    SPACE_HAS_OCCUPANTS(HttpStatus.CONFLICT, "SPACE_003", "현재 이용자가 있는 공간은 삭제할 수 없습니다."),
+    SPACE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SPACE_004", "공간을 관리할 권한이 없습니다."),
+    SPACE_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "SPACE_005", "해당 공간의 최대 수용 인원을 초과했습니다."),
+
     TEAM_DUPLICATE_NAME(HttpStatus.CONFLICT, "TEAM_003", "이미 존재하는 팀명입니다."),
     TEAM_INVALID_PERIOD(HttpStatus.BAD_REQUEST, "TEAM_004", "팀 시작일은 종료일보다 늦을 수 없습니다."),
     TEAM_ALREADY_DISSOLVED(HttpStatus.CONFLICT, "TEAM_005", "이미 해체된 팀입니다."),
@@ -111,8 +117,11 @@ public enum ErrorCode {
     TEAM_SAME_TARGET(HttpStatus.BAD_REQUEST, "TEAM_011", "같은 팀으로는 이동할 수 없습니다."),
     TEAM_NOT_FOUND(HttpStatus.NOT_FOUND, "TEAM_001", "팀을 찾을 수 없습니다."),
     TEAM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "TEAM_002", "팀 관리에 접근할 권한이 없습니다."),
+
     ATTENDANCE_PERIOD_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_001", "존재하지 않거나 소속 부트캠프의 단위기간이 아닙니다."),
-  
+    LEAVE_BALANCE_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_002", "해당 기간의 휴가 잔여일수 정보를 찾을 수 없습니다."),
+    SICK_BALANCE_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_003", "해당 기간의 병결 잔여일수 정보를 찾을 수 없습니다."),
+
     BOOTCAMP_NOT_FOUND(HttpStatus.NOT_FOUND, "BOOTCAMP_001", "부트캠프를 찾을 수 없습니다."),
     INVALID_PERIOD_RANGE(HttpStatus.BAD_REQUEST, "BOOTCAMP_002", "단위기간 시작일이 종료일보다 늦을 수 없습니다."),
     DUPLICATE_PERIOD_NO(HttpStatus.BAD_REQUEST, "BOOTCAMP_003", "단위기간 번호가 중복되었습니다."),
@@ -127,6 +136,11 @@ public enum ErrorCode {
     NOTICE_NOT_AUTHOR(HttpStatus.FORBIDDEN, "NOTICE_003", "공지 작성자만 수정하거나 삭제할 수 있습니다."),
     NOTICE_CATEGORY_DUPLICATE_NAME(HttpStatus.CONFLICT, "NOTICE_005", "이미 같은 이름의 카테고리가 있습니다."),
     NOTICE_CATEGORY_IN_USE(HttpStatus.CONFLICT, "NOTICE_006", "공지가 사용 중인 카테고리는 삭제할 수 없습니다."),
+    NOTICE_ATTACHMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_007", "존재하지 않는 첨부파일입니다."),
+    NOTICE_ATTACHMENT_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "NOTICE_008", "공지 하나에 첨부할 수 있는 파일 개수를 넘었습니다."),
+    NOTICE_ATTACHMENT_TOO_LARGE(HttpStatus.BAD_REQUEST, "NOTICE_009", "첨부파일 크기가 허용 범위를 넘었습니다."),
+    NOTICE_IMAGE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "NOTICE_010", "본문에 넣을 수 없는 이미지 형식입니다."),
+    NOTICE_ATTACHMENT_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "NOTICE_011", "첨부할 수 없는 파일 형식입니다."),
 
     CALENDAR_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CALENDAR_001", "존재하지 않는 일정입니다."),
     CALENDAR_EVENT_NOT_CREATOR(HttpStatus.FORBIDDEN, "CALENDAR_002", "일정을 등록한 사람만 삭제할 수 있습니다."),

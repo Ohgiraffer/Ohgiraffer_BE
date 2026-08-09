@@ -8,6 +8,7 @@ import com.ohgiraffer.bootcamp.domain.repository.AttendancePeriodRepository;
 import com.ohgiraffer.bootcamp.domain.repository.AttendancePolicyRepository;
 import com.ohgiraffer.bootcamp.domain.repository.BootcampRepository;
 import com.ohgiraffer.bootcamp.domain.repository.SettingChangeLogRepository;
+import com.ohgiraffer.bootcamp.presentation.api.response.BootcampLoginBasicResponse;
 import com.ohgiraffer.bootcamp.presentation.api.response.BootcampSettingsResponse;
 import com.ohgiraffer.bootcamp.presentation.api.response.SettingChangeLogResponse;
 import com.ohgiraffer.global.exception.BusinessException;
@@ -17,9 +18,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -105,6 +108,30 @@ public class BootcampQueryService implements BootcampQueryUsecase {
         return attendancePeriodRepository.findAllByBootcampId(bootcampId).stream()
                 .map(p -> new AttendancePeriodResult(p.getId(), p.getPeriodNo(), p.getPeriodStart(), p.getPeriodEnd()))
                 .sorted(Comparator.comparing(AttendancePeriodResult::periodNo))
+                .toList();
+    }
+
+    @Override
+    public BootcampLoginBasicResponse getBasicInfo(Long userId) {
+        Long bootcampId = getUserBootcampIdPort.findBootcampIdByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+
+        Bootcamp bootcamp = bootcampRepository.findById(bootcampId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+
+        return new BootcampLoginBasicResponse(bootcamp.getOrgName(), bootcamp.getProName());
+    }
+
+    @Override
+    public List<AttendancePeriodStartResult> getPeriodsStartingOn(LocalDate date) {
+        return attendancePeriodRepository.findAllByPeriodStart(date).stream()
+                .map(p -> new AttendancePeriodStartResult(
+                        p.getId(),
+                        p.getBootcampId(),
+                        p.getPeriodNo(),
+                        p.getPeriodStart(),
+                        p.getPeriodEnd()
+                ))
                 .toList();
     }
 }

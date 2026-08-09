@@ -1,6 +1,6 @@
 package com.ohgiraffer.chat.infrastructure.persistence;
 
-import com.ohgiraffer.chat.domain.model.ChatMessageMirror;
+import com.ohgiraffer.chat.infrastructure.projection.ChannelLastMessageProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

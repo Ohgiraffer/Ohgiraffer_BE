@@ -8,6 +8,7 @@ import com.ohgiraffer.bootcamp.presentation.api.request.BootcampPolicyRequest;
 import com.ohgiraffer.bootcamp.presentation.api.request.BootcampSettingsUpdateRequest;
 import com.ohgiraffer.bootcamp.presentation.api.request.BootcampUpdateRequest;
 import com.ohgiraffer.bootcamp.presentation.api.response.BootcampInfoResponse;
+import com.ohgiraffer.bootcamp.presentation.api.response.BootcampLoginBasicResponse;
 import com.ohgiraffer.bootcamp.presentation.api.response.BootcampSettingsResponse;
 import com.ohgiraffer.bootcamp.presentation.api.response.SettingChangeLogResponse;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
@@ -134,5 +135,19 @@ public class BootcampController {
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         return ResponseEntity.ok(bootcampQueryUsecase.getSettingChangeLogs(principal.getId()));
+    }
+
+    @Operation(summary = "내 부트캠프 기본 정보 조회", description = "로그인한 사용자 본인이 속한 부트캠프의 조직명과 과정명을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "404", description = "부트캠프를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/basic")
+    public ResponseEntity<BootcampLoginBasicResponse> getMyBootcampInfo(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        return ResponseEntity.ok(bootcampQueryUsecase.getBasicInfo(principal.getId()));
     }
 }

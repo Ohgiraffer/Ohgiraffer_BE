@@ -5,6 +5,7 @@ import com.ohgiraffer.bootcamp.domain.repository.AttendancePeriodRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
@@ -33,5 +34,12 @@ public class AttendancePeriodRepositoryAdapter implements AttendancePeriodReposi
     public void deleteAllByBootcampId(Long bootcampId) {
         springDataAttendancePeriodRepository.deleteAllByBootcampId(bootcampId);
         springDataAttendancePeriodRepository.flush();
+    }
+
+    @Override
+    public List<AttendancePeriod> findAllByPeriodStart(LocalDate periodStart) {
+        return springDataAttendancePeriodRepository.findAllByPeriodStart(periodStart).stream()
+                .map(AttendancePeriodJpaEntity::toDomain)
+                .toList();
     }
 }

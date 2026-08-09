@@ -46,6 +46,11 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public List<Long> findIdsByBootcampIdAndRole(Long bootcampId, Role role) {
+        return springDataUserRepository.findIdsByBootcampIdAndRole( bootcampId,role);
+    }
+
+    @Override
     public void save(User user) {
         UserJpaEntity entity = UserJpaEntity.fromDomain(user);
         springDataUserRepository.save(entity);
@@ -81,7 +86,12 @@ public class UserRepositoryAdapter implements UserRepository {
         springDataUserRepository.saveAllAndFlush(entities);
     }
 
-
-
+    @Override
+    public List<User> findAllByRoleAndStatusAndBootcampId(Role role, UserStatus status, Long bootcampId) {
+        return springDataUserRepository.findAllByRoleAndStatusAndBootcampId(role, status, bootcampId)
+                .stream()
+                .map(UserJpaEntity::toDomain)
+                .toList();
+    }
 
 }
