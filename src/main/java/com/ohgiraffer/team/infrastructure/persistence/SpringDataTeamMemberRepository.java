@@ -33,6 +33,18 @@ public interface SpringDataTeamMemberRepository
             @Param("teamId") Long teamId
     );
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT tm
+            FROM TeamMemberViewJpaEntity tm
+            WHERE tm.teamId = :teamId
+              AND tm.leftAt IS NULL
+            ORDER BY tm.joinedAt ASC, tm.id ASC
+            """)
+    List<TeamMemberViewJpaEntity> findActiveMembersByTeamIdForUpdate(
+            @Param("teamId") Long teamId
+    );
+
     @Query("""
             SELECT
                 tm.id AS teamMemberId,

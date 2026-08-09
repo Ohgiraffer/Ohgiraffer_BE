@@ -15,6 +15,10 @@ public class Team {
     private final LocalDate startDate;
     private final LocalDate endDate;
     private final LocalDateTime dissolvedAt;
+    private final LocalDateTime archivedAt;
+    private final LocalDateTime deletedAt;
+    private final LocalDateTime channelDeletedAt;
+    private final LocalDateTime workspaceDeletedAt;
 
     private Team(
             Long id,
@@ -23,7 +27,11 @@ public class Team {
             String notionPageId,
             LocalDate startDate,
             LocalDate endDate,
-            LocalDateTime dissolvedAt
+            LocalDateTime dissolvedAt,
+            LocalDateTime archivedAt,
+            LocalDateTime deletedAt,
+            LocalDateTime channelDeletedAt,
+            LocalDateTime workspaceDeletedAt
     ) {
         this.id = id;
         this.name = name;
@@ -32,6 +40,10 @@ public class Team {
         this.startDate = startDate;
         this.endDate = endDate;
         this.dissolvedAt = dissolvedAt;
+        this.archivedAt = archivedAt;
+        this.deletedAt = deletedAt;
+        this.channelDeletedAt = channelDeletedAt;
+        this.workspaceDeletedAt = workspaceDeletedAt;
     }
 
     public static Team create(
@@ -55,6 +67,10 @@ public class Team {
                 null,
                 startDate,
                 endDate,
+                null,
+                null,
+                null,
+                null,
                 null
         );
     }
@@ -66,7 +82,11 @@ public class Team {
             String notionPageId,
             LocalDate startDate,
             LocalDate endDate,
-            LocalDateTime dissolvedAt
+            LocalDateTime dissolvedAt,
+            LocalDateTime archivedAt,
+            LocalDateTime deletedAt,
+            LocalDateTime channelDeletedAt,
+            LocalDateTime workspaceDeletedAt
     ) {
         return new Team(
                 id,
@@ -75,7 +95,11 @@ public class Team {
                 notionPageId,
                 startDate,
                 endDate,
-                dissolvedAt
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
         );
     }
 
@@ -84,11 +108,7 @@ public class Team {
             LocalDate startDate,
             LocalDate endDate
     ) {
-        if (isDissolved()) {
-            throw new BusinessException(
-                    ErrorCode.TEAM_ALREADY_DISSOLVED
-            );
-        }
+        validateAssignable();
 
         validateName(
                 name
@@ -106,8 +126,135 @@ public class Team {
                 notionPageId,
                 startDate,
                 endDate,
-                dissolvedAt
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
         );
+    }
+
+    public Team archive(
+            LocalDateTime archivedAt
+    ) {
+        if (isDeleted()) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_ALREADY_DISSOLVED
+            );
+        }
+
+        if (isArchived()) {
+            return this;
+        }
+
+        if (archivedAt == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "팀 보관 일시가 올바르지 않습니다."
+            );
+        }
+
+        return new Team(
+                id,
+                name,
+                sendbirdChannelUrl,
+                notionPageId,
+                startDate,
+                endDate,
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
+        );
+    }
+
+    public Team markDeleted(
+            LocalDateTime deletedAt
+    ) {
+        if (isDeleted()) {
+            return this;
+        }
+
+        if (!isArchived()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "보관되지 않은 팀은 정리할 수 없습니다."
+            );
+        }
+
+        if (deletedAt == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "팀 삭제 일시가 올바르지 않습니다."
+            );
+        }
+
+        return new Team(
+                id,
+                name,
+                sendbirdChannelUrl,
+                notionPageId,
+                startDate,
+                endDate,
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
+        );
+    }
+
+    public Team markChannelDeleted(
+            LocalDateTime channelDeletedAt
+    ) {
+        if (this.channelDeletedAt != null) {
+            return this;
+        }
+
+        return new Team(
+                id,
+                name,
+                sendbirdChannelUrl,
+                notionPageId,
+                startDate,
+                endDate,
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
+        );
+    }
+
+    public Team markWorkspaceDeleted(
+            LocalDateTime workspaceDeletedAt
+    ) {
+        if (this.workspaceDeletedAt != null) {
+            return this;
+        }
+
+        return new Team(
+                id,
+                name,
+                sendbirdChannelUrl,
+                notionPageId,
+                startDate,
+                endDate,
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
+        );
+    }
+
+    public void validateAssignable() {
+        if (!isAssignable()) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_ALREADY_DISSOLVED
+            );
+        }
     }
 
     private static void validateName(
@@ -176,7 +323,37 @@ public class Team {
         return dissolvedAt;
     }
 
+    public LocalDateTime getArchivedAt() {
+        return archivedAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public LocalDateTime getChannelDeletedAt() {
+        return channelDeletedAt;
+    }
+
+    public LocalDateTime getWorkspaceDeletedAt() {
+        return workspaceDeletedAt;
+    }
+
     public boolean isDissolved() {
         return dissolvedAt != null;
+    }
+
+    public boolean isArchived() {
+        return archivedAt != null;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    public boolean isAssignable() {
+        return !isDissolved()
+                && !isArchived()
+                && !isDeleted();
     }
 }

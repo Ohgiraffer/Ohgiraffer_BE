@@ -39,7 +39,7 @@ public class TeamQueryService
         );
 
         List<Team> teams =
-                teamRepository.findAll();
+                teamRepository.findVisibleTeams();
 
         List<Long> teamIds =
                 teams.stream()

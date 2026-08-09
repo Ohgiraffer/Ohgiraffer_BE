@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -80,6 +82,14 @@ public class TeamRepositoryAdapter
     }
 
     @Override
+    public List<Team> findVisibleTeams() {
+        return springDataTeamRepository.findAllByArchivedAtIsNullAndDeletedAtIsNullOrderByIdAsc()
+                .stream()
+                .map(TeamJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public Optional<Team> findById(
             Long teamId
     ) {
@@ -97,6 +107,30 @@ public class TeamRepositoryAdapter
                         teamId
                 )
                 .map(TeamJpaEntity::toDomain);
+    }
+
+    @Override
+    public List<Team> findArchivableTeamsForUpdate(
+            LocalDate today
+    ) {
+        return springDataTeamRepository.findArchivableTeamsForUpdate(
+                        today
+                )
+                .stream()
+                .map(TeamJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Team> findDeletableArchivedTeamsForUpdate(
+            LocalDateTime deleteThreshold
+    ) {
+        return springDataTeamRepository.findDeletableArchivedTeamsForUpdate(
+                        deleteThreshold
+                )
+                .stream()
+                .map(TeamJpaEntity::toDomain)
+                .toList();
     }
 
     @Override

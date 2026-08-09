@@ -370,7 +370,7 @@ public class TeamCommandService
         );
 
         Map<Long, Team> teamMap =
-                teamRepository.findAll()
+                teamRepository.findVisibleTeams()
                         .stream()
                         .collect(
                                 Collectors.toMap(
@@ -716,11 +716,7 @@ public class TeamCommandService
     private void validateTeamAssignable(
             Team team
     ) {
-        if (team.isDissolved()) {
-            throw new BusinessException(
-                    ErrorCode.TEAM_ALREADY_DISSOLVED
-            );
-        }
+        team.validateAssignable();
     }
 
     private void validateAssignableStudent(

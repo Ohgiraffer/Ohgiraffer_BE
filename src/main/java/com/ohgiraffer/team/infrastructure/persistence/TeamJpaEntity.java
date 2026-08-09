@@ -54,6 +54,18 @@ public class TeamJpaEntity {
     @Column(name = "dissolved_at")
     private LocalDateTime dissolvedAt;
 
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "channel_deleted_at")
+    private LocalDateTime channelDeletedAt;
+
+    @Column(name = "workspace_deleted_at")
+    private LocalDateTime workspaceDeletedAt;
+
     private TeamJpaEntity(
             Long id,
             String name,
@@ -61,7 +73,11 @@ public class TeamJpaEntity {
             String notionPageId,
             LocalDate startDate,
             LocalDate endDate,
-            LocalDateTime dissolvedAt
+            LocalDateTime dissolvedAt,
+            LocalDateTime archivedAt,
+            LocalDateTime deletedAt,
+            LocalDateTime channelDeletedAt,
+            LocalDateTime workspaceDeletedAt
     ) {
         this.id = id;
         this.name = name;
@@ -70,6 +86,10 @@ public class TeamJpaEntity {
         this.startDate = startDate;
         this.endDate = endDate;
         this.dissolvedAt = dissolvedAt;
+        this.archivedAt = archivedAt;
+        this.deletedAt = deletedAt;
+        this.channelDeletedAt = channelDeletedAt;
+        this.workspaceDeletedAt = workspaceDeletedAt;
     }
 
     public static TeamJpaEntity from(
@@ -82,7 +102,11 @@ public class TeamJpaEntity {
                 team.getNotionPageId(),
                 team.getStartDate(),
                 team.getEndDate(),
-                team.getDissolvedAt()
+                team.getDissolvedAt(),
+                team.getArchivedAt(),
+                team.getDeletedAt(),
+                team.getChannelDeletedAt(),
+                team.getWorkspaceDeletedAt()
         );
     }
 
@@ -94,7 +118,11 @@ public class TeamJpaEntity {
                 notionPageId,
                 startDate,
                 endDate,
-                dissolvedAt
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
         );
     }
 }
