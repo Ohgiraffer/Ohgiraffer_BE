@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -37,13 +38,47 @@ public class SubmissionPersistenceService {
                                 )
                         );
 
+       validateSameSubmissionBox(
+        submission,
+        expectedSubmissionBox,
+        currentSubmissionBox
+);
+
         validateStructureUnchanged(
-                expectedSubmissionBox,
-                currentSubmissionBox
+        expectedSubmissionBox,
+        currentSubmissionBox
         );
 
         return submissionRepository.save(submission);
     }
+
+    private void validateSameSubmissionBox(
+        Submission submission,
+        SubmissionBox expectedSubmissionBox,
+        SubmissionBox currentSubmissionBox
+) {
+    Long submissionBoxId =
+            submission.getSubmissionBoxId();
+
+    boolean sameExpectedSubmissionBox =
+            Objects.equals(
+                    submissionBoxId,
+                    expectedSubmissionBox.getId()
+            );
+
+    boolean sameCurrentSubmissionBox =
+            Objects.equals(
+                    submissionBoxId,
+                    currentSubmissionBox.getId()
+            );
+
+    if (!sameExpectedSubmissionBox
+            || !sameCurrentSubmissionBox) {
+        throw new BusinessException(
+                ErrorCode.SUBMISSION_ITEM_MISMATCH
+        );
+    }
+}
 
     private void validateStructureUnchanged(
             SubmissionBox expectedSubmissionBox,
