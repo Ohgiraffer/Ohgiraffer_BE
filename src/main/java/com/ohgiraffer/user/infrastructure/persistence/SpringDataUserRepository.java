@@ -27,5 +27,7 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, L
 
     List<UserJpaEntity> findByNameContaining(String keyword);
 
+    List<UserJpaEntity> findAllByRoleAndStatusAndBootcampId(Role role, UserStatus status, Long bootcampId);
+
     boolean existsByEmail(String email);
 }

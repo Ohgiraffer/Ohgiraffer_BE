@@ -1,9 +1,12 @@
-package com.ohgiraffer.chat.infrastructure.persistence;
+package com.ohgiraffer.chat.infrastructure.adapter;
 
 import com.ohgiraffer.chat.domain.model.ChatMessageMirror;
 import com.ohgiraffer.chat.domain.repository.ChannelLastMessage;
 import com.ohgiraffer.chat.domain.repository.ChatMessageMirrorRepository;
 import com.ohgiraffer.chat.domain.repository.ChatMessageSearchCondition;
+import com.ohgiraffer.chat.infrastructure.persistence.ChatMessageMirrorJpaEntity;
+import com.ohgiraffer.chat.infrastructure.persistence.ChatMessageMirrorJpaRepository;
+import com.ohgiraffer.chat.infrastructure.projection.ChannelLastMessageProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;

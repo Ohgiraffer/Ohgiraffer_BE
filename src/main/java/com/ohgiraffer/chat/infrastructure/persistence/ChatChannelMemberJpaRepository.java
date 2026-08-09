@@ -1,5 +1,6 @@
 package com.ohgiraffer.chat.infrastructure.persistence;
 
+import com.ohgiraffer.chat.infrastructure.projection.ChannelUnreadCountProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

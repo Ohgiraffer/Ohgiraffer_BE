@@ -10,6 +10,7 @@ import com.ohgiraffer.notice.application.usecase.NoticeQueryUseCase;
 import com.ohgiraffer.notice.domain.model.Notice;
 import com.ohgiraffer.notice.domain.model.NoticeCategory;
 import com.ohgiraffer.notice.domain.model.ViewerRole;
+import com.ohgiraffer.notice.domain.repository.NoticeAttachmentRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeCategoryRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeConfirmationRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeRepository;
@@ -45,17 +46,20 @@ public class NoticeQueryService implements NoticeQueryUseCase {
     private final NoticeRepository noticeRepository;
     private final NoticeCategoryRepository noticeCategoryRepository;
     private final NoticeConfirmationRepository noticeConfirmationRepository;
+    private final NoticeAttachmentRepository noticeAttachmentRepository;
     private final AuthorNameQueryPort authorNameQueryPort;
 
     public NoticeQueryService(
             NoticeRepository noticeRepository,
             NoticeCategoryRepository noticeCategoryRepository,
             NoticeConfirmationRepository noticeConfirmationRepository,
+            NoticeAttachmentRepository noticeAttachmentRepository,
             AuthorNameQueryPort authorNameQueryPort
     ) {
         this.noticeRepository = noticeRepository;
         this.noticeCategoryRepository = noticeCategoryRepository;
         this.noticeConfirmationRepository = noticeConfirmationRepository;
+        this.noticeAttachmentRepository = noticeAttachmentRepository;
         this.authorNameQueryPort = authorNameQueryPort;
     }
 
@@ -107,7 +111,8 @@ public class NoticeQueryService implements NoticeQueryUseCase {
                 category,
                 authorName,
                 confirmationCount,
-                confirmedByMe
+                confirmedByMe,
+                noticeAttachmentRepository.findAllByNoticeId(noticeId)
         );
     }
 
