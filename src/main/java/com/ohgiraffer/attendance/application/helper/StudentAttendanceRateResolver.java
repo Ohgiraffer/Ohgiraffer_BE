@@ -5,6 +5,7 @@ import com.ohgiraffer.attendance.domain.model.StudentAttendanceRateResult;
 import com.ohgiraffer.attendance.domain.policy.AttendanceMetricsCalculator;
 import com.ohgiraffer.attendance.domain.repository.AttendancePeriodSummaryRepository;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
+import com.ohgiraffer.bootcamp.domain.model.AttendancePeriodResult;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePolicyResult;
 import com.ohgiraffer.bootcamp.domain.model.BootcampPeriodResult;
 import lombok.RequiredArgsConstructor;
@@ -29,13 +30,19 @@ public class StudentAttendanceRateResolver {
     private final BootcampQueryUsecase bootcampQueryUsecase;
 
     public Map<Long, StudentAttendanceRateResult> resolve(Long bootcampId, List<Long> userIds) {
+        List<Long> periodIds = bootcampQueryUsecase.getAttendancePeriods(bootcampId).stream()
+                .map(AttendancePeriodResult::id)
+                .toList();
+
         Map<Long, StudentAttendanceCountsView> countsByUserId = attendancePeriodSummaryRepository
-                .aggregateByUserIds(userIds).stream()
+                .aggregateByUserIds(userIds, periodIds).stream()
                 .collect(Collectors.toMap(StudentAttendanceCountsView::userId, Function.identity()));
 
         AttendancePolicyResult policy = bootcampQueryUsecase.getPolicy(bootcampId);
         BootcampPeriodResult bootcampPeriod = bootcampQueryUsecase.getPeriod(bootcampId);
+
         LocalDate today = LocalDate.now();
+        LocalDate end = today.isBefore(bootcampPeriod.endDate()) ? today : bootcampPeriod.endDate();
 
         Map<Long, StudentAttendanceRateResult> result = new LinkedHashMap<>();
         for (Long userId : userIds) {
@@ -43,7 +50,7 @@ public class StudentAttendanceRateResolver {
                     .getOrDefault(userId, StudentAttendanceCountsView.empty(userId));
 
             BigDecimal rate = AttendanceMetricsCalculator.calculateAttendanceRate(
-                    bootcampPeriod.startDate(), today,
+                    bootcampPeriod.startDate(), end,
                     counts.absentDays(), counts.lateCount(), counts.earlyLeaveCount(), counts.outingCount(),
                     LATE_EARLY_OUTING_CONVERSION_COUNT
             );

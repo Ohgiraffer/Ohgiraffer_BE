@@ -14,10 +14,10 @@ public class AttendancePeriodSummaryRepositoryAdapter implements AttendancePerio
     private final SpringDataAttendancePeriodSummaryRepository springDataAttendancePeriodSummaryRepository;
 
     @Override
-    public List<StudentAttendanceCountsView> aggregateByUserIds(List<Long> userIds) {
-        if (userIds.isEmpty()) {
+    public List<StudentAttendanceCountsView> aggregateByUserIds(List<Long> userIds, List<Long> periodIds) {
+        if (userIds.isEmpty() || periodIds.isEmpty()) {
             return List.of();
         }
-        return springDataAttendancePeriodSummaryRepository.aggregateByUserIds(userIds);
+        return springDataAttendancePeriodSummaryRepository.aggregateByUserIds(userIds, periodIds);
     }
 }

@@ -17,10 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
+
+import static com.ohgiraffer.attendance.domain.policy.AttendanceMetricsCalculator.countWeekdays;
 
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -106,22 +106,5 @@ public class AttendanceSummaryCache {
             return AttendanceRiskLevel.CAUTION;
         }
         return null;
-    }
-
-    private long countWeekdays(LocalDate start, LocalDate end) {
-        long totalDays = ChronoUnit.DAYS.between(start, end) + 1;
-        long fullWeeks = totalDays / 7;
-        long weekdayCount = fullWeeks * 5;
-
-        long remainingDays = totalDays % 7;
-        LocalDate cursor = end.minusDays(remainingDays - 1);
-        for (int i = 0; i < remainingDays; i++) {
-            DayOfWeek dow = cursor.getDayOfWeek();
-            if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY) {
-                weekdayCount++;
-            }
-            cursor = cursor.plusDays(1);
-        }
-        return weekdayCount;
     }
 }
