@@ -20,6 +20,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/user")
@@ -160,5 +162,21 @@ public class UserController {
     ) {
         userCommandUsecase.addUsers(request, principal.getId());
         return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "사용자 전체 목록 조회", description = "부트캠프 소속 사용자 전체 목록을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PreAuthorize("hasRole('MANAGER')")
+    @GetMapping("/list")
+    public ResponseEntity<List<UserListResponse>> getUsers(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        return ResponseEntity.ok(userQueryUsecase.getUsers(principal.getId()));
     }
 }

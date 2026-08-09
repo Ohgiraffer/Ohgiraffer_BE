@@ -2,6 +2,7 @@ package com.ohgiraffer.user.application.usecase;
 
 import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.domain.model.StudentStatusView;
+import com.ohgiraffer.user.presentation.api.response.UserListResponse;
 import com.ohgiraffer.user.presentation.api.response.UserResponse;
 import com.ohgiraffer.user.presentation.api.response.UserSheetConnectionResponse;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,4 +21,6 @@ public interface UserQueryUsecase {
     List<Long> getStudentIdsByBootcampId(Long bootcampId);
 
     List<StudentStatusView> getStudentStatusesByBootcampId(Long bootcampId);
+
+    List<UserListResponse> getUsers(Long requesterId);
 }
