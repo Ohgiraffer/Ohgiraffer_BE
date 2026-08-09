@@ -102,4 +102,11 @@ public class UserRepositoryAdapter implements UserRepository {
                 .toList();
     }
 
+    @Override
+    public List<User> findAllByBootcampId(Long bootcampId) {
+        return springDataUserRepository.findAllByBootcampId(bootcampId).stream()
+                .map(UserJpaEntity::toDomain)
+                .toList();
+    }
+
 }
