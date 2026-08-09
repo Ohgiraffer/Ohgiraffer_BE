@@ -16,4 +16,6 @@ public interface AttendanceRepository {
 
     Optional<Attendance> findByUserIdAndDate(Long userId, LocalDate date);
     void save(Attendance attendance);
+
+    Optional<Attendance> findByUserIdAndDateForUpdate(Long userId, LocalDate date);
 }

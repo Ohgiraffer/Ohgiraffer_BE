@@ -61,4 +61,10 @@ public class AttendanceRepositoryAdapter implements AttendanceRepository {
     public void save(Attendance attendance) {
         springDataAttendanceRepository.save(AttendanceJpaEntity.fromDomain(attendance));
     }
+
+    @Override
+    public Optional<Attendance> findByUserIdAndDateForUpdate(Long userId, LocalDate date) {
+        return springDataAttendanceRepository.findByUserIdAndAttendanceDateForUpdate(userId, date)
+                .map(AttendanceJpaEntity::toDomain);
+    }
 }

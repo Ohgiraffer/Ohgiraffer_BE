@@ -51,7 +51,7 @@ public class AttendanceCommandService implements AttendanceCommandUsecase {
     }
 
     private void applyLeaveDay(Long userId, LocalDate date, String externalRefId, List<AttendancePeriodResult> periods) {
-        Optional<Attendance> existing = attendanceRepository.findByUserIdAndDate(userId, date);
+        Optional<Attendance> existing = attendanceRepository.findByUserIdAndDateForUpdate(userId, date);
 
         if (existing.isPresent()) {
             Attendance existingAttendance = existing.get();
