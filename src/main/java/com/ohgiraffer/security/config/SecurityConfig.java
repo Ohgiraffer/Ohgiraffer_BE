@@ -88,6 +88,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/logout").authenticated()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/chat/webhooks/sendbird").permitAll()
