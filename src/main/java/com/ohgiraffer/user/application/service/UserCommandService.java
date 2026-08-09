@@ -26,8 +26,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -130,7 +128,7 @@ public class UserCommandService implements UserCommandUsecase {
         user.dismiss(newStatus);
         userRepository.save(user);
 
-        runAfterCommit(() -> attendanceCacheEvictUsecase.evictAllForBootcamp(user.getBootcampId()));
+        attendanceCacheEvictUsecase.evictAllForBootcamp(user.getBootcampId());
     }
 
     @Override
@@ -155,15 +153,6 @@ public class UserCommandService implements UserCommandUsecase {
             throw new BusinessException(ErrorCode.USER_BULK_INSERT_FAILED);
         }
 
-        runAfterCommit(() -> attendanceCacheEvictUsecase.evictAllForBootcamp(bootcampId));
-    }
-
-    private void runAfterCommit(Runnable action) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                action.run();
-            }
-        });
+        attendanceCacheEvictUsecase.evictAllForBootcamp(bootcampId);
     }
 }
