@@ -1,4 +1,4 @@
-package com.ohgiraffer.chat.infrastructure.adapter;
+package com.ohgiraffer.chat.infrastructure.sendbird;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ohgiraffer.chat.application.port.SendbirdApiPort;

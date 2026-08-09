@@ -19,9 +19,12 @@ public interface UserRepository {
 
     List<User> findByNameContaining(String keyword);
 
+    List<User> findAllByRoleAndStatusAndBootcampId(Role role, UserStatus status, Long bootcampId);
+
     boolean existsByEmail(String email);
 
     void saveAll(List<User> users);
     Optional<Long> findBootcampIdByUserId(Long userId);
 
+    List<Long> findIdsByBootcampIdAndRole(Long bootcampId, Role role);
 }

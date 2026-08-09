@@ -73,4 +73,9 @@ public class UserQueryService implements UserQueryUsecase {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         return user.getRole();
     }
+
+    @Override
+    public List<Long> getStudentIdsByBootcampId(Long bootcampId) {
+        return userRepository.findIdsByBootcampIdAndRole(bootcampId, Role.STUDENT);
+    }
 }

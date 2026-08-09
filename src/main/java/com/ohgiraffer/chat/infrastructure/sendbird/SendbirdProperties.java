@@ -1,4 +1,4 @@
-package com.ohgiraffer.chat.infrastructure.adapter;
+package com.ohgiraffer.chat.infrastructure.sendbird;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

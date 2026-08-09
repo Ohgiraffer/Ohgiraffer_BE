@@ -1,7 +1,9 @@
-package com.ohgiraffer.chat.infrastructure.persistence;
+package com.ohgiraffer.chat.infrastructure.adapter;
 
 import com.ohgiraffer.chat.domain.model.ChatChannel;
 import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
+import com.ohgiraffer.chat.infrastructure.persistence.ChatChannelJpaEntity;
+import com.ohgiraffer.chat.infrastructure.persistence.ChatChannelJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
