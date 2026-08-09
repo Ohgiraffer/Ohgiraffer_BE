@@ -100,6 +100,12 @@ public enum ErrorCode {
     SUBMISSION_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_018", "제출 파일을 찾을 수 없습니다."),
     SUBMISSION_FILE_PREVIEW_NOT_SUPPORTED(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "SUBMISSION_019", "미리보기를 지원하지 않는 파일 형식입니다."),
 
+    SPACE_NOT_FOUND(HttpStatus.NOT_FOUND, "SPACE_001", "공간을 찾을 수 없습니다."),
+    SPACE_NAME_DUPLICATED(HttpStatus.CONFLICT, "SPACE_002", "이미 사용 중인 공간명입니다."),
+    SPACE_HAS_OCCUPANTS(HttpStatus.CONFLICT, "SPACE_003", "현재 이용자가 있는 공간은 삭제할 수 없습니다."),
+    SPACE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SPACE_004", "공간을 관리할 권한이 없습니다."),
+    SPACE_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "SPACE_005", "해당 공간의 최대 수용 인원을 초과했습니다."),
+
     TEAM_DUPLICATE_NAME(HttpStatus.CONFLICT, "TEAM_003", "이미 존재하는 팀명입니다."),
     TEAM_INVALID_PERIOD(HttpStatus.BAD_REQUEST, "TEAM_004", "팀 시작일은 종료일보다 늦을 수 없습니다."),
     TEAM_ALREADY_DISSOLVED(HttpStatus.CONFLICT, "TEAM_005", "이미 해체된 팀입니다."),
