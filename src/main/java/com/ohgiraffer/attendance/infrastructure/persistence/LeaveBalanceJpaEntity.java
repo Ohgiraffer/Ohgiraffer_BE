@@ -37,8 +37,9 @@ public class LeaveBalanceJpaEntity {
     @Column(name = "carried_over_days", nullable = false, precision = 4, scale = 1)
     private BigDecimal carriedOverDays;
 
-    private LeaveBalanceJpaEntity(Long userId, LocalDate periodStart, LocalDate periodEnd,
+    private LeaveBalanceJpaEntity(Long id, Long userId, LocalDate periodStart, LocalDate periodEnd,
                                   BigDecimal totalDays, BigDecimal usedDays, BigDecimal carriedOverDays) {
+        this.id = id;
         this.userId = userId;
         this.periodStart = periodStart;
         this.periodEnd = periodEnd;
@@ -47,8 +48,15 @@ public class LeaveBalanceJpaEntity {
         this.carriedOverDays = carriedOverDays;
     }
 
+    // 신규 생성용
     public static LeaveBalanceJpaEntity of(Long userId, LocalDate periodStart, LocalDate periodEnd,
                                            BigDecimal totalDays, BigDecimal usedDays, BigDecimal carriedOverDays) {
-        return new LeaveBalanceJpaEntity(userId, periodStart, periodEnd, totalDays, usedDays, carriedOverDays);
+        return new LeaveBalanceJpaEntity(null, userId, periodStart, periodEnd, totalDays, usedDays, carriedOverDays);
+    }
+
+    // 수정용
+    public static LeaveBalanceJpaEntity reconstitute(Long id, Long userId, LocalDate periodStart, LocalDate periodEnd,
+                                                     BigDecimal totalDays, BigDecimal usedDays, BigDecimal carriedOverDays) {
+        return new LeaveBalanceJpaEntity(id, userId, periodStart, periodEnd, totalDays, usedDays, carriedOverDays);
     }
 }

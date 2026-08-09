@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface SpringDataAttendanceRepository extends JpaRepository<AttendanceJpaEntity, Long> {
 
@@ -63,4 +64,6 @@ public interface SpringDataAttendanceRepository extends JpaRepository<Attendance
             @Param("start") LocalDate start,
             @Param("end") LocalDate end
     );
+
+    Optional<AttendanceJpaEntity> findByUserIdAndAttendanceDate(Long userId, LocalDate attendanceDate);
 }
