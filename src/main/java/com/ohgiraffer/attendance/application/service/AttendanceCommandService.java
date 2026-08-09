@@ -66,16 +66,6 @@ public class AttendanceCommandService implements AttendanceCommandUsecase {
             }
         }
 
-        AttendancePeriodResult period = periods.stream()
-                .filter(p -> !date.isBefore(p.periodStart()) && !date.isAfter(p.periodEnd()))
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(ErrorCode.ATTENDANCE_PERIOD_NOT_FOUND));
-
-        boolean consumed = leaveBalanceRepository.tryConsume(userId, period.periodStart(), BigDecimal.ONE);
-        if (!consumed) {
-            throw new BusinessException(ErrorCode.LEAVE_BALANCE_NOT_ENOUGH);
-        }
-
         Attendance attendance = existing.isPresent()
                 ? Attendance.reconstitute(
                 existing.get().getId(), userId, date, AttendanceStatus.LEAVE, null, null, externalRefId)
@@ -89,6 +79,16 @@ public class AttendanceCommandService implements AttendanceCommandUsecase {
                 return;
             }
             throw new BusinessException(ErrorCode.ATTENDANCE_APPROVAL_CONFLICT, e);
+        }
+
+        AttendancePeriodResult period = periods.stream()
+                .filter(p -> !date.isBefore(p.periodStart()) && !date.isAfter(p.periodEnd()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.ATTENDANCE_PERIOD_NOT_FOUND));
+
+        boolean consumed = leaveBalanceRepository.tryConsume(userId, period.periodStart(), BigDecimal.ONE);
+        if (!consumed) {
+            throw new BusinessException(ErrorCode.LEAVE_BALANCE_NOT_ENOUGH);
         }
     }
 }
