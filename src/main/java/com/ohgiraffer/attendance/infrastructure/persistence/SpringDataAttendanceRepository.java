@@ -3,12 +3,15 @@ package com.ohgiraffer.attendance.infrastructure.persistence;
 import com.ohgiraffer.attendance.domain.model.DailyAttendanceCountView;
 import com.ohgiraffer.attendance.infrastructure.projection.AttendanceCalendarProjection;
 import com.ohgiraffer.attendance.infrastructure.projection.AttendanceSummaryProjection;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface SpringDataAttendanceRepository extends JpaRepository<AttendanceJpaEntity, Long> {
 
@@ -62,5 +65,18 @@ public interface SpringDataAttendanceRepository extends JpaRepository<Attendance
             @Param("userIds") List<Long> userIds,
             @Param("start") LocalDate start,
             @Param("end") LocalDate end
+    );
+
+    Optional<AttendanceJpaEntity> findByUserIdAndAttendanceDate(Long userId, LocalDate attendanceDate);
+
+    /*
+    * 비관적 락
+    * 트랜잭션이 그 행을 읽는 순간부터 DB 레벨에서 물리적으로 잠가버려서 다른 트랜잭션이 그 행을 건드리지 못하게 막음
+    * */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM AttendanceJpaEntity a WHERE a.userId = :userId AND a.attendanceDate = :date")
+    Optional<AttendanceJpaEntity> findByUserIdAndAttendanceDateForUpdate(
+            @Param("userId") Long userId,
+            @Param("date") LocalDate date
     );
 }

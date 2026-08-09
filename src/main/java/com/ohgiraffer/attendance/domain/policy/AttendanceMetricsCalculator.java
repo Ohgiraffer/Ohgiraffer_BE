@@ -8,6 +8,7 @@ import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 public class AttendanceMetricsCalculator {
 
@@ -68,5 +69,11 @@ public class AttendanceMetricsCalculator {
             cursor = cursor.plusDays(1);
         }
         return weekdayCount;
+    }
+
+    public static List<LocalDate> weekdaysBetween(LocalDate start, LocalDate end) {
+        return start.datesUntil(end.plusDays(1))
+                .filter(d -> d.getDayOfWeek() != DayOfWeek.SATURDAY && d.getDayOfWeek() != DayOfWeek.SUNDAY)
+                .toList();
     }
 }

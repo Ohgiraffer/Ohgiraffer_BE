@@ -1,11 +1,11 @@
 package com.ohgiraffer.approval.application.service;
 
+import com.ohgiraffer.approval.application.port.ApplyApprovedLeavePort;
 import com.ohgiraffer.approval.application.usecase.ApproveApprovalUseCase;
 import com.ohgiraffer.approval.application.usecase.CreateApprovalResult;
-import com.ohgiraffer.approval.domain.model.approval.ApprovalHistory;
-import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
-import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
+import com.ohgiraffer.approval.domain.model.approval.*;
 import com.ohgiraffer.approval.domain.repository.ApprovalHistoryRepository;
+import com.ohgiraffer.approval.domain.repository.ApprovalLeaveDetailRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
@@ -22,15 +22,19 @@ public class ApproveApprovalService implements ApproveApprovalUseCase {
     private final ApprovalRequestRepository approvalRequestRepository;
     private final ApprovalHistoryRepository approvalHistoryRepository;
     private final Clock clock;
+    private final ApprovalLeaveDetailRepository approvalLeaveDetailRepository;
+    private final ApplyApprovedLeavePort applyApprovedLeavePort;
 
     public ApproveApprovalService(
             ApprovalRequestRepository approvalRequestRepository,
             ApprovalHistoryRepository approvalHistoryRepository,
-            Clock clock
+            Clock clock, ApprovalLeaveDetailRepository approvalLeaveDetailRepository, ApplyApprovedLeavePort applyApprovedLeavePort
     ) {
         this.approvalRequestRepository = approvalRequestRepository;
         this.approvalHistoryRepository = approvalHistoryRepository;
         this.clock = clock;
+        this.approvalLeaveDetailRepository = approvalLeaveDetailRepository;
+        this.applyApprovedLeavePort = applyApprovedLeavePort;
     }
 
     @Override
@@ -76,6 +80,19 @@ public class ApproveApprovalService implements ApproveApprovalUseCase {
                 approvalRequestRepository.save(
                         approvalRequest
                 );
+
+        if (savedApprovalRequest.getRequestType() == ApprovalType.LEAVE) {
+            ApprovalLeaveDetail leaveDetail = approvalLeaveDetailRepository
+                    .findByApprovalId(savedApprovalRequest.getId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_NOT_FOUND));
+
+            applyApprovedLeavePort.applyApprovedLeave(
+                    savedApprovalRequest.getRequesterId(),
+                    leaveDetail.getStartDate(),
+                    leaveDetail.getEndDate(),
+                    savedApprovalRequest.getId()
+            );
+        }
 
         ApprovalHistory approvalHistory =
                 ApprovalHistory.statusChanged(

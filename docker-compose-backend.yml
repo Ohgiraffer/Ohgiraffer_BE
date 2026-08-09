@@ -20,6 +20,7 @@ services:
       GOOGLE_SHEETS_ENABLED: ${GOOGLE_SHEETS_ENABLED:-false}
       GOOGLE_SHEETS_CREDENTIALS_LOCATION: file:/app/secrets/ohgiraffer-sheets-key.json
       GOOGLE_FORMS_ENABLED: ${GOOGLE_FORMS_ENABLED:-false}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
     volumes:
       - type: bind
         source: ~/ohgiraffer-sheets-key.json

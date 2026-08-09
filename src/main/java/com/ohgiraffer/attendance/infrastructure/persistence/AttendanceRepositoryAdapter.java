@@ -1,5 +1,6 @@
 package com.ohgiraffer.attendance.infrastructure.persistence;
 
+import com.ohgiraffer.attendance.domain.model.Attendance;
 import com.ohgiraffer.attendance.domain.model.AttendanceCalendarView;
 import com.ohgiraffer.attendance.domain.model.AttendanceSummaryView;
 import com.ohgiraffer.attendance.domain.model.DailyAttendanceCountView;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
@@ -47,5 +49,22 @@ public class AttendanceRepositoryAdapter implements AttendanceRepository {
             return List.of();
         }
         return springDataAttendanceRepository.countDailyByUserIdsAndDateRange(userIds, start, end);
+    }
+
+    @Override
+    public Optional<Attendance> findByUserIdAndDate(Long userId, LocalDate date) {
+        return springDataAttendanceRepository.findByUserIdAndAttendanceDate(userId, date)
+                .map(AttendanceJpaEntity::toDomain);
+    }
+
+    @Override
+    public void save(Attendance attendance) {
+        springDataAttendanceRepository.save(AttendanceJpaEntity.fromDomain(attendance));
+    }
+
+    @Override
+    public Optional<Attendance> findByUserIdAndDateForUpdate(Long userId, LocalDate date) {
+        return springDataAttendanceRepository.findByUserIdAndAttendanceDateForUpdate(userId, date)
+                .map(AttendanceJpaEntity::toDomain);
     }
 }
