@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -32,6 +33,7 @@ public class TeamHistoryQueryService
         implements GetTeamHistoryUseCase {
 
     private static final String UNASSIGNED_TEAM_NAME = "미배정";
+    private static final long MOVE_EVENT_THRESHOLD_MINUTES = 1L;
 
     private final TeamRepository teamRepository;
     private final TeamHistoryRepository teamHistoryRepository;
@@ -257,12 +259,17 @@ public class TeamHistoryQueryService
                         .equals(
                                 current.getTeamMemberId()
                         ))
-                .filter(history -> !history.getJoinedAt()
+                .filter(history -> history.getLeftAt() != null)
+                .filter(history -> !history.getLeftAt()
                         .isAfter(
                                 current.getJoinedAt()
                         ))
+                .filter(history -> isMoveEvent(
+                        history.getLeftAt(),
+                        current.getJoinedAt()
+                ))
                 .max(
-                        Comparator.comparing(TeamMemberHistory::getJoinedAt)
+                        Comparator.comparing(TeamMemberHistory::getLeftAt)
                                 .thenComparing(TeamMemberHistory::getTeamMemberId)
                 )
                 .orElse(
@@ -285,11 +292,32 @@ public class TeamHistoryQueryService
                         .isBefore(
                                 current.getLeftAt()
                         ))
+                .filter(history -> isMoveEvent(
+                        current.getLeftAt(),
+                        history.getJoinedAt()
+                ))
                 .anyMatch(history -> isBetween(
                         history.getJoinedAt(),
                         startAt,
                         endAt
                 ));
+    }
+
+    private boolean isMoveEvent(
+            LocalDateTime leftAt,
+            LocalDateTime joinedAt
+    ) {
+        if (leftAt == null
+                || joinedAt == null
+                || joinedAt.isBefore(leftAt)) {
+            return false;
+        }
+
+        return Duration.between(
+                        leftAt,
+                        joinedAt
+                )
+                .toMinutes() <= MOVE_EVENT_THRESHOLD_MINUTES;
     }
 
     private boolean isBetween(

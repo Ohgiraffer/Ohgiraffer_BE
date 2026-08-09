@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -412,13 +413,9 @@ public class TeamCommandService
                 teamRepository.findActiveMembersForUpdate();
 
         Map<Long, TeamMember> activeMemberByUserId =
-                activeMembers.stream()
-                        .collect(
-                                Collectors.toMap(
-                                        TeamMember::getUserId,
-                                        Function.identity()
-                                )
-                        );
+                createActiveMemberByUserId(
+                        activeMembers
+                );
 
         LocalDateTime changedAt =
                 LocalDateTime.now();
@@ -488,6 +485,29 @@ public class TeamCommandService
                         changedAt
                 )
         );
+    }
+
+    private Map<Long, TeamMember> createActiveMemberByUserId(
+            List<TeamMember> activeMembers
+    ) {
+        Map<Long, TeamMember> activeMemberByUserId =
+                new LinkedHashMap<>();
+
+        for (TeamMember activeMember : activeMembers) {
+            TeamMember duplicatedMember =
+                    activeMemberByUserId.putIfAbsent(
+                            activeMember.getUserId(),
+                            activeMember
+                    );
+
+            if (duplicatedMember != null) {
+                throw new BusinessException(
+                        ErrorCode.TEAM_MEMBER_ALREADY_ASSIGNED
+                );
+            }
+        }
+
+        return activeMemberByUserId;
     }
 
     private Map<Long, Long> createDesiredTeamByUserId(

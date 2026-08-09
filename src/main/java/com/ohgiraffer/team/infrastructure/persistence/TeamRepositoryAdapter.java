@@ -50,14 +50,25 @@ public class TeamRepositoryAdapter
     public TeamMember saveMember(
             TeamMember teamMember
     ) {
-        TeamMemberViewJpaEntity savedEntity =
-                springDataTeamMemberRepository.save(
-                        TeamMemberViewJpaEntity.from(
-                                teamMember
-                        )
-                );
+        try {
+            TeamMemberViewJpaEntity savedEntity =
+                    springDataTeamMemberRepository.saveAndFlush(
+                            TeamMemberViewJpaEntity.from(
+                                    teamMember
+                            )
+                    );
 
-        return savedEntity.toDomain();
+            return savedEntity.toDomain();
+        } catch (DataIntegrityViolationException exception) {
+            if (isActiveTeamMemberUniqueConstraintViolation(exception)) {
+                throw new BusinessException(
+                        ErrorCode.TEAM_MEMBER_ALREADY_ASSIGNED,
+                        exception
+                );
+            }
+
+            throw exception;
+        }
     }
 
     @Override
@@ -228,6 +239,31 @@ public class TeamRepositoryAdapter
                     && message.toLowerCase()
                     .contains(
                             "uq_team_name"
+                    )) {
+                return true;
+            }
+
+            current =
+                    current.getCause();
+        }
+
+        return false;
+    }
+
+    private boolean isActiveTeamMemberUniqueConstraintViolation(
+            DataIntegrityViolationException exception
+    ) {
+        Throwable current =
+                exception;
+
+        while (current != null) {
+            String message =
+                    current.getMessage();
+
+            if (message != null
+                    && message.toLowerCase()
+                    .contains(
+                            "uq_team_member_active_user"
                     )) {
                 return true;
             }
