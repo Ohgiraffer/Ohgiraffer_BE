@@ -7,6 +7,7 @@ import com.ohgiraffer.user.application.helper.UserFileParserResolver;
 import com.ohgiraffer.user.application.policy.UserSheetValidationPolicy;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import com.ohgiraffer.user.domain.model.Role;
+import com.ohgiraffer.user.domain.model.StudentStatusView;
 import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import com.ohgiraffer.user.presentation.api.response.UserResponse;
@@ -77,5 +78,12 @@ public class UserQueryService implements UserQueryUsecase {
     @Override
     public List<Long> getStudentIdsByBootcampId(Long bootcampId) {
         return userRepository.findIdsByBootcampIdAndRole(bootcampId, Role.STUDENT);
+    }
+
+    @Override
+    public List<StudentStatusView> getStudentStatusesByBootcampId(Long bootcampId) {
+        return userRepository.findAllByBootcampIdAndRole(bootcampId, Role.STUDENT).stream()
+                .map(u -> new StudentStatusView(u.getId(), u.getStatus()))
+                .toList();
     }
 }

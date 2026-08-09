@@ -51,6 +51,14 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public List<User> findAllByBootcampIdAndRole(Long bootcampId, Role role) {
+        return springDataUserRepository.findAllByBootcampIdAndRole(bootcampId, role)
+                .stream()
+                .map(UserJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public void save(User user) {
         UserJpaEntity entity = UserJpaEntity.fromDomain(user);
         springDataUserRepository.save(entity);

@@ -1,5 +1,6 @@
 package com.ohgiraffer.attendance.infrastructure.persistence;
 
+import com.ohgiraffer.attendance.domain.model.DailyAttendanceCountView;
 import com.ohgiraffer.attendance.infrastructure.projection.AttendanceCalendarProjection;
 import com.ohgiraffer.attendance.infrastructure.projection.AttendanceSummaryProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -41,6 +42,24 @@ public interface SpringDataAttendanceRepository extends JpaRepository<Attendance
     """)
     AttendanceSummaryProjection countByUserAndDateRange(
             @Param("userId") Long userId,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
+    );
+
+    @Query("""
+    SELECT new com.ohgiraffer.attendance.domain.model.DailyAttendanceCountView(
+        a.attendanceDate,
+        SUM(CASE WHEN a.status <> com.ohgiraffer.attendance.domain.model.AttendanceStatus.ABSENT THEN 1 ELSE 0 END),
+        SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.ABSENT THEN 1 ELSE 0 END)
+    )
+    FROM AttendanceJpaEntity a
+    WHERE a.userId IN :userIds
+      AND a.attendanceDate BETWEEN :start AND :end
+    GROUP BY a.attendanceDate
+    ORDER BY a.attendanceDate
+    """)
+    List<DailyAttendanceCountView> countDailyByUserIdsAndDateRange(
+            @Param("userIds") List<Long> userIds,
             @Param("start") LocalDate start,
             @Param("end") LocalDate end
     );

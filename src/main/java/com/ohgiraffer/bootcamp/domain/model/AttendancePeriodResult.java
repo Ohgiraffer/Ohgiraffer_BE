@@ -5,7 +5,7 @@ import java.time.LocalDate;
 public record AttendancePeriodResult(
         Long id,
         Integer periodNo,
-        LocalDate startDate,
-        LocalDate endDate
+        LocalDate periodStart,
+        LocalDate periodEnd
 ) {
 }
