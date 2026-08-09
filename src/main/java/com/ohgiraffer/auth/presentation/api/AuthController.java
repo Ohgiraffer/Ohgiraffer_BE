@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,9 @@ import java.time.LocalDateTime;
 @Tag(name="Auth - 인증·인가 ", description = "인증·인가를 위한 Auth api 관련 컨트롤러")
 public class AuthController {
     private final AuthCommandUsecase authCommandUsecase;
+
+    @Value("${app.cookie.secure}")
+    private boolean cookieSecure;
 
     @Operation(summary = "로그인", description = "아이디와 비밀번호를 기입하여 로그인 합니다")
     @ApiResponses({
@@ -74,7 +78,7 @@ public class AuthController {
 
         ResponseCookie expiredCookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(cookieSecure)
                 .sameSite("Strict")
                 .path("/auth")
                 .maxAge(0)
@@ -93,7 +97,7 @@ public class AuthController {
 
         return ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
-                .secure(false)        // 로컬 개발 시 false, 배포 시 true
+                .secure(cookieSecure)
                 .sameSite("Strict")
                 .path("/auth")
                 .maxAge(ttlSeconds)

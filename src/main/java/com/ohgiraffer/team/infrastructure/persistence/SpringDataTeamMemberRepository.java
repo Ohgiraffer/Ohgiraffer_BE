@@ -87,4 +87,18 @@ public interface SpringDataTeamMemberRepository
             ORDER BY u.name ASC, u.id ASC
             """)
     List<UnassignedStudentProjection> findUnassignedStudents();
+
+    @Query("""
+        SELECT
+            tm.userId AS userId,
+            t.name AS teamName
+        FROM TeamMemberViewJpaEntity tm
+        JOIN TeamJpaEntity t
+            ON t.id = tm.teamId
+        WHERE tm.userId IN :userIds
+          AND tm.leftAt IS NULL
+        """)
+    List<UserTeamNameProjection> findActiveTeamNamesByUserIds(
+            @Param("userIds") List<Long> userIds
+    );
 }

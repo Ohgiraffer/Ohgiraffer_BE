@@ -109,6 +109,8 @@ app:
   retry:
     fixed-delay-ms: 5000
   seed-scale: large
+  cookie:
+    secure: ${COOKIE_SECURE:false}
 
 sendbird:
   app-id: ${SENDBIRD_APP_ID}

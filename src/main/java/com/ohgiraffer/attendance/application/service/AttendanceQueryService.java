@@ -1,5 +1,7 @@
 package com.ohgiraffer.attendance.application.service;
 
+import com.ohgiraffer.attendance.application.cache.AttendanceDashboardCache;
+import com.ohgiraffer.attendance.application.cache.AttendanceListCache;
 import com.ohgiraffer.attendance.application.cache.AttendanceSummaryCache;
 import com.ohgiraffer.attendance.application.policy.BootcampAccessPolicy;
 import com.ohgiraffer.attendance.application.usecase.AttendanceQueryUsecase;
@@ -7,10 +9,9 @@ import com.ohgiraffer.attendance.domain.model.*;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.domain.repository.LeaveBalanceRepository;
 import com.ohgiraffer.attendance.domain.repository.SickBalanceRepository;
-import com.ohgiraffer.attendance.presentation.api.response.AttendanceBalanceResponse;
-import com.ohgiraffer.attendance.presentation.api.response.AttendanceSummaryResponse;
-import com.ohgiraffer.attendance.presentation.api.response.MonthlyAttendanceResponse;
+import com.ohgiraffer.attendance.presentation.api.response.*;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
+import com.ohgiraffer.bootcamp.domain.model.AttendancePeriodResult;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
@@ -35,11 +36,14 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
 
     private final AttendanceRepository attendanceRepository;
     private final BootcampAccessPolicy bootcampAccessPolicy;
-    private final AttendanceSummaryCache attendanceSummaryCache;
     private final LeaveBalanceRepository leaveBalanceRepository;
     private final SickBalanceRepository sickBalanceRepository;
     private final UserQueryUsecase userQueryUsecase;
     private final BootcampQueryUsecase bootcampQueryUsecase;
+
+    private final AttendanceSummaryCache attendanceSummaryCache;
+    private final AttendanceListCache attendanceListCache;
+    private final AttendanceDashboardCache attendanceDashboardCache;
 
     @Override
     public MonthlyAttendanceResponse getMonthlyAttendance(Long userId, YearMonth yearMonth) {
@@ -72,6 +76,43 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
     public AttendanceBalanceResponse getLeaveBalanceForManager(Long requesterId, Long targetUserId) {
         bootcampAccessPolicy.validateSameBootcamp(requesterId, targetUserId);
         return buildBalance(targetUserId);
+    }
+
+    @Override
+    public List<StudentAttendanceSummaryResponse> getSummaries(Long requesterId) {
+        Long bootcampId = userQueryUsecase.getBootcampId(requesterId);
+        return attendanceListCache.getCachedSummaries(bootcampId);
+    }
+
+    @Override
+    public AttendanceDashboardSummaryResponse getDashboardSummary(Long requesterId) {
+        Long bootcampId = userQueryUsecase.getBootcampId(requesterId);
+        return attendanceDashboardCache.getCachedDashboardSummary(bootcampId);
+    }
+
+    @Override
+    public List<AttendanceTrendResponse> getAttendanceTrend(Long requesterId, Long periodId) {
+        Long bootcampId = userQueryUsecase.getBootcampId(requesterId);
+
+        List<AttendancePeriodResult> periods = bootcampQueryUsecase.getAttendancePeriods(bootcampId);
+
+        AttendancePeriodResult period = periodId != null
+                ? periods.stream()
+                .filter(p -> p.id().equals(periodId))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.ATTENDANCE_PERIOD_NOT_FOUND))
+                : periods.stream()
+                .filter(p -> !LocalDate.now().isBefore(p.periodStart()) && !LocalDate.now().isAfter(p.periodEnd()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.ATTENDANCE_PERIOD_NOT_FOUND));
+
+        List<Long> studentIds = userQueryUsecase.getStudentIdsByBootcampId(bootcampId);
+
+        return attendanceRepository
+                .countDailyByUserIdsAndDateRange(studentIds, period.periodStart(), period.periodEnd())
+                .stream()
+                .map(AttendanceTrendResponse::from)
+                .toList();
     }
 
     private AttendanceBalanceResponse buildBalance(Long userId) {

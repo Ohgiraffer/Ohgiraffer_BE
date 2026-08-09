@@ -1,7 +1,9 @@
 package com.ohgiraffer.submission.domain.repository;
 
 import com.ohgiraffer.submission.domain.model.Submission;
+import com.ohgiraffer.submission.domain.model.SubmissionListEntry;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,6 +33,11 @@ public interface SubmissionRepository {
 
     List<Submission> findAllBySubmissionBoxId(
             Long submissionBoxId
+    );
+
+    List<SubmissionListEntry>
+    findListEntriesBySubmissionBoxIds(
+            Collection<Long> submissionBoxIds
     );
 
     Optional<Submission> findById(

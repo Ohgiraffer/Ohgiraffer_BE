@@ -5,6 +5,7 @@ import com.ohgiraffer.attendance.domain.repository.LeaveBalanceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -35,7 +36,17 @@ public class LeaveBalanceRepositoryAdapter implements LeaveBalanceRepository {
 
     @Override
     public LeaveBalance save(LeaveBalance leaveBalance) {
-        LeaveBalanceJpaEntity entity = LeaveBalanceJpaEntity.of(
+        LeaveBalanceJpaEntity entity = leaveBalance.getId() != null
+                ? LeaveBalanceJpaEntity.reconstitute(
+                leaveBalance.getId(),
+                leaveBalance.getUserId(),
+                leaveBalance.getPeriodStart(),
+                leaveBalance.getPeriodEnd(),
+                leaveBalance.getTotalDays(),
+                leaveBalance.getUsedDays(),
+                leaveBalance.getCarriedOverDays()
+        )
+                : LeaveBalanceJpaEntity.of(
                 leaveBalance.getUserId(),
                 leaveBalance.getPeriodStart(),
                 leaveBalance.getPeriodEnd(),
@@ -44,6 +55,12 @@ public class LeaveBalanceRepositoryAdapter implements LeaveBalanceRepository {
                 leaveBalance.getCarriedOverDays()
         );
         return toDomain(springDataLeaveBalanceRepository.save(entity));
+    }
+
+    @Override
+    public boolean tryConsume(Long userId, LocalDate periodStart, BigDecimal amount) {
+        int updated = springDataLeaveBalanceRepository.tryConsume(userId, periodStart, amount);
+        return updated > 0;
     }
 
     private LeaveBalance toDomain(LeaveBalanceJpaEntity entity) {
