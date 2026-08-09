@@ -2,6 +2,7 @@ package com.ohgiraffer.attendance.infrastructure.persistence;
 
 import com.ohgiraffer.attendance.domain.model.AttendanceCalendarView;
 import com.ohgiraffer.attendance.domain.model.AttendanceSummaryView;
+import com.ohgiraffer.attendance.domain.model.DailyAttendanceCountView;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.infrastructure.projection.AttendanceSummaryProjection;
 import lombok.RequiredArgsConstructor;
@@ -38,5 +39,13 @@ public class AttendanceRepositoryAdapter implements AttendanceRepository {
                 p.getLeaveDays(),
                 p.getSickDays()
         );
+    }
+
+    @Override
+    public List<DailyAttendanceCountView> countDailyByUserIdsAndDateRange(List<Long> userIds, LocalDate start, LocalDate end) {
+        if (userIds.isEmpty()) {
+            return List.of();
+        }
+        return springDataAttendanceRepository.countDailyByUserIdsAndDateRange(userIds, start, end);
     }
 }

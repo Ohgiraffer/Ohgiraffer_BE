@@ -63,14 +63,14 @@ public class AttendanceSummaryCache {
         List<AttendancePeriodResult> periods = bootcampQueryUsecase.getAttendancePeriods(bootcampId);
 
         return periods.stream()
-                .filter(period -> !today.isBefore(period.startDate()))
+                .filter(period -> !today.isBefore(period.periodStart()))
                 .map(period -> {
-                    LocalDate periodEnd = today.isBefore(period.endDate()) ? today : period.endDate();
+                    LocalDate periodEnd = today.isBefore(period.periodEnd()) ? today : period.periodEnd();
 
                     AttendanceSummaryView periodSummary =
-                            attendanceRepository.countByUserAndDateRange(userId, period.startDate(), periodEnd);
+                            attendanceRepository.countByUserAndDateRange(userId, period.periodStart(), periodEnd);
 
-                    long periodTotalDays = countWeekdays(period.startDate(), periodEnd);
+                    long periodTotalDays = countWeekdays(period.periodStart(), periodEnd);
                     BigDecimal periodRate = calculateAttendanceRate(periodSummary, periodTotalDays);
 
                     return new PeriodAttendanceRate(period.periodNo(), periodRate);

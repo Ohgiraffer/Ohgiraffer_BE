@@ -1,5 +1,4 @@
 package com.ohgiraffer.user.infrastructure.adapter;
-
 import com.ohgiraffer.attendance.application.port.GetUserNamesPort;
 import com.ohgiraffer.user.infrastructure.persistence.SpringDataUserRepository;
 import com.ohgiraffer.user.infrastructure.persistence.UserJpaEntity;

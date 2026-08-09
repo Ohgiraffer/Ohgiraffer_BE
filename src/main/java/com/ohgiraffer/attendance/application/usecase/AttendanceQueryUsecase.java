@@ -17,4 +17,6 @@ public interface AttendanceQueryUsecase {
 
     List<StudentAttendanceSummaryResponse> getSummaries(Long requesterId);
     AttendanceDashboardSummaryResponse getDashboardSummary(Long requesterId);
+
+    List<AttendanceTrendResponse> getAttendanceTrend(Long requesterId, Long periodId);
 }

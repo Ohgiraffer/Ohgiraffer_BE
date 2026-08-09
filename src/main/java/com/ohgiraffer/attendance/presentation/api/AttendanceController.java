@@ -161,4 +161,21 @@ public class AttendanceController {
     ) {
         return ResponseEntity.ok(attendanceQueryUsecase.getDashboardSummary(principal.getId()));
     }
+
+    @Operation(summary = "단위기간별 출석 추이 조회 (관리자용)", description = "매니저/강사가 선택한 단위기간 내 날짜별 출석/결석 인원수를 조회합니다. periodId 생략 시 오늘이 속한 단위기간을 기본값으로 사용합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 단위기간, 다른 부트캠프 소속, 또는 오늘이 속한 단위기간 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/present-absent/count")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<List<AttendanceTrendResponse>> getAttendanceTrend(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @RequestParam(required = false) Long periodId
+    ) {
+        return ResponseEntity.ok(attendanceQueryUsecase.getAttendanceTrend(principal.getId(), periodId));
+    }
 }
