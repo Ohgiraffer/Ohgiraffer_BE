@@ -6,6 +6,8 @@ import com.ohgiraffer.team.application.command.AssignTeamMemberCommand;
 import com.ohgiraffer.team.application.command.CreateTeamCommand;
 import com.ohgiraffer.team.application.command.MoveTeamMemberCommand;
 import com.ohgiraffer.team.application.command.RemoveTeamMemberCommand;
+import com.ohgiraffer.team.application.command.SaveTeamAssignmentsCommand;
+import com.ohgiraffer.team.application.command.TeamAssignmentCommand;
 import com.ohgiraffer.team.application.command.UpdateTeamCommand;
 import com.ohgiraffer.team.application.usecase.AssignTeamMemberResult;
 import com.ohgiraffer.team.application.usecase.AssignTeamMemberUseCase;
@@ -13,6 +15,7 @@ import com.ohgiraffer.team.application.usecase.CreateTeamResult;
 import com.ohgiraffer.team.application.usecase.CreateTeamUseCase;
 import com.ohgiraffer.team.application.usecase.MoveTeamMemberUseCase;
 import com.ohgiraffer.team.application.usecase.RemoveTeamMemberUseCase;
+import com.ohgiraffer.team.application.usecase.SaveTeamAssignmentsUseCase;
 import com.ohgiraffer.team.application.usecase.TeamDetailResult;
 import com.ohgiraffer.team.application.usecase.TeamMemberResult;
 import com.ohgiraffer.team.application.usecase.UpdateTeamUseCase;
@@ -28,7 +31,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,7 +46,8 @@ public class TeamCommandService
         UpdateTeamUseCase,
         AssignTeamMemberUseCase,
         MoveTeamMemberUseCase,
-        RemoveTeamMemberUseCase {
+        RemoveTeamMemberUseCase,
+        SaveTeamAssignmentsUseCase {
 
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
@@ -342,6 +351,269 @@ public class TeamCommandService
 
         teamRepository.saveMember(
                 removedMember
+        );
+    }
+
+    @Override
+    public void saveTeamAssignments(
+            SaveTeamAssignmentsCommand command,
+            Role requesterRole
+    ) {
+        validateManagerAccess(
+                command.requesterId(),
+                requesterRole
+        );
+
+        validateAssignmentRequest(
+                command
+        );
+
+        Map<Long, Team> teamMap =
+                teamRepository.findAll()
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        Team::getId,
+                                        Function.identity()
+                                )
+                        );
+
+        validateRequestedTeams(
+                command.teams(),
+                teamMap
+        );
+
+        Map<Long, Long> desiredTeamByUserId =
+                createDesiredTeamByUserId(
+                        command.teams()
+                );
+
+        Set<Long> unassignedUserIds =
+                new HashSet<>(
+                        command.unassignedUserIds()
+                );
+
+        Set<Long> requestedUserIds =
+                new HashSet<>();
+
+        requestedUserIds.addAll(
+                desiredTeamByUserId.keySet()
+        );
+
+        requestedUserIds.addAll(
+                unassignedUserIds
+        );
+
+        validateAssignableUsers(
+                requestedUserIds
+        );
+
+        List<TeamMember> activeMembers =
+                teamRepository.findActiveMembersForUpdate();
+
+        Map<Long, TeamMember> activeMemberByUserId =
+                activeMembers.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        TeamMember::getUserId,
+                                        Function.identity()
+                                )
+                        );
+
+        LocalDateTime changedAt =
+                LocalDateTime.now();
+
+        desiredTeamByUserId.forEach((userId, targetTeamId) ->
+                applyAssignedState(
+                        userId,
+                        targetTeamId,
+                        activeMemberByUserId.get(userId),
+                        changedAt
+                )
+        );
+
+        unassignedUserIds.forEach(userId ->
+                applyUnassignedState(
+                        activeMemberByUserId.get(userId),
+                        changedAt
+                )
+        );
+    }
+
+    private void applyAssignedState(
+            Long userId,
+            Long targetTeamId,
+            TeamMember currentMember,
+            LocalDateTime changedAt
+    ) {
+        if (currentMember == null) {
+            teamRepository.saveMember(
+                    TeamMember.create(
+                            targetTeamId,
+                            userId
+                    )
+            );
+            return;
+        }
+
+        if (currentMember.getTeamId()
+                .equals(targetTeamId)) {
+            return;
+        }
+
+        teamRepository.saveMember(
+                currentMember.leave(
+                        changedAt
+                )
+        );
+
+        teamRepository.saveMember(
+                TeamMember.create(
+                        targetTeamId,
+                        userId
+                )
+        );
+    }
+
+    private void applyUnassignedState(
+            TeamMember currentMember,
+            LocalDateTime changedAt
+    ) {
+        if (currentMember == null) {
+            return;
+        }
+
+        teamRepository.saveMember(
+                currentMember.leave(
+                        changedAt
+                )
+        );
+    }
+
+    private Map<Long, Long> createDesiredTeamByUserId(
+            List<TeamAssignmentCommand> assignments
+    ) {
+        return assignments.stream()
+                .flatMap(assignment ->
+                        assignment.userIds()
+                                .stream()
+                                .map(userId ->
+                                        Map.entry(
+                                                userId,
+                                                assignment.teamId()
+                                        )
+                                )
+                )
+                .collect(
+                        Collectors.toMap(
+                                Map.Entry::getKey,
+                                Map.Entry::getValue
+                        )
+                );
+    }
+
+    private void validateAssignmentRequest(
+            SaveTeamAssignmentsCommand command
+    ) {
+        Set<Long> teamIds =
+                new HashSet<>();
+
+        for (TeamAssignmentCommand assignment : command.teams()) {
+            validateTeamId(
+                    assignment.teamId()
+            );
+
+            if (!teamIds.add(
+                    assignment.teamId()
+            )) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT_VALUE,
+                        "중복된 팀이 포함되어 있습니다."
+                );
+            }
+
+            assignment.userIds()
+                    .forEach(this::validateUserId);
+        }
+
+        command.unassignedUserIds()
+                .forEach(this::validateUserId);
+
+        validateDuplicateAssignmentUsers(
+                command
+        );
+    }
+
+    private void validateDuplicateAssignmentUsers(
+            SaveTeamAssignmentsCommand command
+    ) {
+        Set<Long> userIds =
+                new HashSet<>();
+
+        for (TeamAssignmentCommand assignment : command.teams()) {
+            for (Long userId : assignment.userIds()) {
+                if (!userIds.add(userId)) {
+                    throw new BusinessException(
+                            ErrorCode.INVALID_INPUT_VALUE,
+                            "중복된 훈련생이 포함되어 있습니다."
+                    );
+                }
+            }
+        }
+
+        for (Long userId : command.unassignedUserIds()) {
+            if (!userIds.add(userId)) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT_VALUE,
+                        "중복된 훈련생이 포함되어 있습니다."
+                );
+            }
+        }
+    }
+
+    private void validateRequestedTeams(
+            List<TeamAssignmentCommand> assignments,
+            Map<Long, Team> teamMap
+    ) {
+        for (TeamAssignmentCommand assignment : assignments) {
+            Team team =
+                    teamMap.get(
+                            assignment.teamId()
+                    );
+
+            if (team == null) {
+                throw new BusinessException(
+                        ErrorCode.TEAM_NOT_FOUND
+                );
+            }
+
+            validateTeamAssignable(
+                    team
+            );
+        }
+    }
+
+    private void validateAssignableUsers(
+            Set<Long> userIds
+    ) {
+        if (userIds.isEmpty()) {
+            return;
+        }
+
+        List<User> users =
+                userRepository.findByIdIn(
+                        userIds.stream()
+                                .toList()
+                );
+
+        if (users.size() != userIds.size()) {
+            throw new BusinessException(
+                    ErrorCode.USER_NOT_FOUND
+            );
+        }
+
+        users.forEach(
+                this::validateAssignableStudent
         );
     }
 

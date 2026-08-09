@@ -5,30 +5,37 @@ import com.ohgiraffer.team.application.command.AssignTeamMemberCommand;
 import com.ohgiraffer.team.application.command.CreateTeamCommand;
 import com.ohgiraffer.team.application.command.MoveTeamMemberCommand;
 import com.ohgiraffer.team.application.command.RemoveTeamMemberCommand;
+import com.ohgiraffer.team.application.command.SaveTeamAssignmentsCommand;
 import com.ohgiraffer.team.application.command.UpdateTeamCommand;
 import com.ohgiraffer.team.application.usecase.AssignTeamMemberResult;
 import com.ohgiraffer.team.application.usecase.AssignTeamMemberUseCase;
 import com.ohgiraffer.team.application.usecase.CreateTeamResult;
 import com.ohgiraffer.team.application.usecase.CreateTeamUseCase;
+import com.ohgiraffer.team.application.usecase.GetTeamHistoryUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamListUseCase;
 import com.ohgiraffer.team.application.usecase.GetUnassignedStudentUseCase;
 import com.ohgiraffer.team.application.usecase.MoveTeamMemberUseCase;
 import com.ohgiraffer.team.application.usecase.RemoveTeamMemberUseCase;
+import com.ohgiraffer.team.application.usecase.SaveTeamAssignmentsUseCase;
 import com.ohgiraffer.team.application.usecase.TeamDetailResult;
+import com.ohgiraffer.team.application.usecase.TeamHistoryResult;
 import com.ohgiraffer.team.application.usecase.TeamListResult;
 import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
 import com.ohgiraffer.team.application.usecase.UpdateTeamUseCase;
 import com.ohgiraffer.team.presentation.api.request.AssignTeamMemberRequest;
 import com.ohgiraffer.team.presentation.api.request.CreateTeamRequest;
 import com.ohgiraffer.team.presentation.api.request.MoveTeamMemberRequest;
+import com.ohgiraffer.team.presentation.api.request.SaveTeamAssignmentsRequest;
 import com.ohgiraffer.team.presentation.api.request.UpdateTeamRequest;
 import com.ohgiraffer.team.presentation.api.response.AssignTeamMemberResponse;
 import com.ohgiraffer.team.presentation.api.response.CreateTeamResponse;
 import com.ohgiraffer.team.presentation.api.response.TeamDetailResponse;
+import com.ohgiraffer.team.presentation.api.response.TeamHistoryResponse;
 import com.ohgiraffer.team.presentation.api.response.TeamListResponse;
 import com.ohgiraffer.team.presentation.api.response.UnassignedStudentListResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -40,8 +47,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -51,11 +60,13 @@ public class TeamController {
 
     private final GetTeamListUseCase getTeamListUseCase;
     private final GetUnassignedStudentUseCase getUnassignedStudentUseCase;
+    private final GetTeamHistoryUseCase getTeamHistoryUseCase;
     private final CreateTeamUseCase createTeamUseCase;
     private final UpdateTeamUseCase updateTeamUseCase;
     private final AssignTeamMemberUseCase assignTeamMemberUseCase;
     private final MoveTeamMemberUseCase moveTeamMemberUseCase;
     private final RemoveTeamMemberUseCase removeTeamMemberUseCase;
+    private final SaveTeamAssignmentsUseCase saveTeamAssignmentsUseCase;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR', 'MANAGER')")
@@ -72,6 +83,28 @@ public class TeamController {
                 TeamListResponse.from(
                         results,
                         principal.getRole()
+                )
+        );
+    }
+
+    @GetMapping("/histories")
+    @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<TeamHistoryResponse> getTeamHistories(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        TeamHistoryResult result =
+                getTeamHistoryUseCase.getTeamHistories(
+                        principal.getId(),
+                        principal.getRole(),
+                        startDate,
+                        endDate
+                );
+
+        return ResponseEntity.ok(
+                TeamHistoryResponse.from(
+                        result
                 )
         );
     }
@@ -120,6 +153,26 @@ public class TeamController {
                                 result
                         )
                 );
+    }
+
+    @PatchMapping("/assignments")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<Void> saveTeamAssignments(
+            @Valid @RequestBody SaveTeamAssignmentsRequest request,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        SaveTeamAssignmentsCommand command =
+                request.toCommand(
+                        principal.getId()
+                );
+
+        saveTeamAssignmentsUseCase.saveTeamAssignments(
+                command,
+                principal.getRole()
+        );
+
+        return ResponseEntity.noContent()
+                .build();
     }
 
     @PatchMapping("/{teamId:\\d+}")

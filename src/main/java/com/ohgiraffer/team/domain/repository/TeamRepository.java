@@ -27,6 +27,10 @@ public interface TeamRepository {
             Long teamId
     );
 
+    List<TeamMember> findActiveMembers();
+
+    List<TeamMember> findActiveMembersForUpdate();
+
     List<TeamMember> findActiveMembersByTeamId(
             Long teamId
     );
