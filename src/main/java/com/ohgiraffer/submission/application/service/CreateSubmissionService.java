@@ -184,7 +184,8 @@ public class CreateSubmissionService
              */
             Submission saved =
                     persistenceService.save(
-                            submission
+                            submission,
+                            submissionBox
                     );
 
             return CreateSubmissionResult.from(

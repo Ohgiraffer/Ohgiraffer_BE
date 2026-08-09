@@ -150,7 +150,8 @@ public class UpdateSubmissionService
 
             savedSubmission =
                     persistenceService.save(
-                            updatedSubmission
+                            updatedSubmission,
+                            submissionBox
                     );
         } catch (RuntimeException exception) {
             deleteNewFilesAfterFailure(
