@@ -99,6 +99,7 @@ public enum ErrorCode {
     SUBMISSION_FILE_DOWNLOAD_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "SUBMISSION_017", "파일 제출 항목만 다운로드할 수 있습니다."),
     SUBMISSION_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_018", "제출 파일을 찾을 수 없습니다."),
     SUBMISSION_FILE_PREVIEW_NOT_SUPPORTED(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "SUBMISSION_019", "미리보기를 지원하지 않는 파일 형식입니다."),
+    SUBMISSION_BOX_STRUCTURE_CHANGE_NOT_ALLOWED(HttpStatus.CONFLICT, "SUBMISSION_020", "제출물이 존재하는 제출함의 제출 단위 또는 제출 항목 구조는 변경할 수 없습니다."),
 
     SPACE_NOT_FOUND(HttpStatus.NOT_FOUND, "SPACE_001", "공간을 찾을 수 없습니다."),
     SPACE_NAME_DUPLICATED(HttpStatus.CONFLICT, "SPACE_002", "이미 사용 중인 공간명입니다."),

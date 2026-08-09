@@ -7,6 +7,8 @@ import org.springframework.stereotype.Repository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import org.springframework.dao.DataIntegrityViolationException;
+import com.ohgiraffer.submission.domain.model.SubmissionListEntry;
+import java.util.Collection;
 
 import java.util.Optional;
 import java.util.List;
@@ -126,6 +128,22 @@ public class SubmissionRepositoryAdapter
                 .stream()
                 .map(SubmissionJpaEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public List<SubmissionListEntry>
+    findListEntriesBySubmissionBoxIds(
+            Collection<Long> submissionBoxIds
+    ) {
+        if (submissionBoxIds == null
+                || submissionBoxIds.isEmpty()) {
+            return List.of();
+        }
+
+        return repository
+                .findListEntriesBySubmissionBoxIds(
+                        submissionBoxIds
+                );
     }
 
     @Override
