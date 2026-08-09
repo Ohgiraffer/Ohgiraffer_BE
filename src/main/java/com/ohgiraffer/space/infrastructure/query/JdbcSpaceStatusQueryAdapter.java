@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,19 +23,21 @@ public class JdbcSpaceStatusQueryAdapter
     private final JdbcTemplate jdbcTemplate;
 
     @Override
-    public List<SpaceStatusData> findAllSpaceStatuses() {
+    public List<SpaceStatusData> findAllSpaceStatuses(
+            LocalDate locationDate
+    ) {
         String sql = """
                 SELECT
                     s.space_id,
                     s.space_name,
-                    COALESCE(s.max_capacity, 0) AS max_capacity,
+                    s.max_capacity,
                     u.user_id,
                     u.name AS user_name,
                     u.role AS user_role
                 FROM space_reservation s
                 LEFT JOIN trainee_location tl
                     ON tl.space_id = s.space_id
-                    AND tl.location_date = CURRENT_DATE()
+                    AND tl.location_date = ?
                 LEFT JOIN users u
                     ON u.user_id = tl.user_id
                     AND u.status = 'ACTIVE'
@@ -48,15 +52,26 @@ public class JdbcSpaceStatusQueryAdapter
 
         jdbcTemplate.query(
                 sql,
+                preparedStatement ->
+                        preparedStatement.setDate(
+                                1,
+                                Date.valueOf(locationDate)
+                        ),
                 resultSet -> {
                     Long spaceId =
-                            resultSet.getLong("space_id");
+                            resultSet.getLong(
+                                    "space_id"
+                            );
 
                     String spaceName =
-                            resultSet.getString("space_name");
+                            resultSet.getString(
+                                    "space_name"
+                            );
 
                     int capacity =
-                            resultSet.getInt("max_capacity");
+                            resultSet.getInt(
+                                    "max_capacity"
+                            );
 
                     MutableSpaceStatus space =
                             grouped.computeIfAbsent(
@@ -69,10 +84,11 @@ public class JdbcSpaceStatusQueryAdapter
                                             )
                             );
 
-                    Long userId = resultSet.getObject(
-                            "user_id",
-                            Long.class
-                    );
+                    Long userId =
+                            resultSet.getObject(
+                                    "user_id",
+                                    Long.class
+                            );
 
                     if (userId == null) {
                         return;

@@ -46,7 +46,8 @@ public class SpaceRepositoryAdapter
     public Optional<Space> findByIdForUpdate(
             Long spaceId
     ) {
-        return repository.findByIdForUpdate(spaceId)
+        return repository
+                .findByIdForUpdate(spaceId)
                 .map(SpaceJpaEntity::toDomain);
     }
 
@@ -62,10 +63,11 @@ public class SpaceRepositoryAdapter
             Long spaceId,
             LocalDate locationDate
     ) {
-        return countOccupants(
-                spaceId,
-                locationDate
-        ) > 0;
+        return repository
+                .countAllLocationReferences(
+                        spaceId,
+                        locationDate
+                ) > 0;
     }
 
     @Override
@@ -74,7 +76,7 @@ public class SpaceRepositoryAdapter
             LocalDate locationDate
     ) {
         return repository
-                .countOccupantsBySpaceIdAndDate(
+                .countActiveOccupants(
                         spaceId,
                         locationDate
                 );

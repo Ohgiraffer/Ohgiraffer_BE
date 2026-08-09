@@ -27,16 +27,47 @@ public interface SpringDataSpaceRepository
             Long spaceId
     );
 
+    /*
+     * 공간 삭제 안전 검사에 사용합니다.
+     *
+     * 사용자 상태와 관계없이 해당 공간을 참조하는
+     * 오늘 위치 행이 하나라도 있는지 확인합니다.
+     */
     @Query(
             value = """
                     SELECT COUNT(*)
-                    FROM trainee_location
-                    WHERE space_id = :spaceId
-                      AND location_date = :locationDate
+                    FROM trainee_location tl
+                    WHERE tl.space_id = :spaceId
+                      AND tl.location_date = :locationDate
                     """,
             nativeQuery = true
     )
-    long countOccupantsBySpaceIdAndDate(
+    long countAllLocationReferences(
+            @Param("spaceId")
+            Long spaceId,
+            @Param("locationDate")
+            LocalDate locationDate
+    );
+
+    /*
+     * 화면 현황과 공간 정원 검사에 사용합니다.
+     *
+     * GET /spaces와 동일하게 ACTIVE 사용자만
+     * 현재 인원으로 계산합니다.
+     */
+    @Query(
+            value = """
+                    SELECT COUNT(*)
+                    FROM trainee_location tl
+                    INNER JOIN users u
+                        ON u.user_id = tl.user_id
+                    WHERE tl.space_id = :spaceId
+                      AND tl.location_date = :locationDate
+                      AND u.status = 'ACTIVE'
+                    """,
+            nativeQuery = true
+    )
+    long countActiveOccupants(
             @Param("spaceId")
             Long spaceId,
             @Param("locationDate")

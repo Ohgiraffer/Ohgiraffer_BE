@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -16,14 +18,22 @@ import java.util.List;
 public class QuerySpaceStatusService
         implements GetSpaceStatusUseCase {
 
-    private final SpaceStatusQueryPort spaceStatusQueryPort;
+    private static final ZoneId SERVICE_ZONE =
+            ZoneId.of("Asia/Seoul");
+
+    private final SpaceStatusQueryPort
+            spaceStatusQueryPort;
 
     @Override
     public List<SpaceStatusResult> getSpaceStatuses(
             Long requesterId
     ) {
+        LocalDate today =
+                LocalDate.now(SERVICE_ZONE);
+
         List<SpaceStatusData> statuses =
-                spaceStatusQueryPort.findAllSpaceStatuses();
+                spaceStatusQueryPort
+                        .findAllSpaceStatuses(today);
 
         return statuses.stream()
                 .map(status ->
