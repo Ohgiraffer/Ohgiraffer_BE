@@ -8,13 +8,18 @@ import com.ohgiraffer.user.domain.model.StudentStatusView;
 import com.ohgiraffer.user.domain.model.UserStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -24,9 +29,40 @@ public class AttendanceDashboardCache {
 
     private final UserQueryUsecase userQueryUsecase;
     private final StudentAttendanceRateResolver studentAttendanceRateResolver;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    @Cacheable(value = "attendanceDashboardSummary", key = "#bootcampId + '-' + T(java.time.LocalDate).now()")
+    private static final String CACHE_PREFIX = "attendanceDashboardSummary::";
+    private static final Duration TTL = Duration.ofHours(25);
+
+    private final Map<String, ReentrantLock> lockMap = new ConcurrentHashMap<>();
+
     public AttendanceDashboardSummaryResponse getCachedDashboardSummary(Long bootcampId) {
+        String key = CACHE_PREFIX + bootcampId + "-" + LocalDate.now();
+
+        AttendanceDashboardSummaryResponse cached =
+                (AttendanceDashboardSummaryResponse) redisTemplate.opsForValue().get(key);
+        if (cached != null) {
+            return cached;
+        }
+
+        ReentrantLock lock = lockMap.computeIfAbsent(key, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            cached = (AttendanceDashboardSummaryResponse) redisTemplate.opsForValue().get(key);
+            if (cached != null) {
+                return cached;
+            }
+
+            AttendanceDashboardSummaryResponse result = loadFromDb(bootcampId);
+            redisTemplate.opsForValue().set(key, result, TTL);
+            return result;
+        } finally {
+            lock.unlock();
+            lockMap.remove(key, lock);
+        }
+    }
+
+    private AttendanceDashboardSummaryResponse loadFromDb(Long bootcampId) {
         List<StudentStatusView> statuses = userQueryUsecase.getStudentStatusesByBootcampId(bootcampId);
 
         int totalStudents = statuses.size();
