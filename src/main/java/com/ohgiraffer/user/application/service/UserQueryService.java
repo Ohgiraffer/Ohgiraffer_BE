@@ -104,7 +104,12 @@ public class UserQueryService implements UserQueryUsecase {
         Map<Long, String> teamNames = getTeamNamesByUserIdsPort.findTeamNamesByUserIds(userIds);
 
         return users.stream()
-                .map(user -> UserListResponse.of(user, teamNames.get(user.getId())))
+                .map(user -> {
+                    String profileImgUrl = user.getProfileImg() != null
+                            ? s3UrlResolver.resolve(user.getProfileImg())
+                            : null;
+                    return UserListResponse.of(user, teamNames.get(user.getId()), profileImgUrl);
+                })
                 .toList();
     }
 }
