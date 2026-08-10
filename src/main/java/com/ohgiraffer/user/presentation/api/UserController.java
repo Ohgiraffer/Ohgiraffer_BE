@@ -172,7 +172,6 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @PreAuthorize("hasRole('MANAGER')")
     @GetMapping("/list")
     public ResponseEntity<List<UserListResponse>> getUsers(
             @AuthenticationPrincipal CustomUserPrincipal principal
