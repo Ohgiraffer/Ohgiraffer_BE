@@ -7,17 +7,20 @@ public record SpaceOccupantResult(
         Long userId,
         String userName,
         Role role,
+        String profileImgUrl,
         boolean mine
 ) {
 
     public static SpaceOccupantResult from(
             SpaceOccupantData data,
-            Long requesterId
+            Long requesterId,
+            String profileImgUrl
     ) {
         return new SpaceOccupantResult(
                 data.userId(),
                 data.userName(),
                 data.role(),
+                profileImgUrl,
                 data.userId().equals(requesterId)
         );
     }

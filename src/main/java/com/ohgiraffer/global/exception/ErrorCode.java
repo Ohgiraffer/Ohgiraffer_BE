@@ -61,6 +61,7 @@ public enum ErrorCode {
     CHAT_MESSAGE_ALREADY_DELETED(HttpStatus.BAD_REQUEST, "CHAT_005", "이미 삭제된 메시지입니다."),
     CHAT_SENDBIRD_API_ERROR(HttpStatus.BAD_GATEWAY, "CHAT_006", "Sendbird API 호출 중 오류가 발생했습니다."),
     CHAT_WEBHOOK_SIGNATURE_INVALID(HttpStatus.BAD_REQUEST, "CHAT_007", "웹훅 서명 검증에 실패했습니다."),
+    CHAT_CANNOT_REPLY_TO_REPLY(HttpStatus.BAD_REQUEST, "CHAT_008", "답글에는 답글을 작성할 수 없습니다."),
 
     NOTI_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTI_001", "알림을 찾을 수 없습니다."),
     NOTI_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTI_002", "본인의 알림만 접근할 수 있습니다."),
@@ -116,6 +117,8 @@ public enum ErrorCode {
     TEAM_MEMBER_ALREADY_LEFT(HttpStatus.CONFLICT, "TEAM_009", "이미 종료된 팀원 배정입니다."),
     TEAM_MEMBER_TEAM_MISMATCH(HttpStatus.BAD_REQUEST, "TEAM_010", "팀원 배정 정보가 요청한 팀과 일치하지 않습니다."),
     TEAM_SAME_TARGET(HttpStatus.BAD_REQUEST, "TEAM_011", "같은 팀으로는 이동할 수 없습니다."),
+    TEAM_ALREADY_ARCHIVED(HttpStatus.CONFLICT, "TEAM_012", "이미 보관된 팀입니다."),
+    TEAM_ALREADY_DELETED(HttpStatus.CONFLICT, "TEAM_013", "이미 삭제된 팀입니다."),
     TEAM_NOT_FOUND(HttpStatus.NOT_FOUND, "TEAM_001", "팀을 찾을 수 없습니다."),
     TEAM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "TEAM_002", "팀 관리에 접근할 권한이 없습니다."),
 
@@ -148,10 +151,16 @@ public enum ErrorCode {
     CONSULTATION_ALREADY_BOOKED(HttpStatus.CONFLICT, "CONSULTATION_002", "이미 예약된 시간입니다."),
     CONSULTATION_ALREADY_CLOSED(HttpStatus.CONFLICT, "CONSULTATION_003", "이미 종료되었거나 취소된 상담입니다."),
     CONSULTATION_TIME_IN_USE(HttpStatus.CONFLICT, "CONSULTATION_004", "이미 예약이 잡힌 시간은 가능 시간에서 해제할 수 없습니다."),
+    EVALUATION_SHEET_LINK_NOT_FOUND(HttpStatus.NOT_FOUND, "EVALUATION_001", "연동된 평가 시트가 없습니다."),
+    EVALUATION_SHEET_COLUMN_NOT_FOUND(HttpStatus.BAD_REQUEST, "EVALUATION_002", "시트에서 지정한 컬럼을 찾을 수 없습니다."),
+    EVALUATION_SHEET_TAB_NOT_FOUND(HttpStatus.BAD_REQUEST, "EVALUATION_003", "시트에서 지정한 탭을 찾을 수 없습니다."),
+    EVALUATION_SYNC_LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "EVALUATION_004", "존재하지 않는 동기화 이력입니다."),
 
     CALENDAR_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CALENDAR_001", "존재하지 않는 일정입니다."),
     CALENDAR_EVENT_NOT_CREATOR(HttpStatus.FORBIDDEN, "CALENDAR_002", "일정을 등록한 사람만 삭제할 수 있습니다."),
-    AI_API_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI_001", "AI API 호출 중 오류가 발생했습니다.");
+    AI_API_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI_001", "AI API 호출 중 오류가 발생했습니다."),
+
+    LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "LOCK_001", "다른 요청이 처리 중입니다. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus status;
     private final String code;

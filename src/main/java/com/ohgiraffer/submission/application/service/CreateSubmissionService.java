@@ -2,6 +2,7 @@ package com.ohgiraffer.submission.application.service;
 
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.global.metrics.CampFlowMetrics;
 import com.ohgiraffer.global.s3.S3FileHandler;
 import com.ohgiraffer.global.s3.S3KeyGenerator;
 import com.ohgiraffer.submission.application.command.CreateSubmissionCommand;
@@ -22,6 +23,7 @@ import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.model.UserStatus;
 import com.ohgiraffer.user.domain.repository.UserRepository;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -54,19 +56,31 @@ public class CreateSubmissionService
     private final Clock clock;
 
     /*
+     * 실제 S3 업로드 구간의 소요 시간을 기록합니다.
+     *
+     * MetricsAop은 create() 전체 시간을 측정하므로,
+     * S3 업로드 자체가 병목인지 구분하기 위해 별도로 사용합니다.
+     */
+    private static final String FILE_UPLOAD_DURATION_METRIC = "campflow.submission.file.upload.duration";
+
+    /*
+     * 요청 실패 후 보상 삭제 과정에서 S3 파일을
+     * 정리하지 못한 횟수를 기록합니다.
+     *
+     * 정리 실패는 내부에서 suppressed 예외로 처리되므로
+     * MetricsAop만으로는 정확히 확인할 수 없습니다.
+     */
+    private static final String FILE_CLEANUP_FAILED_METRIC = "campflow.submission.file.cleanup.failed.count";
+
+    /*
      * 제출 전 중복 확인에 사용합니다.
      *
      * 최종 중복 방지는 DB 유니크 제약과
      * SubmissionRepositoryAdapter의 예외 변환이 담당합니다.
      */
-    private final SubmissionRepository
-            submissionRepository;
-
-    private final StudentTeamRepository
-            studentTeamRepository;
-
-    private final UserRepository
-            userRepository;
+    private final SubmissionRepository submissionRepository;
+    private final StudentTeamRepository studentTeamRepository;
+    private final UserRepository userRepository;
 
     /*
      * 실제 DB 저장과 트랜잭션 커밋을 담당하는 별도 서비스입니다.
@@ -74,11 +88,11 @@ public class CreateSubmissionService
      * CreateSubmissionService 자체에는 @Transactional을 붙이지 않습니다.
      * 그래야 S3 업로드 중 DB 트랜잭션과 커넥션을 점유하지 않습니다.
      */
-    private final SubmissionPersistenceService
-            persistenceService;
+    private final SubmissionPersistenceService persistenceService;
+    private final S3FileHandler s3FileHandler;
+    private final CampFlowMetrics campFlowMetrics;
 
-    private final S3FileHandler
-            s3FileHandler;
+
 
     @Override
     public CreateSubmissionResult create(
@@ -694,10 +708,27 @@ public class CreateSubmissionService
             );
         }
 
-        s3FileHandler.upload(
-                file,
-                key
-        );
+        /*
+         * 서비스 전체 시간이 아니라 실제 S3 업로드 구간만 측정합니다.
+         *
+         * 업로드 성공 여부와 관계없이 소요 시간을 남겨야
+         * 장애 직전의 지연도 Grafana에서 확인할 수 있으므로
+         * Timer 종료는 finally에서 수행합니다.
+         */
+        Timer.Sample uploadSample =
+                campFlowMetrics.startTimer();
+
+        try {
+            s3FileHandler.upload(
+                    file,
+                    key
+            );
+        } finally {
+            campFlowMetrics.stopTimer(
+                    uploadSample,
+                    FILE_UPLOAD_DURATION_METRIC
+            );
+        }
 
         /*
          * 업로드가 성공한 키만 등록합니다.
@@ -884,8 +915,11 @@ public class CreateSubmissionService
     /**
      * 현재 요청에서 업로드한 S3 파일을 보상 삭제합니다.
      *
-     * 삭제 실패는 원래 예외를 가리지 않도록
-     * suppressed 예외로 연결합니다.
+     * 파일 업로드 이후 DB 저장 등에 실패하면
+     * 이미 업로드된 파일이 고아 파일로 남지 않도록 삭제합니다.
+     *
+     * 삭제에 실패하더라도 원래 제출 실패 원인을 가리지 않도록
+     * 삭제 예외는 suppressed 예외로 연결합니다.
      */
     private void deleteUploadedFiles(
             List<String> uploadedKeys,
@@ -895,6 +929,18 @@ public class CreateSubmissionService
             try {
                 s3FileHandler.delete(key);
             } catch (RuntimeException deleteException) {
+                /*
+                 * 보상 삭제 실패는 메서드 밖으로 직접 전달되지 않으므로
+                 * MetricsAop의 실패 Counter만으로는 확인할 수 없습니다.
+                 *
+                 * rollback 태그를 사용하여 요청 실패 후 신규 파일을
+                 * 정리하는 과정에서 발생한 실패임을 구분합니다.
+                 */
+                campFlowMetrics.incrementCounter(
+                        FILE_CLEANUP_FAILED_METRIC,
+                        "phase", "rollback"
+                );
+
                 originalException.addSuppressed(
                         deleteException
                 );

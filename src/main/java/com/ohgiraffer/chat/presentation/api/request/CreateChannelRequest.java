@@ -16,7 +16,6 @@ public record CreateChannelRequest(
         @NotEmpty(message = "참여자는 최소 1명 이상이어야 합니다.")
         List<@NotNull(message = "userId는 null일 수 없습니다.") Long> userIds,
 
-        @NotBlank(message = "채널 이름은 공백일 수 없습니다.")
         String name
 ) {
 }

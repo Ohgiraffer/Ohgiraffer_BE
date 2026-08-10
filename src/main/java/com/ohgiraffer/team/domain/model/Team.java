@@ -9,73 +9,103 @@ import java.time.LocalDateTime;
 public class Team {
 
     private final Long id;
+    private final Long teamPeriodId;
     private final String name;
     private final String sendbirdChannelUrl;
     private final String notionPageId;
     private final LocalDate startDate;
     private final LocalDate endDate;
     private final LocalDateTime dissolvedAt;
+    private final LocalDateTime archivedAt;
+    private final LocalDateTime deletedAt;
+    private final LocalDateTime channelDeletedAt;
+    private final LocalDateTime workspaceDeletedAt;
 
     private Team(
             Long id,
+            Long teamPeriodId,
             String name,
             String sendbirdChannelUrl,
             String notionPageId,
             LocalDate startDate,
             LocalDate endDate,
-            LocalDateTime dissolvedAt
+            LocalDateTime dissolvedAt,
+            LocalDateTime archivedAt,
+            LocalDateTime deletedAt,
+            LocalDateTime channelDeletedAt,
+            LocalDateTime workspaceDeletedAt
     ) {
         this.id = id;
+        this.teamPeriodId = teamPeriodId;
         this.name = name;
         this.sendbirdChannelUrl = sendbirdChannelUrl;
         this.notionPageId = notionPageId;
         this.startDate = startDate;
         this.endDate = endDate;
         this.dissolvedAt = dissolvedAt;
+        this.archivedAt = archivedAt;
+        this.deletedAt = deletedAt;
+        this.channelDeletedAt = channelDeletedAt;
+        this.workspaceDeletedAt = workspaceDeletedAt;
     }
 
     public static Team create(
+            Long teamPeriodId,
             String name,
             LocalDate startDate,
             LocalDate endDate
     ) {
+        validateTeamPeriodId(
+                teamPeriodId
+        );
+
         validateName(
                 name
         );
 
-        validatePeriod(
-                startDate,
-                endDate
-        );
-
         return new Team(
                 null,
+                teamPeriodId,
                 name.trim(),
                 null,
                 null,
                 startDate,
                 endDate,
+                null,
+                null,
+                null,
+                null,
                 null
         );
     }
 
     public static Team restore(
             Long id,
+            Long teamPeriodId,
             String name,
             String sendbirdChannelUrl,
             String notionPageId,
             LocalDate startDate,
             LocalDate endDate,
-            LocalDateTime dissolvedAt
+            LocalDateTime dissolvedAt,
+            LocalDateTime archivedAt,
+            LocalDateTime deletedAt,
+            LocalDateTime channelDeletedAt,
+            LocalDateTime workspaceDeletedAt
     ) {
         return new Team(
                 id,
+                teamPeriodId,
                 name,
                 sendbirdChannelUrl,
                 notionPageId,
                 startDate,
                 endDate,
-                dissolvedAt
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
         );
     }
 
@@ -84,30 +114,127 @@ public class Team {
             LocalDate startDate,
             LocalDate endDate
     ) {
+        validateAssignable();
+
+        validateName(
+                name
+        );
+
+        return new Team(
+                id,
+                teamPeriodId,
+                name.trim(),
+                sendbirdChannelUrl,
+                notionPageId,
+                startDate,
+                endDate,
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
+        );
+    }
+
+    public Team markDeleted(
+            LocalDateTime deletedAt
+    ) {
+        if (isDeleted()) {
+            return this;
+        }
+
+        return new Team(
+                id,
+                teamPeriodId,
+                name,
+                sendbirdChannelUrl,
+                notionPageId,
+                startDate,
+                endDate,
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
+        );
+    }
+
+    public Team markChannelCleanupRequested(
+            LocalDateTime channelDeletedAt
+    ) {
+        if (this.channelDeletedAt != null) {
+            return this;
+        }
+
+        return new Team(
+                id,
+                teamPeriodId,
+                name,
+                sendbirdChannelUrl,
+                notionPageId,
+                startDate,
+                endDate,
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
+        );
+    }
+
+    public Team markWorkspaceCleanupRequested(
+            LocalDateTime workspaceDeletedAt
+    ) {
+        if (this.workspaceDeletedAt != null) {
+            return this;
+        }
+
+        return new Team(
+                id,
+                teamPeriodId,
+                name,
+                sendbirdChannelUrl,
+                notionPageId,
+                startDate,
+                endDate,
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
+        );
+    }
+
+    public void validateAssignable() {
         if (isDissolved()) {
             throw new BusinessException(
                     ErrorCode.TEAM_ALREADY_DISSOLVED
             );
         }
 
-        validateName(
-                name
-        );
+        if (isArchived()) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_ALREADY_ARCHIVED
+            );
+        }
 
-        validatePeriod(
-                startDate,
-                endDate
-        );
+        if (isDeleted()) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_ALREADY_DELETED
+            );
+        }
+    }
 
-        return new Team(
-                id,
-                name.trim(),
-                sendbirdChannelUrl,
-                notionPageId,
-                startDate,
-                endDate,
-                dissolvedAt
-        );
+    private static void validateTeamPeriodId(
+            Long teamPeriodId
+    ) {
+        if (teamPeriodId == null
+                || teamPeriodId <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "팀 기간 ID가 올바르지 않습니다."
+            );
+        }
     }
 
     private static void validateName(
@@ -129,27 +256,12 @@ public class Team {
         }
     }
 
-    private static void validatePeriod(
-            LocalDate startDate,
-            LocalDate endDate
-    ) {
-        if (startDate == null
-                || endDate == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "팀 시작일과 종료일을 입력해주세요."
-            );
-        }
-
-        if (startDate.isAfter(endDate)) {
-            throw new BusinessException(
-                    ErrorCode.TEAM_INVALID_PERIOD
-            );
-        }
-    }
-
     public Long getId() {
         return id;
+    }
+
+    public Long getTeamPeriodId() {
+        return teamPeriodId;
     }
 
     public String getName() {
@@ -176,7 +288,31 @@ public class Team {
         return dissolvedAt;
     }
 
+    public LocalDateTime getArchivedAt() {
+        return archivedAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public LocalDateTime getChannelDeletedAt() {
+        return channelDeletedAt;
+    }
+
+    public LocalDateTime getWorkspaceDeletedAt() {
+        return workspaceDeletedAt;
+    }
+
     public boolean isDissolved() {
         return dissolvedAt != null;
+    }
+
+    public boolean isArchived() {
+        return archivedAt != null;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 }

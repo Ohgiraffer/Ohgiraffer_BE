@@ -14,12 +14,18 @@ public interface SpringDataTeamRepository
 
     List<TeamJpaEntity> findAllByOrderByIdAsc();
 
-    boolean existsByName(
-            String name
+    List<TeamJpaEntity> findAllByTeamPeriodIdAndDeletedAtIsNullOrderByIdAsc(
+            Long teamPeriodId
     );
 
-    boolean existsByNameAndIdNot(
+    boolean existsByNameAndTeamPeriodId(
             String name,
+            Long teamPeriodId
+    );
+
+    boolean existsByNameAndTeamPeriodIdAndIdNot(
+            String name,
+            Long teamPeriodId,
             Long id
     );
 

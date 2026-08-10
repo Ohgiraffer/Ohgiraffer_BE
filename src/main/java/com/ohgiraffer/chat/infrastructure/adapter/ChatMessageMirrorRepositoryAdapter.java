@@ -107,4 +107,10 @@ public class ChatMessageMirrorRepositoryAdapter implements ChatMessageMirrorRepo
         return jpaRepository.saveAndFlush(entity).toDomain();
     }
 
+    // 통합검색 결과에 섞인 여러 채널을 Sendbird URL 목록으로 한 번에 조회 - N+1 방지용 벌크 조회
+    @Override
+    public long countByParentMessageIdAndDeletedAtIsNull(Long parentMessageId) {
+        return jpaRepository.countByParentMessageIdAndDeletedAtIsNull(parentMessageId);
+    }
+
 }

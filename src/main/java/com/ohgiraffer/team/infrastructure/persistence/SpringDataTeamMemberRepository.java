@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,6 +33,18 @@ public interface SpringDataTeamMemberRepository
             @Param("teamId") Long teamId
     );
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT tm
+            FROM TeamMemberViewJpaEntity tm
+            WHERE tm.teamId = :teamId
+              AND tm.leftAt IS NULL
+            ORDER BY tm.joinedAt ASC, tm.id ASC
+            """)
+    List<TeamMemberViewJpaEntity> findActiveMembersByTeamIdForUpdate(
+            @Param("teamId") Long teamId
+    );
+
     @Query("""
             SELECT
                 tm.id AS teamMemberId,
@@ -51,6 +64,32 @@ public interface SpringDataTeamMemberRepository
     List<TeamMemberProjection> findActiveMembersByTeamIds(
             @Param("teamIds") List<Long> teamIds
     );
+
+    @Query("""
+            SELECT
+                tm.id AS teamMemberId,
+                tm.teamId AS teamId,
+                tm.userId AS userId,
+                u.name AS userName,
+                u.email AS email,
+                tm.joinedAt AS joinedAt,
+                tm.leftAt AS leftAt
+            FROM TeamMemberViewJpaEntity tm
+            JOIN UserJpaEntity u
+                ON u.id = tm.userId
+            WHERE tm.leftAt IS NULL
+            ORDER BY tm.teamId ASC, tm.joinedAt ASC, tm.id ASC
+            """)
+    List<TeamMemberProjection> findActiveMembers();
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT tm
+            FROM TeamMemberViewJpaEntity tm
+            WHERE tm.leftAt IS NULL
+            ORDER BY tm.teamId ASC, tm.joinedAt ASC, tm.id ASC
+            """)
+    List<TeamMemberViewJpaEntity> findActiveMembersForUpdate();
 
     Optional<TeamMemberViewJpaEntity> findById(
             Long teamMemberId
@@ -89,15 +128,61 @@ public interface SpringDataTeamMemberRepository
     List<UnassignedStudentProjection> findUnassignedStudents();
 
     @Query("""
-        SELECT
-            tm.userId AS userId,
-            t.name AS teamName
-        FROM TeamMemberViewJpaEntity tm
-        JOIN TeamJpaEntity t
-            ON t.id = tm.teamId
-        WHERE tm.userId IN :userIds
-          AND tm.leftAt IS NULL
-        """)
+            SELECT
+                tm.teamId AS teamId,
+                t.name AS teamName,
+                tm.userId AS userId,
+                u.name AS userName
+            FROM TeamMemberViewJpaEntity tm
+            JOIN TeamJpaEntity t
+                ON t.id = tm.teamId
+            JOIN UserJpaEntity u
+                ON u.id = tm.userId
+            WHERE t.teamPeriodId = :teamPeriodId
+              AND tm.joinedAt <= :snapshotAt
+              AND (tm.leftAt IS NULL OR tm.leftAt > :snapshotAt)
+            ORDER BY t.id ASC, u.name ASC, u.id ASC
+            """)
+    List<TeamSnapshotMemberProjection> findSnapshotMembers(
+            @Param("teamPeriodId") Long teamPeriodId,
+            @Param("snapshotAt") LocalDateTime snapshotAt
+    );
+
+    @Query("""
+            SELECT
+                tm.id AS teamMemberId,
+                tm.teamId AS teamId,
+                t.name AS teamName,
+                tm.userId AS userId,
+                u.name AS userName,
+                tm.joinedAt AS joinedAt,
+                tm.leftAt AS leftAt
+            FROM TeamMemberViewJpaEntity tm
+            JOIN TeamJpaEntity t
+                ON t.id = tm.teamId
+            JOIN UserJpaEntity u
+                ON u.id = tm.userId
+            WHERE t.teamPeriodId = :teamPeriodId
+              AND tm.joinedAt <= :endAt
+              AND (tm.leftAt IS NULL OR tm.leftAt >= :startAt)
+            ORDER BY tm.userId ASC, tm.joinedAt ASC, tm.id ASC
+            """)
+    List<TeamMemberHistoryProjection> findHistoriesIntersectingPeriod(
+            @Param("teamPeriodId") Long teamPeriodId,
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt
+    );
+
+    @Query("""
+            SELECT
+                tm.userId AS userId,
+                t.name AS teamName
+            FROM TeamMemberViewJpaEntity tm
+            JOIN TeamJpaEntity t
+                ON t.id = tm.teamId
+            WHERE tm.userId IN :userIds
+              AND tm.leftAt IS NULL
+            """)
     List<UserTeamNameProjection> findActiveTeamNamesByUserIds(
             @Param("userIds") List<Long> userIds
     );
