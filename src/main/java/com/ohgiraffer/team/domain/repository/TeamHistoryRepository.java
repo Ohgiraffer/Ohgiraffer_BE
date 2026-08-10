@@ -9,10 +9,12 @@ import java.util.List;
 public interface TeamHistoryRepository {
 
     List<TeamSnapshotMember> findSnapshotMembers(
+            Long teamPeriodId,
             LocalDateTime snapshotAt
     );
 
     List<TeamMemberHistory> findHistoriesIntersectingPeriod(
+            Long teamPeriodId,
             LocalDateTime startAt,
             LocalDateTime endAt
     );
