@@ -48,4 +48,7 @@ public interface ChatMessageMirrorRepository {
     // 즉시 flush하여 제약 위반 예외를 호출부에서 바로 잡을 수 있게 함 (경쟁상태 멱등 처리용)
     ChatMessageMirror saveAndFlush(ChatMessageMirror message);
 
+    // 특정 메시지에 달린 삭제되지 않은 답글 개수
+    long countByParentMessageIdAndDeletedAtIsNull(Long parentMessageId);
+
 }
