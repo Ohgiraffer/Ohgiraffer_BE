@@ -37,6 +37,15 @@ public class ChatController {
     private final ChatMessageMirrorQueryUseCase chatMessageMirrorQueryUseCase;
     private final ChatReplyCommandUseCase chatReplyCommandUseCase;
     private final ChatUserQueryUseCase chatUserQueryUseCase;
+    private final ChatUserCommandUseCase chatUserCommandUseCase;
+
+    // 채팅 진입 시 Sendbird 세션 토큰 발급
+    @PostMapping("/sendbird/session-token")
+    public ResponseEntity<SendbirdSessionTokenResponse> issueSendbirdSessionToken(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        return ResponseEntity.ok(chatUserCommandUseCase.issueSendbirdSessionToken(principal.getId()));
+    }
 
     // 채팅방 생성
     @PostMapping("/channels")
@@ -54,12 +63,13 @@ public class ChatController {
     @GetMapping("/channels")
     public ResponseEntity<List<ChatChannelListItemResponse>> getChannelList(
             @AuthenticationPrincipal CustomUserPrincipal principal,
-            @RequestParam(required = false) String type
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String search
     ) {
         ChatChannel.ChannelType channelType = parseChannelType(type);
 
         List<ChatChannelListItemResponse> result = chatChannelQueryUseCase
-                .getChannelList(principal.getId(), channelType)
+                .getChannelList(principal.getId(), channelType, search)
                 .stream()
                 .map(ChatChannelListItemResponse::from)
                 .toList();
@@ -145,6 +155,15 @@ public class ChatController {
         return ResponseEntity.ok(ChatChannelDetailResponse.from(result));
     }
 
+    // 특정 메시지 답글 개수 단건 조회
+    @GetMapping("/messages/{messageId}/reply-count")
+    public ResponseEntity<ReplyCountResponse> getReplyCount(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable String messageId
+    ) {
+        return ResponseEntity.ok(chatMessageMirrorQueryUseCase.getReplyCount(messageId, principal.getId()));
+    }
+
     // 채팅 상대 검색 (새채팅 모달 전용)
     @GetMapping("/users")
     public ResponseEntity<List<SendbirdUserResponse>> searchUsers(@RequestParam String search) {
@@ -201,6 +220,15 @@ public class ChatController {
                 .map(ChatMessageResponse::from);
 
         return ResponseEntity.ok(result);
+    }
+
+    // 헤더 상시 노출용 - 전체 채널 안읽은 메시지 합계 (알림 도메인의 안읽은 개수 API와 동일한 패턴)
+    @GetMapping("/unread-count")
+    public ResponseEntity<ChatUnreadCountResponse> getTotalUnreadCount(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        long totalUnreadCount = chatChannelQueryUseCase.getTotalUnreadCount(principal.getId());
+        return ResponseEntity.ok(new ChatUnreadCountResponse(totalUnreadCount));
     }
 
     // 온라인 상태 조회

@@ -12,6 +12,7 @@ import com.ohgiraffer.survey.application.usecase.SurveyFormDetailResult;
 import com.ohgiraffer.survey.application.usecase.SurveyFormListResult;
 import com.ohgiraffer.survey.application.usecase.SurveyResponseDetailResult;
 import com.ohgiraffer.survey.application.usecase.SurveyResponseStatus;
+import com.ohgiraffer.survey.domain.model.sheet.SurveySheetLink;
 import com.ohgiraffer.survey.domain.model.SurveyForm;
 import com.ohgiraffer.survey.domain.repository.SurveyFormRepository;
 import com.ohgiraffer.user.domain.model.Role;
@@ -40,17 +41,21 @@ public class QuerySurveyFormService implements GetSurveyFormListUseCase, GetSurv
     private final UserRepository userRepository;
     private final GoogleFormPort googleFormPort;
     private final SurveyFormAccessValidator accessValidator;
+    private final SurveySheetLinkPersistenceService surveySheetLinkPersistenceService;
 
     public QuerySurveyFormService(
             SurveyFormRepository surveyFormRepository,
             UserRepository userRepository,
             GoogleFormPort googleFormPort,
-            SurveyFormAccessValidator accessValidator
+            SurveyFormAccessValidator accessValidator,
+            SurveySheetLinkPersistenceService
+                    surveySheetLinkPersistenceService
     ) {
         this.surveyFormRepository = surveyFormRepository;
         this.userRepository = userRepository;
         this.googleFormPort = googleFormPort;
         this.accessValidator = accessValidator;
+        this.surveySheetLinkPersistenceService = surveySheetLinkPersistenceService;
     }
 
     @Override
@@ -137,13 +142,84 @@ public class QuerySurveyFormService implements GetSurveyFormListUseCase, GetSurv
 
     @Override
     public SurveyFormDetailResult getSurveyForm(
-            Long surveyFormId
+            Long surveyFormId,
+            Long requesterId,
+            Role requesterRole
     ) {
+        validateSurveyDetailAuthority(
+                requesterId,
+                requesterRole
+        );
+
         SurveyForm surveyForm =
-                findSurveyForm(surveyFormId);
+                findSurveyForm(
+                        surveyFormId
+                );
+
+        if (requesterRole == Role.STUDENT) {
+            validateStudentSurveyAccess(
+                    surveyForm
+            );
+        }
+
+        SurveySheetLink surveySheetLink =
+                isStaff(requesterRole)
+                        ? surveySheetLinkPersistenceService
+                        .findBySurveyFormId(
+                                surveyFormId
+                        )
+                        .orElse(null)
+                        : null;
 
         return SurveyFormDetailResult.from(
-                surveyForm
+                surveyForm,
+                requesterRole,
+                surveySheetLink
+        );
+    }
+
+    private boolean isStaff(
+            Role role
+    ) {
+        return role == Role.MANAGER
+                || role == Role.INSTRUCTOR;
+    }
+
+    private void validateStudentSurveyAccess(
+            SurveyForm surveyForm
+    ) {
+        boolean published =
+                surveyForm.getStatus()
+                        == SurveyFormStatus.PUBLISHED;
+
+        boolean beforeOrAtDeadline =
+                !LocalDateTime.now()
+                        .isAfter(
+                                surveyForm.getDueAt()
+                        );
+
+        if (!published || !beforeOrAtDeadline) {
+            throw new BusinessException(
+                    ErrorCode.SURVEY_FORM_ACCESS_DENIED
+            );
+        }
+    }
+
+    private void validateSurveyDetailAuthority(
+            Long requesterId,
+            Role requesterRole
+    ) {
+        if (requesterRole == Role.STUDENT) {
+            accessValidator.validateStudentAuthority(
+                    requesterId,
+                    requesterRole
+            );
+            return;
+        }
+
+        accessValidator.validateStaffAuthority(
+                requesterId,
+                requesterRole
         );
     }
 

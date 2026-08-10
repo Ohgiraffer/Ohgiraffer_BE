@@ -15,14 +15,16 @@ public record ChatChannelListItemResponse(
         String channelType,
         String lastMessageContent,
         Instant lastMessageSentAt,
-        long unreadCount
+        long unreadCount,
+        String profileImageUrl,
+        Boolean isOnline
 ) {
 
     // ChatChannelListItemResult(application 계층 결과)를 presentation 응답으로 변환
     public static ChatChannelListItemResponse from(ChatChannelListItemResult result) {
         return new ChatChannelListItemResponse(
-                result.channelId(), result.name(), result.channelType(),
-                result.lastMessageContent(), result.lastMessageSentAt(), result.unreadCount()
+                result.channelId(), result.name(), result.channelType(), result.lastMessageContent(),
+                result.lastMessageSentAt(), result.unreadCount(), result.profileImageUrl(), result.isOnline()
         );
     }
 

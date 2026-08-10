@@ -41,14 +41,15 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:3000",
-                "https://campflow.co.kr"
+                "https://campflow.co.kr",
+                "https://www.campflow.co.kr"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(
                 "Authorization", "Content-Type", "Accept", "X-Requested-With", "Cache-Control", "Idempotency-Key","X-Refresh-Token","Origin",
                 "Access-Control-Request-Method", "Access-Control-Request-Headers", "Refresh-Token"
         ));
-        configuration.setExposedHeaders(List.of("Authorization","New-Access-Token"));
+        configuration.setExposedHeaders(List.of("Authorization","New-Access-Token", "Content-Disposition"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -87,9 +88,15 @@ public class SecurityConfig {
                         .requestMatchers("/auth/logout").authenticated()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/metrics", "/actuator/metrics/**", "/actuator/prometheus").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/chat/webhooks/sendbird").permitAll()
+
+                        // 공지 본문에 삽입된 이미지. 브라우저의 img 태그는 Authorization 헤더를
+                        // 붙이지 않아 인증을 걸면 본문 이미지가 전부 깨진다.
+                        // 조회(GET)만 열고, 업로드는 위 경로에 걸리지 않아 그대로 인증을 요구한다.
+                        .requestMatchers(HttpMethod.GET, "/notices/images/*").permitAll()
 
                         // 나머지는 인증 필요
                         .anyRequest().authenticated()

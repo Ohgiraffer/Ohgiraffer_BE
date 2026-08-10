@@ -1,5 +1,6 @@
 package com.ohgiraffer.chat.infrastructure.persistence;
 
+import com.ohgiraffer.chat.infrastructure.projection.ChannelUnreadCountProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -24,6 +25,9 @@ public interface ChatChannelMemberJpaRepository extends JpaRepository<ChatChanne
 
     // 유저가 현재 참여중인 채널 멤버십 전체 조회 - Spring Data 이름 기반 자동구현
     List<ChatChannelMemberJpaEntity> findAllByUserIdAndLeftAtIsNull(Long userId);
+
+    // 여러 채널의 멤버 일괄 조회 - Spring Data 이름 기반 자동구현
+    List<ChatChannelMemberJpaEntity> findAllByChatChannelIdInAndLeftAtIsNull(List<Long> chatChannelIds);
 
     // 유저 기준 채널별 안읽음수 - 부등호 조인 조건으로 DB에서 카운트까지 끝냄
     // COALESCE로 lastReadMessageId가 null(한번도 안읽음)인 경우 전체 카운트되도록 처리

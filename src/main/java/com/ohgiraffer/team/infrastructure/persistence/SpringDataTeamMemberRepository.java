@@ -167,5 +167,16 @@ public interface SpringDataTeamMemberRepository
     List<TeamMemberHistoryProjection> findHistoriesIntersectingPeriod(
             @Param("startAt") LocalDateTime startAt,
             @Param("endAt") LocalDateTime endAt
+        SELECT
+            tm.userId AS userId,
+            t.name AS teamName
+        FROM TeamMemberViewJpaEntity tm
+        JOIN TeamJpaEntity t
+            ON t.id = tm.teamId
+        WHERE tm.userId IN :userIds
+          AND tm.leftAt IS NULL
+        """)
+    List<UserTeamNameProjection> findActiveTeamNamesByUserIds(
+            @Param("userIds") List<Long> userIds
     );
 }

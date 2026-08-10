@@ -1,10 +1,20 @@
 package com.ohgiraffer.attendance.application.service;
 
+import com.ohgiraffer.attendance.application.cache.AttendanceDashboardCache;
+import com.ohgiraffer.attendance.application.cache.AttendanceListCache;
+import com.ohgiraffer.attendance.application.cache.AttendanceSummaryCache;
+import com.ohgiraffer.attendance.application.policy.BootcampAccessPolicy;
 import com.ohgiraffer.attendance.application.usecase.AttendanceQueryUsecase;
-import com.ohgiraffer.attendance.domain.model.AttendanceCalendarView;
-import com.ohgiraffer.attendance.domain.model.CalendarStatusGroup;
+import com.ohgiraffer.attendance.domain.model.*;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
-import com.ohgiraffer.attendance.presentation.api.response.MonthlyAttendanceResponse;
+import com.ohgiraffer.attendance.domain.repository.LeaveBalanceRepository;
+import com.ohgiraffer.attendance.domain.repository.SickBalanceRepository;
+import com.ohgiraffer.attendance.presentation.api.response.*;
+import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
+import com.ohgiraffer.bootcamp.domain.model.AttendancePeriodResult;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,33 +33,131 @@ import java.util.stream.Stream;
 @Service
 public class AttendanceQueryService implements AttendanceQueryUsecase {
 
+
     private final AttendanceRepository attendanceRepository;
+    private final BootcampAccessPolicy bootcampAccessPolicy;
+    private final LeaveBalanceRepository leaveBalanceRepository;
+    private final SickBalanceRepository sickBalanceRepository;
+    private final UserQueryUsecase userQueryUsecase;
+    private final BootcampQueryUsecase bootcampQueryUsecase;
+
+    private final AttendanceSummaryCache attendanceSummaryCache;
+    private final AttendanceListCache attendanceListCache;
+    private final AttendanceDashboardCache attendanceDashboardCache;
 
     @Override
     public MonthlyAttendanceResponse getMonthlyAttendance(Long userId, YearMonth yearMonth) {
+        return buildMonthlyAttendance(userId, yearMonth);
+    }
+
+    @Override
+    public MonthlyAttendanceResponse getMonthlyAttendanceForManager(Long requesterId, Long targetUserId, YearMonth yearMonth) {
+        bootcampAccessPolicy.validateSameBootcamp(requesterId, targetUserId);
+        return buildMonthlyAttendance(targetUserId, yearMonth);
+    }
+
+    @Override
+    public AttendanceSummaryResponse getSummary(Long userId) {
+        return attendanceSummaryCache.getCachedSummary(userId);
+    }
+
+    @Override
+    public AttendanceSummaryResponse getSummaryForManager(Long requesterId, Long targetUserId) {
+        bootcampAccessPolicy.validateSameBootcamp(requesterId, targetUserId);
+        return attendanceSummaryCache.getCachedSummary(targetUserId);
+    }
+
+    @Override
+    public AttendanceBalanceResponse getLeaveBalance(Long userId) {
+        return buildBalance(userId);
+    }
+
+    @Override
+    public AttendanceBalanceResponse getLeaveBalanceForManager(Long requesterId, Long targetUserId) {
+        bootcampAccessPolicy.validateSameBootcamp(requesterId, targetUserId);
+        return buildBalance(targetUserId);
+    }
+
+    @Override
+    public List<StudentAttendanceSummaryResponse> getSummaries(Long requesterId) {
+        Long bootcampId = userQueryUsecase.getBootcampId(requesterId);
+        return attendanceListCache.getCachedSummaries(bootcampId).items();
+    }
+
+    @Override
+    public AttendanceDashboardSummaryResponse getDashboardSummary(Long requesterId) {
+        Long bootcampId = userQueryUsecase.getBootcampId(requesterId);
+        return attendanceDashboardCache.getCachedDashboardSummary(bootcampId);
+    }
+
+    @Override
+    public List<AttendanceTrendResponse> getAttendanceTrend(Long requesterId, Long periodId) {
+        Long bootcampId = userQueryUsecase.getBootcampId(requesterId);
+
+        List<AttendancePeriodResult> periods = bootcampQueryUsecase.getAttendancePeriods(bootcampId);
+
+        AttendancePeriodResult period = periodId != null
+                ? periods.stream()
+                .filter(p -> p.id().equals(periodId))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.ATTENDANCE_PERIOD_NOT_FOUND))
+                : periods.stream()
+                .filter(p -> !LocalDate.now().isBefore(p.periodStart()) && !LocalDate.now().isAfter(p.periodEnd()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.ATTENDANCE_PERIOD_NOT_FOUND));
+
+        List<Long> studentIds = userQueryUsecase.getStudentIdsByBootcampId(bootcampId);
+
+        return attendanceRepository
+                .countDailyByUserIdsAndDateRange(studentIds, period.periodStart(), period.periodEnd())
+                .stream()
+                .map(AttendanceTrendResponse::from)
+                .toList();
+    }
+
+    private AttendanceBalanceResponse buildBalance(Long userId) {
+        LocalDate today = LocalDate.now();
+
+        int remainingLeave = leaveBalanceRepository.findCurrentByUserId(userId, today)
+                .map(LeaveBalance::remainingDays)
+                .orElse(0);
+
+        int remainingSick = sickBalanceRepository.findCurrentByUserId(userId, today)
+                .map(SickBalance::remainingDays)
+                .orElse(0);
+
+        return AttendanceBalanceResponse.of(remainingLeave, remainingSick);
+    }
+
+    private MonthlyAttendanceResponse buildMonthlyAttendance(Long userId, YearMonth yearMonth) {
         LocalDate start = yearMonth.atDay(1);
         LocalDate end = yearMonth.atEndOfMonth();
 
         List<AttendanceCalendarView> views =
                 attendanceRepository.findCalendarByUserIdAndDateRange(userId, start, end);
 
-        Map<LocalDate, CalendarStatusGroup> statusByDate = views.stream()
+        Map<LocalDate, AttendanceCalendarView> viewByDate = views.stream()
                 .collect(Collectors.toMap(
                         AttendanceCalendarView::attendanceDate,
-                        v -> CalendarStatusGroup.from(v.status()),
+                        v -> v,
                         (existing, duplicate) -> {
-                            log.warn("[getMonthlyAttendance] 동일 날짜 출결 중복 발견, 기존 값 유지 | userId={}, date={}",
-                                    userId, existing);
+                            log.warn("[buildMonthlyAttendance] 동일 날짜 출결 중복 발견, 기존 값 유지 | userId={}, date={}",
+                                    userId, existing.attendanceDate());
                             return existing;
                         }
                 ));
 
         List<MonthlyAttendanceResponse.DayInfo> days = Stream.iterate(start, d -> d.plusDays(1))
                 .limit(end.getDayOfMonth())
-                .map(date -> new MonthlyAttendanceResponse.DayInfo(
-                        date,
-                        statusByDate.get(date)
-                ))
+                .map(date -> {
+                    AttendanceCalendarView view = viewByDate.get(date);
+                    return new MonthlyAttendanceResponse.DayInfo(
+                            date,
+                            view != null ? CalendarStatusGroup.from(view.status()) : null,
+                            view != null ? view.checkInTime() : null,
+                            view != null ? view.checkOutTime() : null
+                    );
+                })
                 .toList();
 
         return new MonthlyAttendanceResponse(yearMonth.toString(), days);

@@ -92,12 +92,16 @@ springdoc:
 logging:
   level:
     root: INFO
-    com.wanted.momocity: DEBUG
+    com.ohgiraffer: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.stat: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
+#    org.hibernate.orm.jdbc.bind: TRACE
     org.springframework.data.redis: DEBUG
     org.flywaydb: INFO
+
+campflow:
+  logging:
+    service-io: false
 
 # ===== Async =====
 app:
@@ -109,6 +113,8 @@ app:
   retry:
     fixed-delay-ms: 5000
   seed-scale: large
+  cookie:
+    secure: ${COOKIE_SECURE:false}
 
 sendbird:
   app-id: ${SENDBIRD_APP_ID}
@@ -120,3 +126,30 @@ ai:
     api-key: ${GEMINI_API_KEY}
     model: ${GEMINI_MODEL:gemini-3.6-flash}
     timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:90}
+
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      
+# ==== management =====
+management:
+  endpoints:
+    web:
+      exposure:
+        # health, prometheus 엔드포인트를 외부에 노출
+        # 운영에서는 필요한 것만 최소로 여는 게 안전
+        include: health, prometheus, metrics, info
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      # 여러 서비스를 같은 Prometheus로 모을 때 구분용
+      application: campflow-app
+    distribution:
+      # HTTP 요청 지연시간(percentile) 히스토그램 활성화
+      # → RED 방법론의 Duration(응답시간) 지표를 나중에 바로 쓸 수 있음
+      percentiles-histogram:
+        http.server.requests: true

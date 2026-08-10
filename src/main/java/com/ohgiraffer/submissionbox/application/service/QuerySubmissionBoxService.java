@@ -12,17 +12,26 @@ import com.ohgiraffer.submission.domain.model.Submission;
 import com.ohgiraffer.submission.domain.repository.StudentTeamRepository;
 import com.ohgiraffer.submission.domain.repository.SubmissionRepository;
 import com.ohgiraffer.submissionbox.domain.model.SubmissionTargetScope;
+import com.ohgiraffer.submissionbox.application.port.SubmissionTeamTargetPort;
+import com.ohgiraffer.user.domain.model.UserStatus;
+import com.ohgiraffer.user.domain.repository.UserRepository;
 import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.submissionbox.application.usecase.SubmissionStatusResult;
+import com.ohgiraffer.submission.domain.model.SubmissionListEntry;
+import java.util.Map;
 
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
+
 
 
 @Service
@@ -35,71 +44,227 @@ public class QuerySubmissionBoxService
     private final SubmissionBoxRepository submissionBoxRepository;
     private final SubmissionRepository submissionRepository;
     private final StudentTeamRepository studentTeamRepository;
+    private final UserRepository userRepository;
+    private final SubmissionTeamTargetPort submissionTeamTargetPort;
+    private final Clock clock;
 
     @Override
     public List<SubmissionBoxListResult> getSubmissionBoxes(
             Long userId,
             Role role
     ) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now =
+                LocalDateTime.now(clock);
 
-        return submissionBoxRepository.findAll()
-                .stream()
-                .map(submissionBox -> {
-                    if (role != Role.STUDENT) {
-                        return SubmissionBoxListResult.from(
-                                submissionBox,
-                                now
-                        );
-                    }
+        List<SubmissionBox> submissionBoxes =
+                submissionBoxRepository.findAll();
 
-                    Long submissionId =
-                            findStudentSubmissionId(
-                                    submissionBox,
-                                    userId
-                            );
-
-                    return SubmissionBoxListResult.from(
-                            submissionBox,
-                            now,
-                            submissionId
-                    );
-                })
-                .toList();
-    }
-
-    private Long findStudentSubmissionId(
-            SubmissionBox submissionBox,
-            Long studentId
-    ) {
-        if (submissionBox.getTargetScope()
-                == SubmissionTargetScope.INDIVIDUAL) {
-
-            return submissionRepository
-                    .findBySubmissionBoxIdAndOwnerUserId(
-                            submissionBox.getId(),
-                            studentId
-                    )
-                    .map(Submission::getId)
-                    .orElse(null);
+        if (submissionBoxes.isEmpty()) {
+            return List.of();
         }
 
-        Optional<Long> teamId =
+        List<Long> submissionBoxIds =
+                submissionBoxes.stream()
+                        .map(SubmissionBox::getId)
+                        .toList();
+
+        List<SubmissionListEntry> submissionEntries =
+                submissionRepository
+                        .findListEntriesBySubmissionBoxIds(
+                                submissionBoxIds
+                        );
+
+        Map<Long, List<SubmissionListEntry>>
+                entriesBySubmissionBoxId =
+                submissionEntries.stream()
+                        .collect(Collectors.groupingBy(
+                                SubmissionListEntry
+                                        ::submissionBoxId
+                        ));
+
+        if (role == Role.STUDENT) {
+            return getStudentSubmissionBoxes(
+                    submissionBoxes,
+                    entriesBySubmissionBoxId,
+                    userId,
+                    now
+            );
+        }
+
+        return getStaffSubmissionBoxes(
+                submissionBoxes,
+                entriesBySubmissionBoxId,
+                now
+        );
+    }
+
+    private List<SubmissionBoxListResult>
+    getStudentSubmissionBoxes(
+            List<SubmissionBox> submissionBoxes,
+            Map<Long, List<SubmissionListEntry>>
+                    entriesBySubmissionBoxId,
+            Long studentId,
+            LocalDateTime now
+    ) {
+        Optional<Long> activeTeamId =
                 studentTeamRepository
                         .findActiveTeamIdByStudentId(
                                 studentId
                         );
 
-        if (teamId.isEmpty()) {
+        return submissionBoxes.stream()
+                .map(submissionBox -> {
+                    List<SubmissionListEntry> entries =
+                            entriesBySubmissionBoxId
+                                    .getOrDefault(
+                                            submissionBox.getId(),
+                                            List.of()
+                                    );
+
+                    Long submissionId =
+                            findStudentSubmissionId(
+                                    submissionBox,
+                                    entries,
+                                    studentId,
+                                    activeTeamId
+                            );
+
+                    return SubmissionBoxListResult
+                            .forStudent(
+                                    submissionBox,
+                                    now,
+                                    submissionId
+                            );
+                })
+                .toList();
+    }
+
+    private List<SubmissionBoxListResult>
+    getStaffSubmissionBoxes(
+            List<SubmissionBox> submissionBoxes,
+            Map<Long, List<SubmissionListEntry>>
+                    entriesBySubmissionBoxId,
+            LocalDateTime now
+    ) {
+        Set<Long> activeStudentIds =
+                userRepository
+                        .findAllByRoleAndStatus(
+                                Role.STUDENT,
+                                UserStatus.ACTIVE
+                        )
+                        .stream()
+                        .map(user -> user.getId())
+                        .collect(
+                                Collectors.toUnmodifiableSet()
+                        );
+
+        Set<Long> activeTeamIds =
+                submissionTeamTargetPort
+                        .findActiveTeams()
+                        .stream()
+                        .map(team -> team.teamId())
+                        .collect(
+                                Collectors.toUnmodifiableSet()
+                        );
+
+        return submissionBoxes.stream()
+                .map(submissionBox -> {
+                    boolean teamSubmission =
+                            submissionBox.getTargetScope()
+                                    == SubmissionTargetScope.TEAM;
+
+                    Set<Long> activeTargetIds =
+                            teamSubmission
+                                    ? activeTeamIds
+                                    : activeStudentIds;
+
+                    List<SubmissionListEntry> entries =
+                            entriesBySubmissionBoxId
+                                    .getOrDefault(
+                                            submissionBox.getId(),
+                                            List.of()
+                                    );
+
+                    int submittedCount =
+                            calculateSubmittedCount(
+                                    entries,
+                                    teamSubmission,
+                                    activeTargetIds
+                            );
+
+                    int targetCount =
+                            activeTargetIds.size();
+
+                    return SubmissionBoxListResult
+                            .forStaff(
+                                    submissionBox,
+                                    now,
+                                    submittedCount,
+                                    targetCount
+                            );
+                })
+                .toList();
+    }
+
+    private int calculateSubmittedCount(
+            List<SubmissionListEntry> entries,
+            boolean teamSubmission,
+            Set<Long> activeTargetIds
+    ) {
+        return Math.toIntExact(
+                entries.stream()
+                        .map(entry ->
+                                teamSubmission
+                                        ? entry.teamId()
+                                        : entry.ownerUserId()
+                        )
+                        .filter(targetId ->
+                                targetId != null
+                                        && activeTargetIds
+                                        .contains(targetId)
+                        )
+                        .distinct()
+                        .count()
+        );
+    }
+
+    private Long findStudentSubmissionId(
+            SubmissionBox submissionBox,
+            List<SubmissionListEntry> entries,
+            Long studentId,
+            Optional<Long> activeTeamId
+    ) {
+        if (submissionBox.getTargetScope()
+                == SubmissionTargetScope.INDIVIDUAL) {
+            return entries.stream()
+                    .filter(entry ->
+                            studentId.equals(
+                                    entry.ownerUserId()
+                            )
+                    )
+                    .map(
+                            SubmissionListEntry::submissionId
+                    )
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        if (activeTeamId.isEmpty()) {
             return null;
         }
 
-        return submissionRepository
-                .findBySubmissionBoxIdAndTeamId(
-                        submissionBox.getId(),
-                        teamId.get()
+        Long teamId = activeTeamId.get();
+
+        return entries.stream()
+                .filter(entry ->
+                        teamId.equals(
+                                entry.teamId()
+                        )
                 )
-                .map(Submission::getId)
+                .map(
+                        SubmissionListEntry::submissionId
+                )
+                .findFirst()
                 .orElse(null);
     }
 
@@ -125,7 +290,7 @@ public class QuerySubmissionBoxService
                         );
 
         LocalDateTime now =
-                LocalDateTime.now();
+                LocalDateTime.now(clock);
 
         SubmissionBoxDetailResult basicDetail =
                 SubmissionBoxDetailResult.from(

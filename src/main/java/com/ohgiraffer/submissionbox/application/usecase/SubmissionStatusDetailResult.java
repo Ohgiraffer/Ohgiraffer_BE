@@ -15,6 +15,7 @@ public record SubmissionStatusDetailResult(
         LatePolicy latePolicy,
         int submittedCount,
         Integer targetCount,
+        List<SubmissionBoxItemResult> items,
         int page,
         int size,
         long filteredCount,
@@ -23,6 +24,12 @@ public record SubmissionStatusDetailResult(
 ) {
 
     public SubmissionStatusDetailResult {
-        submissions = List.copyOf(submissions);
+        items = items == null
+                ? List.of()
+                : List.copyOf(items);
+
+        submissions = submissions == null
+                ? List.of()
+                : List.copyOf(submissions);
     }
 }
