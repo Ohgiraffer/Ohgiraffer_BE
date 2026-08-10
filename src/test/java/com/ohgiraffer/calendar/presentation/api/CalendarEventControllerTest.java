@@ -299,7 +299,8 @@ class CalendarEventControllerTest {
                 true,
                 LocalDate.of(2026, 8, 1),
                 null,
-                UserStatus.ACTIVE
+                UserStatus.ACTIVE,
+                null
         ));
     }
 }

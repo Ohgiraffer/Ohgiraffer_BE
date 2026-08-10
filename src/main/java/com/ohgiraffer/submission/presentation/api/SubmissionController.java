@@ -11,6 +11,10 @@ import com.ohgiraffer.submission.presentation.api.response.CreateSubmissionRespo
 import com.ohgiraffer.submission.presentation.api.response.UpdateSubmissionResponse;
 import com.ohgiraffer.submission.application.usecase.DownloadSubmissionFileResult;
 import com.ohgiraffer.submission.application.usecase.DownloadSubmissionFileUseCase;
+import com.ohgiraffer.submission.application.usecase.PreviewSubmissionFileResult;
+import com.ohgiraffer.submission.application.usecase.PreviewSubmissionFileUseCase;
+import com.ohgiraffer.submission.presentation.api.response.PreviewSubmissionFileResponse;
+import org.springframework.http.CacheControl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -39,6 +43,7 @@ public class SubmissionController {
     private final CreateSubmissionUseCase createSubmissionUseCase;
     private final UpdateSubmissionUseCase updateSubmissionUseCase;
     private final DownloadSubmissionFileUseCase downloadSubmissionFileUseCase;
+    private final PreviewSubmissionFileUseCase previewSubmissionFileUseCase;
 
     @PostMapping(
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
@@ -145,5 +150,37 @@ public class SubmissionController {
                         )
                 )
                 .build();
+    }
+
+    @GetMapping(
+            "/items/{submissionItemValueId}/preview"
+    )
+    @PreAuthorize(
+            "hasAnyRole('STUDENT', 'MANAGER', 'INSTRUCTOR')"
+    )
+    public ResponseEntity<PreviewSubmissionFileResponse>
+    previewSubmissionFile(
+            @PathVariable
+            Long submissionItemValueId,
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
+    ) {
+        PreviewSubmissionFileResult result =
+                previewSubmissionFileUseCase
+                        .createPreview(
+                                submissionItemValueId,
+                                principal.getId(),
+                                principal.getRole()
+                        );
+
+        return ResponseEntity.ok()
+                .cacheControl(
+                        CacheControl.noStore()
+                )
+                .body(
+                        PreviewSubmissionFileResponse.from(
+                                result
+                        )
+                );
     }
 }

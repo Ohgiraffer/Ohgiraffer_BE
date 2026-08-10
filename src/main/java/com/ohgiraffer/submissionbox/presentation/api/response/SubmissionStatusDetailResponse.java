@@ -16,6 +16,7 @@ public record SubmissionStatusDetailResponse(
         LatePolicy latePolicy,
         int submittedCount,
         Integer targetCount,
+        List<SubmissionBoxItemResponse> items,
         int page,
         int size,
         long filteredCount,
@@ -24,13 +25,25 @@ public record SubmissionStatusDetailResponse(
 ) {
 
     public SubmissionStatusDetailResponse {
-        submissions = List.copyOf(submissions);
+        items = items == null
+                ? List.of()
+                : List.copyOf(items);
+
+        submissions = submissions == null
+                ? List.of()
+                : List.copyOf(submissions);
     }
 
     public static SubmissionStatusDetailResponse from(
             SubmissionStatusDetailResult result
     ) {
-        List<SubmissionStatusResponse> responses =
+        List<SubmissionBoxItemResponse> itemResponses =
+                result.items()
+                        .stream()
+                        .map(SubmissionBoxItemResponse::from)
+                        .toList();
+
+        List<SubmissionStatusResponse> submissionResponses =
                 result.submissions()
                         .stream()
                         .map(SubmissionStatusResponse::from)
@@ -45,11 +58,12 @@ public record SubmissionStatusDetailResponse(
                 result.latePolicy(),
                 result.submittedCount(),
                 result.targetCount(),
+                itemResponses,
                 result.page(),
                 result.size(),
                 result.filteredCount(),
                 result.totalPages(),
-                responses
+                submissionResponses
         );
     }
 }

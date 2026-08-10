@@ -115,17 +115,25 @@ public class SurveyFormController {
     }
 
     @GetMapping("/{surveyFormId}")
-    @PreAuthorize("hasAnyRole('MANAGER', 'INSTRUCTOR')")
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR', 'STUDENT')"
+    )
     public ResponseEntity<SurveyFormDetailResponse> getSurveyForm(
-            @PathVariable Long surveyFormId
+            @PathVariable Long surveyFormId,
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
     ) {
         SurveyFormDetailResult result =
                 getSurveyFormDetailUseCase.getSurveyForm(
-                        surveyFormId
+                        surveyFormId,
+                        principal.getId(),
+                        principal.getRole()
                 );
 
         return ResponseEntity.ok(
-                SurveyFormDetailResponse.from(result)
+                SurveyFormDetailResponse.from(
+                        result
+                )
         );
     }
 
