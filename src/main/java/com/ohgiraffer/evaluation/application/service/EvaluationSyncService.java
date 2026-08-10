@@ -1,6 +1,7 @@
 package com.ohgiraffer.evaluation.application.service;
 
 import com.ohgiraffer.evaluation.application.port.EvaluationSheetReaderPort;
+import com.ohgiraffer.evaluation.application.port.EvaluationSummaryPort;
 import com.ohgiraffer.evaluation.application.port.TraineeLookupPort;
 import com.ohgiraffer.evaluation.application.query.EvaluationSyncResult;
 import com.ohgiraffer.evaluation.application.usecase.EvaluationSyncUseCase;
@@ -15,6 +16,8 @@ import com.ohgiraffer.evaluation.domain.repository.EvaluationSheetLinkRepository
 import com.ohgiraffer.evaluation.domain.repository.SheetSyncLogRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,24 +48,30 @@ public class EvaluationSyncService implements EvaluationSyncUseCase {
     /** 헤더가 1행이므로 데이터는 2행부터다. 화면에 보이는 줄 번호와 맞춘다. */
     private static final int FIRST_DATA_ROW_NUMBER = 2;
 
+    private static final Logger log =
+            LoggerFactory.getLogger(EvaluationSyncService.class);
+
     private final EvaluationSheetLinkRepository evaluationSheetLinkRepository;
     private final EvaluationRecordRepository evaluationRecordRepository;
     private final SheetSyncLogRepository sheetSyncLogRepository;
     private final EvaluationSheetReaderPort evaluationSheetReaderPort;
     private final TraineeLookupPort traineeLookupPort;
+    private final EvaluationSummaryPort evaluationSummaryPort;
 
     public EvaluationSyncService(
             EvaluationSheetLinkRepository evaluationSheetLinkRepository,
             EvaluationRecordRepository evaluationRecordRepository,
             SheetSyncLogRepository sheetSyncLogRepository,
             EvaluationSheetReaderPort evaluationSheetReaderPort,
-            TraineeLookupPort traineeLookupPort
+            TraineeLookupPort traineeLookupPort,
+            EvaluationSummaryPort evaluationSummaryPort
     ) {
         this.evaluationSheetLinkRepository = evaluationSheetLinkRepository;
         this.evaluationRecordRepository = evaluationRecordRepository;
         this.sheetSyncLogRepository = sheetSyncLogRepository;
         this.evaluationSheetReaderPort = evaluationSheetReaderPort;
         this.traineeLookupPort = traineeLookupPort;
+        this.evaluationSummaryPort = evaluationSummaryPort;
     }
 
     @Override
@@ -184,7 +193,7 @@ public class EvaluationSyncService implements EvaluationSyncUseCase {
                 .filter(change -> change.type() == EvaluationChange.Type.ADDED)
                 .count();
 
-        String summary = EvaluationDiffSummaryWriter.write(changes);
+        String summary = summarize(changes);
 
         Long syncLogId = null;
 
@@ -205,6 +214,32 @@ public class EvaluationSyncService implements EvaluationSyncUseCase {
                 summary,
                 skipped
         );
+    }
+
+    /**
+     * 변경 내역을 요약한다. AI 가 실패하면 직접 만든 목록으로 되돌린다.
+     *
+     * <p>요약은 거들어 주는 값이지 평가 데이터 자체가 아니다. 외부 호출이 느리거나 실패했다고
+     * 이미 반영된 평가까지 되돌리면, 사용자는 다시 눌러야 하고 같은 일이 반복될 수 있다.
+     *
+     * <p>되돌아간 요약은 문장이 투박할 뿐 무엇이 바뀌었는지는 그대로 담긴다.
+     */
+    private String summarize(List<EvaluationChange> changes) {
+        if (changes.isEmpty()) {
+            return EvaluationDiffSummaryWriter.write(changes);
+        }
+
+        try {
+            return evaluationSummaryPort.summarize(changes);
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "평가 변경 요약을 만들지 못해 기본 요약으로 대체합니다. 변경 {}건",
+                    changes.size(),
+                    exception
+            );
+
+            return EvaluationDiffSummaryWriter.write(changes);
+        }
     }
 
     private ParsedRow toRecord(

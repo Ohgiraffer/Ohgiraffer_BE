@@ -1,6 +1,7 @@
 package com.ohgiraffer.evaluation.application.service;
 
 import com.ohgiraffer.evaluation.application.port.EvaluationSheetReaderPort;
+import com.ohgiraffer.evaluation.application.port.EvaluationSummaryPort;
 import com.ohgiraffer.evaluation.application.port.TraineeLookupPort;
 import com.ohgiraffer.evaluation.application.query.EvaluationSyncResult;
 import com.ohgiraffer.evaluation.domain.model.EvaluationColumnMapping;
@@ -67,6 +68,9 @@ class EvaluationSyncServiceTest {
     @Mock
     private SheetSyncLogRepository sheetSyncLogRepository;
 
+    @Mock
+    private EvaluationSummaryPort evaluationSummaryPort;
+
     private EvaluationSyncService evaluationSyncService;
 
     @BeforeEach
@@ -76,8 +80,12 @@ class EvaluationSyncServiceTest {
                 evaluationRecordRepository,
                 sheetSyncLogRepository,
                 evaluationSheetReaderPort,
-                traineeLookupPort
+                traineeLookupPort,
+                evaluationSummaryPort
         );
+
+        when(evaluationSummaryPort.summarize(any()))
+                .thenReturn("AI 가 만든 요약입니다.");
 
         when(evaluationSheetLinkRepository.find())
                 .thenReturn(Optional.of(sheetLink()));
@@ -260,20 +268,50 @@ class EvaluationSyncServiceTest {
     }
 
     @Test
-    @DisplayName("요약문에 점수 변화를 담는다")
-    void syncSummaryContainsScoreChange() {
+    @DisplayName("변경이 있으면 AI 요약을 쓴다")
+    void syncUsesAiSummary() {
+        givenStored(stored("코드 품질", new BigDecimal("70"), "리팩터링 필요"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "88", "리팩터링 필요"));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        assertEquals("AI 가 만든 요약입니다.", result.diffSummary());
+    }
+
+    @Test
+    @DisplayName("AI 요약이 실패해도 동기화는 성공하고 기본 요약으로 대체한다")
+    void syncFallsBackWhenSummaryFails() {
+        when(evaluationSummaryPort.summarize(any()))
+                .thenThrow(new RuntimeException("제미나이 호출 실패"));
+
         givenStored(stored("코드 품질", new BigDecimal("70"), "리팩터링 필요"));
         givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "88", "리팩터링 필요"));
 
         EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
 
         /*
-         * 요구사항이 "단순 셀 변경 목록이 아니라 점수 변화 중심" 이라 무엇이 어떻게
-         * 바뀌었는지가 문장에 드러나야 한다.
+         * 요약은 거들어 주는 값이지 평가 데이터가 아니다. 외부 호출이 실패했다고
+         * 이미 반영된 평가까지 되돌리면 사용자는 다시 눌러야 하고 같은 일이 반복된다.
          */
+        assertEquals(1, result.updatedCount());
         assertTrue(result.diffSummary().contains("김철수"));
         assertTrue(result.diffSummary().contains("70"));
         assertTrue(result.diffSummary().contains("88"));
+        verify(sheetSyncLogRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("변경이 없으면 AI 를 부르지 않는다")
+    void syncDoesNotCallAiWhenNothingChanged() {
+        givenStored(stored("코드 품질", new BigDecimal("85"), "잘함"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "85", "잘함"));
+
+        evaluationSyncService.sync(EXECUTOR_ID);
+
+        /*
+         * 요약할 것이 없는데 부르면 호출 비용만 든다.
+         */
+        verify(evaluationSummaryPort, never()).summarize(any());
     }
 
     @Test
