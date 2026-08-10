@@ -2,9 +2,8 @@ package com.ohgiraffer.team.application.command;
 
 import java.time.LocalDate;
 
-public record CreateTeamCommand(
+public record CreateTeamPeriodCommand(
         Long requesterId,
-        String name,
         LocalDate startDate,
         LocalDate endDate
 ) {

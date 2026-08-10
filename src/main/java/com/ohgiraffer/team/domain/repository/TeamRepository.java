@@ -19,6 +19,10 @@ public interface TeamRepository {
 
     List<Team> findAll();
 
+    List<Team> findVisibleTeamsByPeriodId(
+            Long teamPeriodId
+    );
+
     Optional<Team> findById(
             Long teamId
     );
@@ -26,6 +30,10 @@ public interface TeamRepository {
     Optional<Team> findByIdForUpdate(
             Long teamId
     );
+
+    List<TeamMember> findActiveMembers();
+
+    List<TeamMember> findActiveMembersForUpdate();
 
     List<TeamMember> findActiveMembersByTeamId(
             Long teamId
@@ -47,12 +55,14 @@ public interface TeamRepository {
             Long userId
     );
 
-    boolean existsByName(
-            String name
+    boolean existsByNameAndTeamPeriodId(
+            String name,
+            Long teamPeriodId
     );
 
-    boolean existsByNameAndIdNot(
+    boolean existsByNameAndTeamPeriodIdAndIdNot(
             String name,
+            Long teamPeriodId,
             Long teamId
     );
 

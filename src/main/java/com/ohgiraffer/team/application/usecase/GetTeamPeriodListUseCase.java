@@ -4,11 +4,10 @@ import com.ohgiraffer.user.domain.model.Role;
 
 import java.util.List;
 
-public interface GetTeamListUseCase {
+public interface GetTeamPeriodListUseCase {
 
-    List<TeamListResult> getTeams(
+    List<TeamPeriodResult> getTeamPeriods(
             Long requesterId,
-            Role requesterRole,
-            Long teamPeriodId
+            Role requesterRole
     );
 }

@@ -117,6 +117,8 @@ public enum ErrorCode {
     TEAM_MEMBER_ALREADY_LEFT(HttpStatus.CONFLICT, "TEAM_009", "이미 종료된 팀원 배정입니다."),
     TEAM_MEMBER_TEAM_MISMATCH(HttpStatus.BAD_REQUEST, "TEAM_010", "팀원 배정 정보가 요청한 팀과 일치하지 않습니다."),
     TEAM_SAME_TARGET(HttpStatus.BAD_REQUEST, "TEAM_011", "같은 팀으로는 이동할 수 없습니다."),
+    TEAM_ALREADY_ARCHIVED(HttpStatus.CONFLICT, "TEAM_012", "이미 보관된 팀입니다."),
+    TEAM_ALREADY_DELETED(HttpStatus.CONFLICT, "TEAM_013", "이미 삭제된 팀입니다."),
     TEAM_NOT_FOUND(HttpStatus.NOT_FOUND, "TEAM_001", "팀을 찾을 수 없습니다."),
     TEAM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "TEAM_002", "팀 관리에 접근할 권한이 없습니다."),
 
