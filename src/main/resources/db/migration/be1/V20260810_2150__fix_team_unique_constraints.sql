@@ -23,6 +23,16 @@ FROM chat_channel cc
               ON keep.team_id = cc.team_id
 WHERE cc.chat_channel_id <> keep.keep_chat_channel_id;
 
+UPDATE chat_channel_member kept
+    JOIN duplicate_team_channel_discard discard
+ON discard.keep_chat_channel_id = kept.chat_channel_id
+    JOIN chat_channel_member discarded_member
+    ON discarded_member.chat_channel_id = discard.chat_channel_id
+    AND discarded_member.user_id = kept.user_id
+    SET kept.left_at = NULL
+WHERE kept.left_at IS NOT NULL
+  AND discarded_member.left_at IS NULL;
+
 INSERT INTO chat_channel_member (
     chat_channel_id,
     user_id,
