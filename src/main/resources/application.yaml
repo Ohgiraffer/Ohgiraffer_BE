@@ -2,6 +2,13 @@ spring:
   application:
     name: ohgiraffer
 
+  server:
+    servlet:
+      encoding:
+        charset: UTF-8
+        enforce: true
+        force: true
+
   # ===== Database (MySQL) =====
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:campflow}?characterEncoding=UTF-8&useUnicode=true&serverTimezone=Asia/Seoul
