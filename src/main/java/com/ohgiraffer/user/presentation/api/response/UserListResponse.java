@@ -10,16 +10,18 @@ public record UserListResponse(
         String email,
         Role role,
         String teamName,
-        UserStatus status
+        UserStatus status,
+        String profileImgUrl
 ) {
-    public static UserListResponse of(User user, String teamName) {
+    public static UserListResponse of(User user, String teamName, String profileImgUrl) {
         return new UserListResponse(
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
                 user.getRole(),
                 teamName,
-                user.getStatus()
+                user.getStatus(),
+                profileImgUrl
         );
     }
 }
