@@ -5,6 +5,8 @@ import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.team.application.command.CreateTeamPeriodCommand;
 import com.ohgiraffer.team.application.command.SaveTeamConfigurationCommand;
 import com.ohgiraffer.team.application.command.TeamConfigurationCommand;
+import com.ohgiraffer.team.application.event.TeamChannelSyncTarget;
+import com.ohgiraffer.team.application.event.TeamConfigurationSavedEvent;
 import com.ohgiraffer.team.application.usecase.CreateTeamPeriodUseCase;
 import com.ohgiraffer.team.application.usecase.SaveTeamConfigurationUseCase;
 import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
@@ -18,10 +20,12 @@ import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.model.UserStatus;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,6 +44,7 @@ public class TeamCommandService
     private final TeamRepository teamRepository;
     private final TeamPeriodRepository teamPeriodRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public TeamPeriodResult createTeamPeriod(
@@ -188,6 +193,14 @@ public class TeamCommandService
                 visibleTeamById,
                 changedAt
         );
+
+        if (command.createChatChannel()) {
+            publishTeamConfigurationSavedEvent(
+                    savedTeams,
+                    command.teams(),
+                    command.deletedTeamIds()
+            );
+        }
     }
 
     private List<Team> saveRequestedTeams(
@@ -377,6 +390,53 @@ public class TeamCommandService
         teamRepository.saveMember(
                 currentMember.leave(
                         changedAt
+                )
+        );
+    }
+
+    private void publishTeamConfigurationSavedEvent(
+            List<Team> savedTeams,
+            List<TeamConfigurationCommand> teamCommands,
+            List<Long> deletedTeamIds
+    ) {
+        List<TeamChannelSyncTarget> channelSyncTargets =
+                new ArrayList<>();
+
+        for (int index = 0; index < teamCommands.size(); index++) {
+            Team savedTeam =
+                    savedTeams.get(
+                            index
+                    );
+
+            TeamConfigurationCommand command =
+                    teamCommands.get(
+                            index
+                    );
+
+            channelSyncTargets.add(
+                    new TeamChannelSyncTarget(
+                            savedTeam.getId(),
+                            command.userIds()
+                    )
+            );
+        }
+
+        deletedTeamIds.forEach(teamId ->
+                channelSyncTargets.add(
+                        new TeamChannelSyncTarget(
+                                teamId,
+                                List.of()
+                        )
+                )
+        );
+
+        if (channelSyncTargets.isEmpty()) {
+            return;
+        }
+
+        eventPublisher.publishEvent(
+                new TeamConfigurationSavedEvent(
+                        channelSyncTargets
                 )
         );
     }

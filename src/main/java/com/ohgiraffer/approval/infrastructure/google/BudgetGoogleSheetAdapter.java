@@ -149,24 +149,33 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
                     categoryIndex
             ).strip();
 
-            if (categoryName.isBlank()) {
+            BigDecimal totalAmount = getCellAsAmount(
+                    row,
+                    totalAmountIndex
+            );
+            BigDecimal usedAmount = getCellAsAmount(
+                    row,
+                    usedAmountIndex
+            );
+            BigDecimal remainingAmount = getCellAsAmount(
+                    row,
+                    remainingAmountIndex
+            );
+
+            if (!isBudgetDataRow(
+                    categoryName,
+                    totalAmount,
+                    usedAmount,
+                    remainingAmount
+            )) {
                 continue;
             }
 
             BudgetSheetRow budgetSheetRow = new BudgetSheetRow(
                     categoryName,
-                    getCellAsAmount(
-                            row,
-                            totalAmountIndex
-                    ),
-                    getCellAsAmount(
-                            row,
-                            usedAmountIndex
-                    ),
-                    getCellAsAmount(
-                            row,
-                            remainingAmountIndex
-                    )
+                    totalAmount,
+                    usedAmount,
+                    remainingAmount
             );
 
             mergeBudgetRow(
@@ -211,6 +220,43 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
                         )
                 )
         );
+    }
+
+    private boolean isBudgetDataRow(
+            String categoryName,
+            BigDecimal totalAmount,
+            BigDecimal usedAmount,
+            BigDecimal remainingAmount
+    ) {
+        if (categoryName == null || categoryName.isBlank()) {
+            return false;
+        }
+
+        String normalizedCategoryName = categoryName.strip();
+
+        if (normalizedCategoryName.equals("합계")
+                || normalizedCategoryName.equals("총계")
+                || normalizedCategoryName.equalsIgnoreCase("total")) {
+            return false;
+        }
+
+        if (totalAmount == null
+                || usedAmount == null
+                || remainingAmount == null) {
+            return false;
+        }
+
+        if (totalAmount.signum() < 0
+                || usedAmount.signum() < 0
+                || remainingAmount.signum() < 0) {
+            return false;
+        }
+
+        return totalAmount.compareTo(
+                usedAmount.add(
+                        remainingAmount
+                )
+        ) == 0;
     }
 
     private List<String> findColumnCandidates(

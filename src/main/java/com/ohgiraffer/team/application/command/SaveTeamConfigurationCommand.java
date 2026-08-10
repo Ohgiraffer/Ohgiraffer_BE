@@ -7,23 +7,31 @@ public record SaveTeamConfigurationCommand(
         Long teamPeriodId,
         List<TeamConfigurationCommand> teams,
         List<Long> deletedTeamIds,
-        List<Long> unassignedUserIds
+        List<Long> unassignedUserIds,
+        boolean createChatChannel,
+        boolean createNotionPage
 ) {
 
     public SaveTeamConfigurationCommand {
         teams =
                 teams == null
                         ? List.of()
-                        : List.copyOf(teams);
+                        : List.copyOf(
+                        teams
+                );
 
         deletedTeamIds =
                 deletedTeamIds == null
                         ? List.of()
-                        : List.copyOf(deletedTeamIds);
+                        : List.copyOf(
+                        deletedTeamIds
+                );
 
         unassignedUserIds =
                 unassignedUserIds == null
                         ? List.of()
-                        : List.copyOf(unassignedUserIds);
+                        : List.copyOf(
+                        unassignedUserIds
+                );
     }
 }
