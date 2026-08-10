@@ -52,6 +52,17 @@ public class SheetSyncLog {
             );
         }
 
+        /*
+         * 변경이 없으면 이력을 만들지 않는다는 규칙을 여기서 지킨다.
+         * 호출하는 쪽에서만 걸러 두면 호출자가 늘어날 때 규칙이 조용히 깨진다.
+         */
+        if (changedCount <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "변경이 없으면 동기화 이력을 남기지 않습니다."
+            );
+        }
+
         return new SheetSyncLog(
                 null,
                 sheetLinkId,

@@ -23,8 +23,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -95,7 +95,7 @@ class EvaluationSyncNotifyServiceTest {
         assertEquals(SUMMARY, event.content());
         assertEquals("EVALUATION_SYNC_LOG", event.relatedEntityType());
         assertEquals(SYNC_LOG_ID, event.relatedEntityId());
-        assertTrue(event.userId() != REQUESTER_ID);
+        assertNotEquals(REQUESTER_ID, event.userId());
     }
 
     @Test

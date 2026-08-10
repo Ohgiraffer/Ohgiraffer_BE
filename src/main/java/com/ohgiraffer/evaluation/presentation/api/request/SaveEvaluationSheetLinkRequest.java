@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 @Schema(description = "평가 시트 연동 설정 저장 요청")
 public record SaveEvaluationSheetLinkRequest(
@@ -15,6 +16,7 @@ public record SaveEvaluationSheetLinkRequest(
                 example = "https://docs.google.com/spreadsheets/d/1AbCdEf123/edit"
         )
         @NotBlank(message = "스프레드시트 주소는 필수입니다.")
+        @Size(max = 500, message = "스프레드시트 주소는 500자를 넘을 수 없습니다.")
         String spreadsheetUrl,
 
         @Schema(
@@ -24,6 +26,7 @@ public record SaveEvaluationSheetLinkRequest(
                         """,
                 example = "시트1"
         )
+        @Size(max = 100, message = "시트 탭 이름은 100자를 넘을 수 없습니다.")
         String tabName,
 
         @Schema(description = "컬럼 매핑")

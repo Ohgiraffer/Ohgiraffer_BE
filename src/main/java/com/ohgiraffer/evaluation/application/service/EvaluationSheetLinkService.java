@@ -84,6 +84,18 @@ public class EvaluationSheetLinkService implements EvaluationSheetLinkUseCase {
             ExternalSheetValidationResult validation,
             String tabName
     ) {
+        /*
+         * 스프레드시트에는 보통 탭이 하나는 있다. 그래도 비어 온 값을 그대로 꺼내면
+         * IndexOutOfBoundsException 이 나 500 이 된다. 읽을 탭이 없다는 사실은
+         * 사용자가 주소를 고쳐야 하는 문제이므로 아래 분기와 같은 오류로 알린다.
+         */
+        if (validation.sheets().isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.EVALUATION_SHEET_TAB_NOT_FOUND,
+                    "시트에 읽을 수 있는 탭이 없습니다."
+            );
+        }
+
         if (tabName == null || tabName.isBlank()) {
             return validation.sheets().get(0);
         }

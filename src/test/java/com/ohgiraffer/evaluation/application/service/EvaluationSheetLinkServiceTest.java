@@ -97,6 +97,28 @@ class EvaluationSheetLinkServiceTest {
     }
 
     @Test
+    @DisplayName("읽을 탭이 하나도 없으면 거절한다")
+    void saveRejectsWhenNoTabExists() {
+        when(validateExternalSheetUseCase.validate(any()))
+                .thenReturn(new ExternalSheetValidationResult(
+                        "1AbCdEf123",
+                        "CampFlow 평가 데이터",
+                        List.of()
+                ));
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> evaluationSheetLinkService.save(command(null, mapping()))
+        );
+
+        assertEquals(
+                ErrorCode.EVALUATION_SHEET_TAB_NOT_FOUND,
+                exception.getErrorCode()
+        );
+        verify(evaluationSheetLinkRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("시트에 없는 컬럼을 짝지으면 거절하고 사용 가능한 컬럼을 알려준다")
     void saveRejectsUnknownColumn() {
         EvaluationColumnMapping wrong = new EvaluationColumnMapping(
