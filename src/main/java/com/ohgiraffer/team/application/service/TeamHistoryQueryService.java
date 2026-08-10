@@ -86,6 +86,7 @@ public class TeamHistoryQueryService
 
         List<TeamSnapshotMember> snapshotMembers =
                 teamHistoryRepository.findSnapshotMembers(
+                        teamPeriodId,
                         endAt
                 );
 
@@ -97,6 +98,7 @@ public class TeamHistoryQueryService
 
         List<TeamMemberHistory> memberHistories =
                 teamHistoryRepository.findHistoriesIntersectingPeriod(
+                        teamPeriodId,
                         startAt,
                         endAt
                 );
