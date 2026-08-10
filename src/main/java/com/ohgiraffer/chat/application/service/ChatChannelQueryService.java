@@ -79,6 +79,7 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
                             user != null ? user.getName() : null,
                             user != null ? user.getEmail() : null,
                             user != null ? user.getRole().name() : null,
+                            user != null ? user.getProfileImg() : null,
                             m.getJoinedAt(), m.getLastReadMessageId(),
                             isRead(m.getLastReadMessageId(), latestMessageId)
                     );
@@ -89,6 +90,17 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
                 .filter(ChatChannelDetailResult.ChatChannelMemberResult::isRead)
                 .map(ChatChannelDetailResult.ChatChannelMemberResult::userId)
                 .toList();
+
+        // 채널 이름 직접 지정 안 된 DM 채널이면 상대방(나 아닌 멤버) 이름으로 대체
+        String displayName = channel.getName();
+        if (displayName == null && channel.getChannelType() == ChatChannel.ChannelType.DM) {
+            displayName = chatChannelMembers.stream()
+                    .filter(m -> !m.getUserId().equals(principalId))
+                    .findFirst()
+                    .map(m -> usersById.get(m.getUserId()))
+                    .map(User::getName)
+                    .orElse(null);
+        }
 
         return new ChatChannelDetailResult(
                 channel.getSendbirdChannelUrl(), channel.getName(), channel.getChannelType().name(),
@@ -114,6 +126,7 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
         }
 
         // search가 있으면 채널 이름 부분검색으로 추가 필터 (대소문자/공백 무관)
+        // 이름 미지정 DM 채널(name=null)은 검색어가 있으면 매칭 대상에서 자연히 제외됨 (원한다면 상대방 이름 기준 검색 추가 필요 - 별도 확인 필요)
         if (search != null && !search.isBlank()) {
             String keyword = normalizeForSearch(search);
             channels = channels.stream()
@@ -123,25 +136,34 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
 
         List<String> sendbirdUrls = channels.stream().map(ChatChannel::getSendbirdChannelUrl).toList();
 
-        // 3) 최신메시지(윈도우함수) + 안읽음수(조인집계) - 각각 쿼리 1번씩, DB에서 계산 끝냄
-
         if (sendbirdUrls.isEmpty()) {
             return List.of();
         }
 
+        // 3) 최신메시지(윈도우함수) + 안읽음수(조인집계) - 각각 쿼리 1번씩, DB에서 계산 끝냄
         Map<String, ChannelLastMessage> lastMessages = chatMessageMirrorRepository.findLatestMessagesByChannelIds(sendbirdUrls);
         Map<Long, Long> unreadCounts = chatChannelMemberRepository.findUnreadCountsByUserId(userId);
-        Map<String, Boolean> onlineByChannelUrl = buildOnlineStatusForDmChannels(channels, userId);
+
+        // 4) DM 채널의 상대방 정보(온라인 상태/프로필/이름) - 한 번에 조회
+        DmPartnerInfo dmPartnerInfo = buildDmPartnerInfo(channels, userId);
 
         return channels.stream()
                 .map(channel -> {
-                    ChannelLastMessage last = lastMessages.get(channel.getSendbirdChannelUrl());
+                    String url = channel.getSendbirdChannelUrl();
+                    ChannelLastMessage last = lastMessages.get(url);
+
+                    // 채널에 이름이 지정되어 있으면 그대로, DM인데 미지정이면 상대방 이름으로 대체
+                    String displayName = channel.getName() != null
+                            ? channel.getName()
+                            : dmPartnerInfo.partnerNameByChannelUrl().get(url);
+
                     return new ChatChannelListItemResult(
-                            channel.getSendbirdChannelUrl(), channel.getName(), channel.getChannelType().name(),
+                            url, displayName, channel.getChannelType().name(),
                             last != null ? last.content() : null,
                             last != null ? last.sentAt() : null,
                             unreadCounts.getOrDefault(channel.getId(), 0L),
-                            onlineByChannelUrl.get(channel.getSendbirdChannelUrl()) // DM 아니면 null
+                            dmPartnerInfo.profileUrlByChannelUrl().get(url), // GROUP이면 null
+                            dmPartnerInfo.onlineByChannelUrl().get(url) // GROUP이면 null
                     );
                 })
                 .toList();
@@ -156,12 +178,12 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
 
     // DM 채널만 골라 상대방(나 아닌 멤버) userId를 찾고, Sendbird 온라인 상태를 배치 조회
     // GROUP 채널은 대상에서 제외 (목록 화면에서 굳이 온라인 표시 안 함)
-    private Map<String, Boolean> buildOnlineStatusForDmChannels(List<ChatChannel> channels, Long userId) {
+    private DmPartnerInfo buildDmPartnerInfo(List<ChatChannel> channels, Long userId) {
         List<ChatChannel> dmChannels = channels.stream()
                 .filter(c -> c.getChannelType() == ChatChannel.ChannelType.DM)
                 .toList();
         if (dmChannels.isEmpty()) {
-            return Map.of();
+            return new DmPartnerInfo(Map.of(), Map.of(), Map.of());
         }
 
         List<Long> dmChannelIds = dmChannels.stream().map(ChatChannel::getId).toList();
@@ -173,19 +195,42 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
                 .collect(Collectors.toMap(ChatChannelMember::getChatChannelId, ChatChannelMember::getUserId, (a, b) -> a));
 
         List<Long> otherUserIds = otherUserIdByChannelId.values().stream().distinct().toList();
+
+        // 온라인 상태는 Sendbird에서, 이름/프로필은 자체 User 테이블에서 각각 벌크 조회
         Map<Long, Boolean> onlineByUserId = fetchOnlineStatuses(otherUserIds);
+        Map<Long, User> usersByOtherUserId = userRepository.findByIdIn(otherUserIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
 
         Map<Long, String> channelIdToUrl = dmChannels.stream()
                 .collect(Collectors.toMap(ChatChannel::getId, ChatChannel::getSendbirdChannelUrl));
 
-        Map<String, Boolean> result = new HashMap<>();
+        Map<String, Boolean> onlineByChannelUrl = new HashMap<>();
+        Map<String, String> profileUrlByChannelUrl = new HashMap<>();
+        Map<String, String> partnerNameByChannelUrl = new HashMap<>();
+
         otherUserIdByChannelId.forEach((chatChannelId, otherUserId) -> {
             String url = channelIdToUrl.get(chatChannelId);
-            if (url != null) {
-                result.put(url, onlineByUserId.getOrDefault(otherUserId, false));
+            if (url == null) {
+                return;
+            }
+            onlineByChannelUrl.put(url, onlineByUserId.getOrDefault(otherUserId, false));
+            User partner = usersByOtherUserId.get(otherUserId);
+            if (partner != null) {
+                profileUrlByChannelUrl.put(url, partner.getProfileImg());
+                partnerNameByChannelUrl.put(url, partner.getName());
             }
         });
-        return result;
+
+        return new DmPartnerInfo(onlineByChannelUrl, profileUrlByChannelUrl, partnerNameByChannelUrl);
+
+    }
+
+    // DM 채널의 상대방 관련 정보 묶음 - 온라인 상태 / 프로필 URL / 이름(채널명 미지정 시 대체용)
+    private record DmPartnerInfo(
+            Map<String, Boolean> onlineByChannelUrl,
+            Map<String, String> profileUrlByChannelUrl,
+            Map<String, String> partnerNameByChannelUrl
+    ) {
     }
 
     // Sendbird 온라인 상태 일괄 조회 - 실패하면 전원 offline으로 기본 처리 (목록 조회 자체를 막지 않음)

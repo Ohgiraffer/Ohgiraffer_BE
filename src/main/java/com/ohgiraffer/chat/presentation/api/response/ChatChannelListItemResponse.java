@@ -16,6 +16,7 @@ public record ChatChannelListItemResponse(
         String lastMessageContent,
         Instant lastMessageSentAt,
         long unreadCount,
+        String profileImageUrl,
         Boolean isOnline
 ) {
 
@@ -23,7 +24,7 @@ public record ChatChannelListItemResponse(
     public static ChatChannelListItemResponse from(ChatChannelListItemResult result) {
         return new ChatChannelListItemResponse(
                 result.channelId(), result.name(), result.channelType(), result.lastMessageContent(),
-                result.lastMessageSentAt(), result.unreadCount(), result.isOnline()
+                result.lastMessageSentAt(), result.unreadCount(), result.profileImageUrl(), result.isOnline()
         );
     }
 

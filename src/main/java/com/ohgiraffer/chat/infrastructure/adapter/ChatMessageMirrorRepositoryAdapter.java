@@ -107,4 +107,9 @@ public class ChatMessageMirrorRepositoryAdapter implements ChatMessageMirrorRepo
         return jpaRepository.saveAndFlush(entity).toDomain();
     }
 
+    @Override
+    public long countByParentMessageIdAndDeletedAtIsNull(Long parentMessageId) {
+        return jpaRepository.countByParentMessageIdAndDeletedAtIsNull(parentMessageId);
+    }
+
 }

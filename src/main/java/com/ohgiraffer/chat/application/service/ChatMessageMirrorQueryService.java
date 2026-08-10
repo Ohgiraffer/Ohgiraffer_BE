@@ -8,6 +8,7 @@ import com.ohgiraffer.chat.domain.repository.ChatChannelMemberRepository;
 import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
 import com.ohgiraffer.chat.domain.repository.ChatMessageMirrorRepository;
 import com.ohgiraffer.chat.domain.repository.ChatMessageSearchCondition;
+import com.ohgiraffer.chat.presentation.api.response.ReplyCountResponse;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -94,6 +95,27 @@ public class ChatMessageMirrorQueryService implements ChatMessageMirrorQueryUseC
         }
 
         return chatMessageMirrorRepository.search(condition, pageable).map(ChatMessageResult::from);
+    }
+
+    // 특정 메시지의 답글 개수 조회
+    // messageId는 클라이언트가 갖고 있는 sendbirdMessageId(String)이지만,
+    // 실제 parentMessageId 저장/조회는 내부 PK(Long) 기준이라 원본 메시지를 먼저 찾아 PK로 변환해야 함
+    // (getThreadReplies와 동일한 principalId 멤버십 검증 패턴 적용)
+    @Override
+    public ReplyCountResponse getReplyCount(String messageId, Long principalId) {
+        ChatMessageMirror parent = chatMessageMirrorRepository.findBySendbirdMessageId(messageId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
+
+        ChatChannel channel = chatChannelRepository.findBySendbirdChannelUrl(parent.getChannelId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_CHANNEL_NOT_FOUND));
+
+        // IDOR 방지 - 원본 메시지가 속한 채널의 활성 멤버인지 검증
+        if (!chatChannelMemberRepository.existsActiveMembership(channel.getId(), principalId)) {
+            throw new BusinessException(ErrorCode.CHAT_CHANNEL_NOT_FOUND);
+        }
+
+        long count = chatMessageMirrorRepository.countByParentMessageIdAndDeletedAtIsNull(parent.getId());
+        return new ReplyCountResponse(messageId, count);
     }
 
 }
