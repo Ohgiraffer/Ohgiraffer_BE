@@ -34,6 +34,9 @@ public enum NotificationType {
     CONSULTATION,
 
     // 제출 마감 임박
-    SUBMISSION_DEADLINE
+    SUBMISSION_DEADLINE,
+
+    // 평가 시트 동기화로 평가 내용이 바뀜 (be2 박정민 추가)
+    EVALUATION
 
 }
