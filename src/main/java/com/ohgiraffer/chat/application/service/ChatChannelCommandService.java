@@ -169,6 +169,14 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
                     existingChannel.getSendbirdChannelUrl()
             );
 
+            updateChannelMembers(
+                    new UpdateChannelMembersCommand(
+                            existingChannel.getSendbirdChannelUrl(),
+                            memberUserIds,
+                            List.of()
+                    )
+            );
+
             return new ChatChannelResult(
                     existingChannel.getSendbirdChannelUrl(),
                     existingChannel.getName()
@@ -177,7 +185,6 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
 
         String sendbirdChannelUrl = sendbirdApiPort.createTeamChannel(teamId, memberUserIds);
 
-        // 팀 채널은 항상 GROUP, team_id를 채워서 CHAT-011 팀변경 시 조회 가능하게 함
         ChatChannel savedChannel = chatChannelRepository.save(
                 ChatChannel.create(sendbirdChannelUrl, ChatChannel.ChannelType.GROUP, "team-" + teamId, teamId)
         );
@@ -185,6 +192,7 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
         List<ChatChannelMember> members = memberUserIds.stream()
                 .map(userId -> ChatChannelMember.join(savedChannel.getId(), userId))
                 .toList();
+
         chatChannelMemberRepository.saveAll(members);
 
         log.info("[Chat] 팀 채널 자동 생성 완료 | teamId={}, channelId={}", teamId, sendbirdChannelUrl);

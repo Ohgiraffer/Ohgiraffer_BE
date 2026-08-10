@@ -5,7 +5,8 @@ import java.util.List;
 import java.util.Map;
 
 public record TeamConfigurationSavedEvent(
-        List<TeamChannelSyncTarget> channelSyncTargets
+        List<TeamChannelSyncTarget> channelSyncTargets,
+        boolean createChatChannel
 ) {
 
     public TeamConfigurationSavedEvent {

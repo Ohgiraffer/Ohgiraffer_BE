@@ -490,7 +490,7 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
         );
 
         if (value.isBlank()) {
-            return BigDecimal.ZERO;
+            return null;
         }
 
         String normalized = value

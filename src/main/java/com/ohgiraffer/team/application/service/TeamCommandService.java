@@ -165,6 +165,14 @@ public class TeamCommandService
                         activeMembers
                 );
 
+        Set<Long> affectedTeamIds =
+                createAffectedTeamIds(
+                        savedTeams,
+                        command.deletedTeamIds(),
+                        requestedUserIds,
+                        activeMembers
+                );
+
         closeDeletedTeamMembers(
                 command.deletedTeamIds(),
                 requestedUserIds,
@@ -194,13 +202,11 @@ public class TeamCommandService
                 changedAt
         );
 
-        if (command.createChatChannel()) {
-            publishTeamConfigurationSavedEvent(
-                    savedTeams,
-                    command.teams(),
-                    command.deletedTeamIds()
-            );
-        }
+        publishTeamConfigurationSavedEvent(
+                affectedTeamIds,
+                command.deletedTeamIds(),
+                command.createChatChannel()
+        );
     }
 
     private List<Team> saveRequestedTeams(
@@ -307,6 +313,33 @@ public class TeamCommandService
         return desiredTeamByUserId;
     }
 
+    private Set<Long> createAffectedTeamIds(
+            List<Team> savedTeams,
+            List<Long> deletedTeamIds,
+            Set<Long> requestedUserIds,
+            List<TeamMember> activeMembers
+    ) {
+        Set<Long> affectedTeamIds =
+                new HashSet<>();
+
+        savedTeams.stream()
+                .map(Team::getId)
+                .forEach(affectedTeamIds::add);
+
+        affectedTeamIds.addAll(
+                deletedTeamIds
+        );
+
+        activeMembers.stream()
+                .filter(member -> requestedUserIds.contains(
+                        member.getUserId()
+                ))
+                .map(TeamMember::getTeamId)
+                .forEach(affectedTeamIds::add);
+
+        return affectedTeamIds;
+    }
+
     private void closeDeletedTeamMembers(
             List<Long> deletedTeamIds,
             Set<Long> requestedUserIds,
@@ -395,48 +428,64 @@ public class TeamCommandService
     }
 
     private void publishTeamConfigurationSavedEvent(
-            List<Team> savedTeams,
-            List<TeamConfigurationCommand> teamCommands,
-            List<Long> deletedTeamIds
+            Set<Long> affectedTeamIds,
+            List<Long> deletedTeamIds,
+            boolean createChatChannel
     ) {
+        if (affectedTeamIds.isEmpty()) {
+            return;
+        }
+
+        Set<Long> deletedTeamIdSet =
+                new HashSet<>(
+                        deletedTeamIds
+                );
+
+        Map<Long, List<Long>> activeUserIdsByTeamId =
+                teamRepository.findActiveMembersByTeamIds(
+                                affectedTeamIds.stream()
+                                        .filter(teamId -> !deletedTeamIdSet.contains(
+                                                teamId
+                                        ))
+                                        .toList()
+                        )
+                        .stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        TeamMember::getTeamId,
+                                        Collectors.mapping(
+                                                TeamMember::getUserId,
+                                                Collectors.toList()
+                                        )
+                                )
+                        );
+
         List<TeamChannelSyncTarget> channelSyncTargets =
                 new ArrayList<>();
 
-        for (int index = 0; index < teamCommands.size(); index++) {
-            Team savedTeam =
-                    savedTeams.get(
-                            index
-                    );
-
-            TeamConfigurationCommand command =
-                    teamCommands.get(
-                            index
+        affectedTeamIds.forEach(teamId -> {
+            List<Long> memberUserIds =
+                    deletedTeamIdSet.contains(
+                            teamId
+                    )
+                            ? List.of()
+                            : activeUserIdsByTeamId.getOrDefault(
+                            teamId,
+                            List.of()
                     );
 
             channelSyncTargets.add(
                     new TeamChannelSyncTarget(
-                            savedTeam.getId(),
-                            command.userIds()
+                            teamId,
+                            memberUserIds
                     )
             );
-        }
-
-        deletedTeamIds.forEach(teamId ->
-                channelSyncTargets.add(
-                        new TeamChannelSyncTarget(
-                                teamId,
-                                List.of()
-                        )
-                )
-        );
-
-        if (channelSyncTargets.isEmpty()) {
-            return;
-        }
+        });
 
         eventPublisher.publishEvent(
                 new TeamConfigurationSavedEvent(
-                        channelSyncTargets
+                        channelSyncTargets,
+                        createChatChannel
                 )
         );
     }
