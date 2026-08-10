@@ -11,8 +11,6 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
-
 @Aspect
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -79,14 +77,31 @@ public class GlobalFlowLoggingAspect {
         if (args == null || args.length == 0) {
             return "(없음)";
         }
-        return Arrays.toString(args);
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < args.length; i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(formatValue(args[i]));
+        }
+        return sb.append("]").toString();
     }
 
     private String formatResult(Object result) {
-        if (result == null) {
-            return "(반환값 없음)";
+        return formatValue(result);
+    }
+
+    // 문자열/숫자/불리언처럼 그 자체로 안전한 타입만 값을 찍고
+    // 나머지(DTO 등)는 필드 내용 대신 클래스 이름만 남긴다
+    private String formatValue(Object value) {
+        if (value == null) {
+            return "null";
         }
-        return result.toString();
+        if (value instanceof CharSequence
+                || value instanceof Number
+                || value instanceof Boolean
+                || value instanceof Character) {
+            return String.valueOf(value);
+        }
+        return value.getClass().getSimpleName() + "(...)";
     }
 
     private String resolveLayer(ProceedingJoinPoint joinPoint) {

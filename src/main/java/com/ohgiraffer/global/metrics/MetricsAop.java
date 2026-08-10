@@ -22,9 +22,9 @@ public class MetricsAop {
         Timer.Sample sample = campFlowMetrics.startTimer();
         try {
             return joinPoint.proceed();
-        } catch (Exception e) {
+        } catch (Throwable t) {
             campFlowMetrics.incrementCounter(metricName + ".failed");
-            throw e;
+            throw t;
         } finally {
             campFlowMetrics.stopTimer(sample, metricName + ".duration");
         }
