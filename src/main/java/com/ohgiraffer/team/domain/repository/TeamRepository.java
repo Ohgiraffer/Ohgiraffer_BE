@@ -4,8 +4,6 @@ import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
 import com.ohgiraffer.team.domain.model.UnassignedStudent;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,7 +19,9 @@ public interface TeamRepository {
 
     List<Team> findAll();
 
-    List<Team> findVisibleTeams();
+    List<Team> findVisibleTeamsByPeriodId(
+            Long teamPeriodId
+    );
 
     Optional<Team> findById(
             Long teamId
@@ -29,14 +29,6 @@ public interface TeamRepository {
 
     Optional<Team> findByIdForUpdate(
             Long teamId
-    );
-
-    List<Team> findArchivableTeamsForUpdate(
-            LocalDate today
-    );
-
-    List<Team> findDeletableArchivedTeamsForUpdate(
-            LocalDateTime deleteThreshold
     );
 
     List<TeamMember> findActiveMembers();
@@ -63,12 +55,14 @@ public interface TeamRepository {
             Long userId
     );
 
-    boolean existsByName(
-            String name
+    boolean existsByNameAndTeamPeriodId(
+            String name,
+            Long teamPeriodId
     );
 
-    boolean existsByNameAndIdNot(
+    boolean existsByNameAndTeamPeriodIdAndIdNot(
             String name,
+            Long teamPeriodId,
             Long teamId
     );
 

@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public class Team {
 
     private final Long id;
+    private final Long teamPeriodId;
     private final String name;
     private final String sendbirdChannelUrl;
     private final String notionPageId;
@@ -22,6 +23,7 @@ public class Team {
 
     private Team(
             Long id,
+            Long teamPeriodId,
             String name,
             String sendbirdChannelUrl,
             String notionPageId,
@@ -34,6 +36,7 @@ public class Team {
             LocalDateTime workspaceDeletedAt
     ) {
         this.id = id;
+        this.teamPeriodId = teamPeriodId;
         this.name = name;
         this.sendbirdChannelUrl = sendbirdChannelUrl;
         this.notionPageId = notionPageId;
@@ -47,21 +50,22 @@ public class Team {
     }
 
     public static Team create(
+            Long teamPeriodId,
             String name,
             LocalDate startDate,
             LocalDate endDate
     ) {
+        validateTeamPeriodId(
+                teamPeriodId
+        );
+
         validateName(
                 name
         );
 
-        validatePeriod(
-                startDate,
-                endDate
-        );
-
         return new Team(
                 null,
+                teamPeriodId,
                 name.trim(),
                 null,
                 null,
@@ -77,6 +81,7 @@ public class Team {
 
     public static Team restore(
             Long id,
+            Long teamPeriodId,
             String name,
             String sendbirdChannelUrl,
             String notionPageId,
@@ -90,6 +95,7 @@ public class Team {
     ) {
         return new Team(
                 id,
+                teamPeriodId,
                 name,
                 sendbirdChannelUrl,
                 notionPageId,
@@ -114,49 +120,10 @@ public class Team {
                 name
         );
 
-        validatePeriod(
-                startDate,
-                endDate
-        );
-
         return new Team(
                 id,
+                teamPeriodId,
                 name.trim(),
-                sendbirdChannelUrl,
-                notionPageId,
-                startDate,
-                endDate,
-                dissolvedAt,
-                archivedAt,
-                deletedAt,
-                channelDeletedAt,
-                workspaceDeletedAt
-        );
-    }
-
-    public Team archive(
-            LocalDateTime archivedAt
-    ) {
-        if (isDeleted()) {
-            throw new BusinessException(
-                    ErrorCode.TEAM_ALREADY_DISSOLVED
-            );
-        }
-
-        if (isArchived()) {
-            return this;
-        }
-
-        if (archivedAt == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "팀 보관 일시가 올바르지 않습니다."
-            );
-        }
-
-        return new Team(
-                id,
-                name,
                 sendbirdChannelUrl,
                 notionPageId,
                 startDate,
@@ -176,22 +143,9 @@ public class Team {
             return this;
         }
 
-        if (!isArchived()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "보관되지 않은 팀은 정리할 수 없습니다."
-            );
-        }
-
-        if (deletedAt == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "팀 삭제 일시가 올바르지 않습니다."
-            );
-        }
-
         return new Team(
                 id,
+                teamPeriodId,
                 name,
                 sendbirdChannelUrl,
                 notionPageId,
@@ -205,7 +159,7 @@ public class Team {
         );
     }
 
-    public Team markChannelDeleted(
+    public Team markChannelCleanupRequested(
             LocalDateTime channelDeletedAt
     ) {
         if (this.channelDeletedAt != null) {
@@ -214,6 +168,7 @@ public class Team {
 
         return new Team(
                 id,
+                teamPeriodId,
                 name,
                 sendbirdChannelUrl,
                 notionPageId,
@@ -227,7 +182,7 @@ public class Team {
         );
     }
 
-    public Team markWorkspaceDeleted(
+    public Team markWorkspaceCleanupRequested(
             LocalDateTime workspaceDeletedAt
     ) {
         if (this.workspaceDeletedAt != null) {
@@ -236,6 +191,7 @@ public class Team {
 
         return new Team(
                 id,
+                teamPeriodId,
                 name,
                 sendbirdChannelUrl,
                 notionPageId,
@@ -250,9 +206,33 @@ public class Team {
     }
 
     public void validateAssignable() {
-        if (!isAssignable()) {
+        if (isDissolved()) {
             throw new BusinessException(
                     ErrorCode.TEAM_ALREADY_DISSOLVED
+            );
+        }
+
+        if (isArchived()) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_ALREADY_ARCHIVED
+            );
+        }
+
+        if (isDeleted()) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_ALREADY_DELETED
+            );
+        }
+    }
+
+    private static void validateTeamPeriodId(
+            Long teamPeriodId
+    ) {
+        if (teamPeriodId == null
+                || teamPeriodId <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "팀 기간 ID가 올바르지 않습니다."
             );
         }
     }
@@ -276,27 +256,12 @@ public class Team {
         }
     }
 
-    private static void validatePeriod(
-            LocalDate startDate,
-            LocalDate endDate
-    ) {
-        if (startDate == null
-                || endDate == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "팀 시작일과 종료일을 입력해주세요."
-            );
-        }
-
-        if (startDate.isAfter(endDate)) {
-            throw new BusinessException(
-                    ErrorCode.TEAM_INVALID_PERIOD
-            );
-        }
-    }
-
     public Long getId() {
         return id;
+    }
+
+    public Long getTeamPeriodId() {
+        return teamPeriodId;
     }
 
     public String getName() {
@@ -349,11 +314,5 @@ public class Team {
 
     public boolean isDeleted() {
         return deletedAt != null;
-    }
-
-    public boolean isAssignable() {
-        return !isDissolved()
-                && !isArchived()
-                && !isDeleted();
     }
 }

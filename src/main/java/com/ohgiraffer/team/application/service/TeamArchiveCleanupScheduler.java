@@ -1,12 +1,13 @@
 package com.ohgiraffer.team.application.service;
 
-import com.ohgiraffer.team.domain.model.Team;
-import com.ohgiraffer.team.domain.repository.TeamRepository;
+import com.ohgiraffer.team.domain.model.TeamPeriod;
+import com.ohgiraffer.team.domain.repository.TeamPeriodRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,44 +16,50 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TeamArchiveCleanupScheduler {
 
-    private final TeamRepository teamRepository;
+    private final TeamPeriodRepository teamPeriodRepository;
+    private final Clock clock;
 
-    @Scheduled(cron = "0 0 3 * * *")
+    @Scheduled(
+            cron = "0 0 3 * * *",
+            zone = "Asia/Seoul"
+    )
     @Transactional
-    public void archiveAndCleanupTeams() {
-        LocalDate today =
-                LocalDate.now();
-
+    public void archiveAndCleanupTeamPeriods() {
         LocalDateTime now =
-                LocalDateTime.now();
+                LocalDateTime.now(
+                        clock
+                );
 
-        archiveExpiredTeams(
+        LocalDate today =
+                now.toLocalDate();
+
+        archiveExpiredPeriods(
                 today,
                 now
         );
 
-        cleanupOldArchivedTeams(
+        cleanupOldArchivedPeriods(
                 now
         );
     }
 
-    private void archiveExpiredTeams(
+    private void archiveExpiredPeriods(
             LocalDate today,
             LocalDateTime archivedAt
     ) {
-        List<Team> archivableTeams =
-                teamRepository.findArchivableTeamsForUpdate(
+        List<TeamPeriod> archivablePeriods =
+                teamPeriodRepository.findArchivablePeriodsForUpdate(
                         today
                 );
 
-        archivableTeams.stream()
-                .map(team -> team.archive(
+        archivablePeriods.stream()
+                .map(period -> period.archive(
                         archivedAt
                 ))
-                .forEach(teamRepository::save);
+                .forEach(teamPeriodRepository::save);
     }
 
-    private void cleanupOldArchivedTeams(
+    private void cleanupOldArchivedPeriods(
             LocalDateTime now
     ) {
         LocalDateTime deleteThreshold =
@@ -60,47 +67,15 @@ public class TeamArchiveCleanupScheduler {
                         1
                 );
 
-        List<Team> deletableTeams =
-                teamRepository.findDeletableArchivedTeamsForUpdate(
+        List<TeamPeriod> deletablePeriods =
+                teamPeriodRepository.findDeletableArchivedPeriodsForUpdate(
                         deleteThreshold
                 );
 
-        deletableTeams.stream()
-                .map(team -> markExternalResourcesDeleted(
-                        team,
+        deletablePeriods.stream()
+                .map(period -> period.markDeleted(
                         now
                 ))
-                .map(team -> team.markDeleted(
-                        now
-                ))
-                .forEach(teamRepository::save);
-    }
-
-    private Team markExternalResourcesDeleted(
-            Team team,
-            LocalDateTime deletedAt
-    ) {
-        Team updatedTeam =
-                team;
-
-        if (team.getSendbirdChannelUrl() != null
-                && !team.getSendbirdChannelUrl()
-                .isBlank()) {
-            updatedTeam =
-                    updatedTeam.markChannelDeleted(
-                            deletedAt
-                    );
-        }
-
-        if (team.getNotionPageId() != null
-                && !team.getNotionPageId()
-                .isBlank()) {
-            updatedTeam =
-                    updatedTeam.markWorkspaceDeleted(
-                            deletedAt
-                    );
-        }
-
-        return updatedTeam;
+                .forEach(teamPeriodRepository::save);
     }
 }

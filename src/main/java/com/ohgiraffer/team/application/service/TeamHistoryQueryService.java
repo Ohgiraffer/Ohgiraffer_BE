@@ -11,6 +11,7 @@ import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMemberHistory;
 import com.ohgiraffer.team.domain.model.TeamSnapshotMember;
 import com.ohgiraffer.team.domain.repository.TeamHistoryRepository;
+import com.ohgiraffer.team.domain.repository.TeamPeriodRepository;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
 import com.ohgiraffer.user.domain.model.Role;
 import lombok.RequiredArgsConstructor;
@@ -37,11 +38,13 @@ public class TeamHistoryQueryService
 
     private final TeamRepository teamRepository;
     private final TeamHistoryRepository teamHistoryRepository;
+    private final TeamPeriodRepository teamPeriodRepository;
 
     @Override
     public TeamHistoryResult getTeamHistories(
             Long requesterId,
             Role requesterRole,
+            Long teamPeriodId,
             LocalDate startDate,
             LocalDate endDate
     ) {
@@ -50,10 +53,23 @@ public class TeamHistoryQueryService
                 requesterRole
         );
 
+        validateTeamPeriodId(
+                teamPeriodId
+        );
+
         validatePeriod(
                 startDate,
                 endDate
         );
+
+        teamPeriodRepository.findById(
+                        teamPeriodId
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.TEAM_NOT_FOUND
+                        )
+                );
 
         LocalDateTime startAt =
                 startDate.atStartOfDay();
@@ -64,7 +80,9 @@ public class TeamHistoryQueryService
                 );
 
         List<Team> teams =
-                teamRepository.findAll();
+                teamRepository.findVisibleTeamsByPeriodId(
+                        teamPeriodId
+                );
 
         List<TeamSnapshotMember> snapshotMembers =
                 teamHistoryRepository.findSnapshotMembers(
@@ -317,7 +335,11 @@ public class TeamHistoryQueryService
                         leftAt,
                         joinedAt
                 )
-                .toMinutes() <= MOVE_EVENT_THRESHOLD_MINUTES;
+                .compareTo(
+                        Duration.ofMinutes(
+                                MOVE_EVENT_THRESHOLD_MINUTES
+                        )
+                ) <= 0;
     }
 
     private boolean isBetween(
@@ -339,6 +361,18 @@ public class TeamHistoryQueryService
                 || requesterRole == null) {
             throw new BusinessException(
                     ErrorCode.TEAM_ACCESS_DENIED
+            );
+        }
+    }
+
+    private void validateTeamPeriodId(
+            Long teamPeriodId
+    ) {
+        if (teamPeriodId == null
+                || teamPeriodId <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "팀 기간 ID가 올바르지 않습니다."
             );
         }
     }

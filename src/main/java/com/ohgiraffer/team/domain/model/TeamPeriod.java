@@ -81,13 +81,6 @@ public class TeamPeriod {
             return this;
         }
 
-        if (archivedAt == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "팀 기간 보관 일시가 올바르지 않습니다."
-            );
-        }
-
         return new TeamPeriod(
                 id,
                 startDate,
@@ -109,13 +102,6 @@ public class TeamPeriod {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "보관되지 않은 팀 기간은 정리할 수 없습니다."
-            );
-        }
-
-        if (deletedAt == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "팀 기간 삭제 일시가 올바르지 않습니다."
             );
         }
 

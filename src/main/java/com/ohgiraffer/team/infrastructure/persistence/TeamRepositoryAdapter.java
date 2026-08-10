@@ -10,8 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -82,8 +80,12 @@ public class TeamRepositoryAdapter
     }
 
     @Override
-    public List<Team> findVisibleTeams() {
-        return springDataTeamRepository.findAllByArchivedAtIsNullAndDeletedAtIsNullOrderByIdAsc()
+    public List<Team> findVisibleTeamsByPeriodId(
+            Long teamPeriodId
+    ) {
+        return springDataTeamRepository.findAllByTeamPeriodIdAndDeletedAtIsNullOrderByIdAsc(
+                        teamPeriodId
+                )
                 .stream()
                 .map(TeamJpaEntity::toDomain)
                 .toList();
@@ -107,30 +109,6 @@ public class TeamRepositoryAdapter
                         teamId
                 )
                 .map(TeamJpaEntity::toDomain);
-    }
-
-    @Override
-    public List<Team> findArchivableTeamsForUpdate(
-            LocalDate today
-    ) {
-        return springDataTeamRepository.findArchivableTeamsForUpdate(
-                        today
-                )
-                .stream()
-                .map(TeamJpaEntity::toDomain)
-                .toList();
-    }
-
-    @Override
-    public List<Team> findDeletableArchivedTeamsForUpdate(
-            LocalDateTime deleteThreshold
-    ) {
-        return springDataTeamRepository.findDeletableArchivedTeamsForUpdate(
-                        deleteThreshold
-                )
-                .stream()
-                .map(TeamJpaEntity::toDomain)
-                .toList();
     }
 
     @Override
@@ -208,21 +186,25 @@ public class TeamRepositoryAdapter
     }
 
     @Override
-    public boolean existsByName(
-            String name
+    public boolean existsByNameAndTeamPeriodId(
+            String name,
+            Long teamPeriodId
     ) {
-        return springDataTeamRepository.existsByName(
-                name
+        return springDataTeamRepository.existsByNameAndTeamPeriodId(
+                name,
+                teamPeriodId
         );
     }
 
     @Override
-    public boolean existsByNameAndIdNot(
+    public boolean existsByNameAndTeamPeriodIdAndIdNot(
             String name,
+            Long teamPeriodId,
             Long teamId
     ) {
-        return springDataTeamRepository.existsByNameAndIdNot(
+        return springDataTeamRepository.existsByNameAndTeamPeriodIdAndIdNot(
                 name,
+                teamPeriodId,
                 teamId
         );
     }

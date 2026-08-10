@@ -25,10 +25,12 @@ public class TeamJpaEntity {
     @Column(name = "team_id")
     private Long id;
 
+    @Column(name = "team_period_id")
+    private Long teamPeriodId;
+
     @Column(
             name = "name",
             nullable = false,
-            unique = true,
             length = 100
     )
     private String name;
@@ -68,6 +70,7 @@ public class TeamJpaEntity {
 
     private TeamJpaEntity(
             Long id,
+            Long teamPeriodId,
             String name,
             String sendbirdChannelUrl,
             String notionPageId,
@@ -80,6 +83,7 @@ public class TeamJpaEntity {
             LocalDateTime workspaceDeletedAt
     ) {
         this.id = id;
+        this.teamPeriodId = teamPeriodId;
         this.name = name;
         this.sendbirdChannelUrl = sendbirdChannelUrl;
         this.notionPageId = notionPageId;
@@ -97,6 +101,7 @@ public class TeamJpaEntity {
     ) {
         return new TeamJpaEntity(
                 team.getId(),
+                team.getTeamPeriodId(),
                 team.getName(),
                 team.getSendbirdChannelUrl(),
                 team.getNotionPageId(),
@@ -113,6 +118,7 @@ public class TeamJpaEntity {
     public Team toDomain() {
         return Team.restore(
                 id,
+                teamPeriodId,
                 name,
                 sendbirdChannelUrl,
                 notionPageId,

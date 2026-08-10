@@ -9,6 +9,7 @@ public interface GetTeamHistoryUseCase {
     TeamHistoryResult getTeamHistories(
             Long requesterId,
             Role requesterRole,
+            Long teamPeriodId,
             LocalDate startDate,
             LocalDate endDate
     );

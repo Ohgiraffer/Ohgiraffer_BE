@@ -3,12 +3,15 @@ package com.ohgiraffer.team.application.service;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.team.application.usecase.GetTeamListUseCase;
+import com.ohgiraffer.team.application.usecase.GetTeamPeriodListUseCase;
 import com.ohgiraffer.team.application.usecase.GetUnassignedStudentUseCase;
 import com.ohgiraffer.team.application.usecase.TeamListResult;
 import com.ohgiraffer.team.application.usecase.TeamMemberResult;
+import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
 import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
+import com.ohgiraffer.team.domain.repository.TeamPeriodRepository;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
 import com.ohgiraffer.user.domain.model.Role;
 import lombok.RequiredArgsConstructor;
@@ -24,22 +27,40 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class TeamQueryService
         implements GetTeamListUseCase,
-        GetUnassignedStudentUseCase {
+        GetUnassignedStudentUseCase,
+        GetTeamPeriodListUseCase {
 
     private final TeamRepository teamRepository;
+    private final TeamPeriodRepository teamPeriodRepository;
 
     @Override
     public List<TeamListResult> getTeams(
             Long requesterId,
-            Role requesterRole
+            Role requesterRole,
+            Long teamPeriodId
     ) {
         validateRequester(
                 requesterId,
                 requesterRole
         );
 
+        validateTeamPeriodId(
+                teamPeriodId
+        );
+
+        teamPeriodRepository.findById(
+                        teamPeriodId
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.TEAM_NOT_FOUND
+                        )
+                );
+
         List<Team> teams =
-                teamRepository.findVisibleTeams();
+                teamRepository.findVisibleTeamsByPeriodId(
+                        teamPeriodId
+                );
 
         List<Long> teamIds =
                 teams.stream()
@@ -47,7 +68,9 @@ public class TeamQueryService
                         .toList();
 
         Map<Long, List<TeamMemberResult>> memberMap =
-                teamRepository.findActiveMembersByTeamIds(teamIds)
+                teamRepository.findActiveMembersByTeamIds(
+                                teamIds
+                        )
                         .stream()
                         .collect(
                                 Collectors.groupingBy(
@@ -69,6 +92,22 @@ public class TeamQueryService
                                 )
                         )
                 )
+                .toList();
+    }
+
+    @Override
+    public List<TeamPeriodResult> getTeamPeriods(
+            Long requesterId,
+            Role requesterRole
+    ) {
+        validateRequester(
+                requesterId,
+                requesterRole
+        );
+
+        return teamPeriodRepository.findVisiblePeriods()
+                .stream()
+                .map(TeamPeriodResult::from)
                 .toList();
     }
 
@@ -112,6 +151,18 @@ public class TeamQueryService
                 && requesterRole != Role.MANAGER) {
             throw new BusinessException(
                     ErrorCode.TEAM_ACCESS_DENIED
+            );
+        }
+    }
+
+    private void validateTeamPeriodId(
+            Long teamPeriodId
+    ) {
+        if (teamPeriodId == null
+                || teamPeriodId <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "팀 기간 ID가 올바르지 않습니다."
             );
         }
     }
