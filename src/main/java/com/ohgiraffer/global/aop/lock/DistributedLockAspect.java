@@ -59,9 +59,16 @@ public class DistributedLockAspect {
 
         } finally {
             if (acquired && rLock.isHeldByCurrentThread()) {
-                rLock.unlock();
+                try {
+                    rLock.unlock();
+                } catch (IllegalMonitorStateException e) {
+                    // leaseTime 만료 등으로 그 사이 락이 이미 풀린 경우 - 로그만 남기고 무시
+                    // (원래 비즈니스 로직의 반환값/예외는 이 finally 블록과 무관하게 그대로 전파됨)
+                    log.warn("[DistributedLock] 락 해제 실패(이미 만료됐을 가능성) | key={}", key);
+                }
             }
         }
+
     }
 
 }
