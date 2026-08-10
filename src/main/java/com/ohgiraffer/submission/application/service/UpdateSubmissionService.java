@@ -24,6 +24,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import com.ohgiraffer.global.metrics.CampFlowMetrics;
+import io.micrometer.core.instrument.Timer;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -50,12 +52,27 @@ public class UpdateSubmissionService
     private static final long MAX_SINGLE_FILE_SIZE = 100L * 1024 * 1024;
     private static final long MAX_TOTAL_FILE_SIZE = 110L * 1024 * 1024;
     private static final int MAX_ORIGINAL_FILE_NAME_LENGTH = 255;
+
+    /*
+     * 재제출 과정에서 발생하는 실제 S3 업로드 시간을 기록합니다.
+     * 최초 제출과 동일한 메트릭 이름을 사용하여 전체 파일 업로드
+     * 성능을 하나의 Grafana 그래프에서 확인할 수 있게 합니다.
+     */
+    private static final String FILE_UPLOAD_DURATION_METRIC = "campflow.submission.file.upload.duration";
+
+    /*
+     * 신규 파일 보상 삭제 또는 기존 파일 교체 삭제에 실패한
+     * 횟수를 기록합니다.
+     */
+    private static final String FILE_CLEANUP_FAILED_METRIC = "campflow.submission.file.cleanup.failed.count";
+
     private final SubmissionRepository submissionRepository;
     private final SubmissionBoxRepository submissionBoxRepository;
     private final StudentTeamRepository studentTeamRepository;
     private final UserRepository userRepository;
     private final SubmissionPersistenceService persistenceService;
     private final S3FileHandler s3FileHandler;
+    private final CampFlowMetrics campFlowMetrics;
     private final Clock clock;
 
     @Override
@@ -574,10 +591,27 @@ public class UpdateSubmissionService
             );
         }
 
-        s3FileHandler.upload(
-                file,
-                key
-        );
+        /*
+         * 재제출 메서드 전체 시간이 아닌 실제 S3 업로드 구간을
+         * 별도로 측정합니다.
+         *
+         * 업로드 중 예외가 발생해도 소요 시간은 남겨야 하므로
+         * finally에서 Timer를 종료합니다.
+         */
+        Timer.Sample uploadSample =
+                campFlowMetrics.startTimer();
+
+        try {
+            s3FileHandler.upload(
+                    file,
+                    key
+            );
+        } finally {
+            campFlowMetrics.stopTimer(
+                    uploadSample,
+                    FILE_UPLOAD_DURATION_METRIC
+            );
+        }
 
         uploadedKeys.add(key);
 
@@ -735,6 +769,11 @@ public class UpdateSubmissionService
                 .toList();
     }
 
+    /**
+     * 재제출 중 새로 업로드한 파일을 보상 삭제합니다.
+     *
+     * 새 파일 업로드 이후 DB 저장 등에 실패한 경우 호출됩니다.
+     */
     private void deleteNewFilesAfterFailure(
             List<String> uploadedKeys,
             RuntimeException originalException
@@ -743,6 +782,15 @@ public class UpdateSubmissionService
             try {
                 s3FileHandler.delete(key);
             } catch (RuntimeException deleteException) {
+                /*
+                 * 재제출 요청 실패 후 신규 파일을 되돌리는 과정에서
+                 * 발생한 정리 실패이므로 rollback으로 구분합니다.
+                 */
+                campFlowMetrics.incrementCounter(
+                        FILE_CLEANUP_FAILED_METRIC,
+                        "phase", "rollback"
+                );
+
                 originalException.addSuppressed(
                         deleteException
                 );
@@ -750,6 +798,12 @@ public class UpdateSubmissionService
         }
     }
 
+    /**
+     * 재제출이 정상적으로 저장된 이후 기존 제출 파일을 삭제합니다.
+     *
+     * 새 제출 데이터는 이미 정상 저장되었으므로 기존 파일 삭제가
+     * 실패해도 재제출 결과 자체는 실패시키지 않습니다.
+     */
     private void deleteOldFilesBestEffort(
             List<String> oldFileKeys
     ) {
@@ -757,6 +811,18 @@ public class UpdateSubmissionService
             try {
                 s3FileHandler.delete(key);
             } catch (RuntimeException exception) {
+                /*
+                 * 기존 파일을 새 파일로 교체한 뒤 발생한 삭제 실패이므로
+                 * replace 태그로 구분합니다.
+                 *
+                 * 이 값이 증가하면 더 이상 사용되지 않는 기존 파일이
+                 * S3에 남아 있을 가능성이 있습니다.
+                 */
+                campFlowMetrics.incrementCounter(
+                        FILE_CLEANUP_FAILED_METRIC,
+                        "phase", "replace"
+                );
+
                 log.warn(
                         "기존 제출 파일 삭제 실패. key={}",
                         key,
@@ -765,4 +831,5 @@ public class UpdateSubmissionService
             }
         }
     }
+
 }
