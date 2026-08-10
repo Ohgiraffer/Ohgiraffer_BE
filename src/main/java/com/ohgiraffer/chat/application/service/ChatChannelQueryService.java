@@ -48,6 +48,7 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
 
     // 그룹 채팅방 상세 조회 - 참여자 목록 + 최신메시지 기준 읽음 인원 계산
     @Override
+    @Transactional
     public ChatChannelDetailResult getChannelDetail(String channelId, Long principalId) {
         ChatChannel channel = chatChannelRepository.findBySendbirdChannelUrl(channelId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_CHANNEL_NOT_FOUND));
@@ -64,6 +65,18 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
 
         List<ChatChannelMember> chatChannelMembers =
                 chatChannelMemberRepository.findAllByChatChannelIdAndLeftAtIsNull(channel.getId());
+
+        // 채팅방 진입 = 읽음 처리 - 호출한 본인 멤버십의 lastReadMessageId를 최신 메시지 id로 갱신
+        // 최신 메시지가 없는 빈 채팅방이면 갱신할 것도 없으므로 스킵
+        if (latestMessageId != null) {
+            chatChannelMembers.stream()
+                    .filter(m -> m.getUserId().equals(principalId))
+                    .findFirst()
+                    .ifPresent(myMembership -> {
+                        myMembership.markRead(latestMessageId);
+                        chatChannelMemberRepository.save(myMembership);
+                    });
+        }
 
         // 멤버 이름 벌크 조회 - 멤버마다 findById 반복 호출(N+1) 대신 id 모아서 한 번에 조회
         List<Long> memberUserIds = chatChannelMembers.stream()
