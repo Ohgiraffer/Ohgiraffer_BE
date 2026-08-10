@@ -6,7 +6,10 @@ import com.ohgiraffer.chat.domain.model.ChatChannel;
 import com.ohgiraffer.chat.domain.model.ChatChannelMember;
 import com.ohgiraffer.chat.domain.repository.ChatChannelMemberRepository;
 import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.team.application.event.TeamChannelSyncTarget;
+import com.ohgiraffer.team.domain.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,6 +25,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class TeamSendbirdChannelSyncService {
 
+    private final TeamRepository teamRepository;
     private final ChatChannelCommandUseCase chatChannelCommandUseCase;
     private final ChatChannelRepository chatChannelRepository;
     private final ChatChannelMemberRepository chatChannelMemberRepository;
@@ -33,6 +37,10 @@ public class TeamSendbirdChannelSyncService {
             TeamChannelSyncTarget target,
             boolean createChatChannel
     ) {
+        lockTeam(
+                target.teamId()
+        );
+
         ChatChannel teamChannel =
                 findUniqueTeamChannel(
                         target.teamId()
@@ -50,6 +58,19 @@ public class TeamSendbirdChannelSyncService {
                 teamChannel,
                 target.memberUserIds()
         );
+    }
+
+    private void lockTeam(
+            Long teamId
+    ) {
+        teamRepository.findByIdForUpdate(
+                        teamId
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.TEAM_NOT_FOUND
+                        )
+                );
     }
 
     private ChatChannel findUniqueTeamChannel(

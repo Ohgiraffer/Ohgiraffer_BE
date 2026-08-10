@@ -528,6 +528,11 @@ public class TeamCommandService
                 command.deletedTeamIds()
         );
 
+        validateNoDeletedTeamInRequestedTeams(
+                command.teams(),
+                command.deletedTeamIds()
+        );
+
         command.unassignedUserIds()
                 .forEach(this::validateUserId);
 
@@ -611,6 +616,28 @@ public class TeamCommandService
                 throw new BusinessException(
                         ErrorCode.INVALID_INPUT_VALUE,
                         "중복된 삭제 팀이 포함되어 있습니다."
+                );
+            }
+        }
+    }
+
+    private void validateNoDeletedTeamInRequestedTeams(
+            List<TeamConfigurationCommand> teams,
+            List<Long> deletedTeamIds
+    ) {
+        Set<Long> deletedTeamIdSet =
+                new HashSet<>(
+                        deletedTeamIds
+                );
+
+        for (TeamConfigurationCommand team : teams) {
+            if (team.teamId() != null
+                    && deletedTeamIdSet.contains(
+                    team.teamId()
+            )) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT_VALUE,
+                        "저장 팀과 삭제 팀이 중복되었습니다."
                 );
             }
         }
