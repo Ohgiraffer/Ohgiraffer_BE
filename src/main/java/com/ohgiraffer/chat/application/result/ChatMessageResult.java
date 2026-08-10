@@ -18,14 +18,20 @@ public record ChatMessageResult(
         String attachmentUrl,
         String attachmentType,
         Instant sentAt,
-        boolean isEdited
+        boolean isEdited,
+        Long unreadCount
 ) {
 
+    // 안읽음 수 계산이 필요 없는 조회(스레드 답글)용 - unreadCount는 항상 null
     public static ChatMessageResult from(com.ohgiraffer.chat.domain.model.ChatMessageMirror domain) {
+        return from(domain, null);
+    }
+
+    public static ChatMessageResult from(com.ohgiraffer.chat.domain.model.ChatMessageMirror domain, Long unreadCount) {
         return new ChatMessageResult(
                 domain.getId(), domain.getChannelId(), domain.getSendbirdMessageId(),
-                domain.getParentMessageId(), domain.getSenderId(), domain.getContent(),
-                domain.getAttachmentUrl(), domain.getAttachmentType(), domain.getSentAt(), domain.isEdited()
+                domain.getParentMessageId(), domain.getSenderId(), domain.getContent(), domain.getAttachmentUrl(),
+                domain.getAttachmentType(), domain.getSentAt(), domain.isEdited(), unreadCount
         );
     }
 

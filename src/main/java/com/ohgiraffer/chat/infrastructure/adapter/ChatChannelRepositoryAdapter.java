@@ -54,4 +54,11 @@ public class ChatChannelRepositoryAdapter implements ChatChannelRepository {
         return jpaRepository.findAllById(ids).stream().map(ChatChannelJpaEntity::toDomain).toList();
     }
 
+    @Override
+    public List<ChatChannel> findAllBySendbirdChannelUrlIn(List<String> sendbirdChannelUrls) {
+        return jpaRepository.findAllBySendbirdChannelUrlIn(sendbirdChannelUrls).stream()
+                .map(ChatChannelJpaEntity::toDomain) // 실제 변환 메서드명은 파일 확인 필요
+                .toList();
+    }
+
 }
