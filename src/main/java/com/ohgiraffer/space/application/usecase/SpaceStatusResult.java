@@ -3,6 +3,7 @@ package com.ohgiraffer.space.application.usecase;
 import com.ohgiraffer.space.application.port.SpaceStatusData;
 
 import java.util.List;
+import java.util.function.Function;
 
 public record SpaceStatusResult(
         Long spaceId,
@@ -19,22 +20,33 @@ public record SpaceStatusResult(
 
     public static SpaceStatusResult from(
             SpaceStatusData data,
-            Long requesterId
+            Long requesterId,
+            Function<String, String> profileImgUrlResolver
     ) {
         List<SpaceOccupantResult> occupants =
                 data.occupants()
                         .stream()
-                        .map(occupant ->
-                                SpaceOccupantResult.from(
-                                        occupant,
-                                        requesterId
-                                )
-                        )
+                        .map(occupant -> {
+                            String profileImgUrl =
+                                    profileImgUrlResolver.apply(
+                                            occupant.profileImgKey()
+                                    );
+
+                            return SpaceOccupantResult.from(
+                                    occupant,
+                                    requesterId,
+                                    profileImgUrl
+                            );
+                        })
                         .toList();
 
         int currentCount = occupants.size();
+
         int availableCount =
-                Math.max(data.capacity() - currentCount, 0);
+                Math.max(
+                        data.capacity() - currentCount,
+                        0
+                );
 
         return new SpaceStatusResult(
                 data.spaceId(),
