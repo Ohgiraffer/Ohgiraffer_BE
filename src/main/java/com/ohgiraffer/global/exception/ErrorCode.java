@@ -144,6 +144,10 @@ public enum ErrorCode {
     NOTICE_IMAGE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "NOTICE_010", "본문에 넣을 수 없는 이미지 형식입니다."),
     NOTICE_ATTACHMENT_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "NOTICE_011", "첨부할 수 없는 파일 형식입니다."),
 
+    EVALUATION_SHEET_LINK_NOT_FOUND(HttpStatus.NOT_FOUND, "EVALUATION_001", "연동된 평가 시트가 없습니다."),
+    EVALUATION_SHEET_COLUMN_NOT_FOUND(HttpStatus.BAD_REQUEST, "EVALUATION_002", "시트에서 지정한 컬럼을 찾을 수 없습니다."),
+    EVALUATION_SHEET_TAB_NOT_FOUND(HttpStatus.BAD_REQUEST, "EVALUATION_003", "시트에서 지정한 탭을 찾을 수 없습니다."),
+
     CALENDAR_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CALENDAR_001", "존재하지 않는 일정입니다."),
     CALENDAR_EVENT_NOT_CREATOR(HttpStatus.FORBIDDEN, "CALENDAR_002", "일정을 등록한 사람만 삭제할 수 있습니다."),
     AI_API_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI_001", "AI API 호출 중 오류가 발생했습니다.");
