@@ -1,9 +1,11 @@
 package com.ohgiraffer.notice.application.query;
 
 import com.ohgiraffer.notice.domain.model.Notice;
+import com.ohgiraffer.notice.domain.model.NoticeAttachment;
 import com.ohgiraffer.notice.domain.model.NoticeCategory;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * 공지 상세 화면용 조회 모델.
@@ -14,7 +16,8 @@ import java.time.Instant;
  * <p>{@code authorName} 은 사용자 도메인에서 포트로 가져온다.
  * 탈퇴 등으로 사용자를 찾지 못하면 null 이며, 화면에서 대체 문구를 보여주면 된다.
  *
- * <p>첨부파일은 아직 없다. 파일 저장소를 붙일 때 추가한다.
+ * <p>{@code attachments} 에는 저장된 값만 담는다. 다운로드 주소는 만료되는 값이라
+ * 여기 두지 않고, 응답을 만들 때 키로부터 발급한다.
  */
 public record NoticeDetailView(
         Long noticeId,
@@ -28,6 +31,7 @@ public record NoticeDetailView(
         boolean visibleToTrainee,
         long confirmationCount,
         boolean confirmedByMe,
+        List<NoticeAttachment> attachments,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -37,7 +41,8 @@ public record NoticeDetailView(
             NoticeCategory category,
             String authorName,
             long confirmationCount,
-            boolean confirmedByMe
+            boolean confirmedByMe,
+            List<NoticeAttachment> attachments
     ) {
         return new NoticeDetailView(
                 notice.getId(),
@@ -51,6 +56,7 @@ public record NoticeDetailView(
                 notice.isVisibleToTrainee(),
                 confirmationCount,
                 confirmedByMe,
+                attachments == null ? List.of() : attachments,
                 notice.getCreatedAt(),
                 notice.getUpdatedAt()
         );

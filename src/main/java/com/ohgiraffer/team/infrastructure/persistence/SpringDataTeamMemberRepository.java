@@ -1,10 +1,13 @@
 package com.ohgiraffer.team.infrastructure.persistence;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface SpringDataTeamMemberRepository
         extends JpaRepository<TeamMemberViewJpaEntity, Long> {
@@ -49,8 +52,21 @@ public interface SpringDataTeamMemberRepository
             @Param("teamIds") List<Long> teamIds
     );
 
-    boolean existsByTeamIdAndUserIdAndLeftAtIsNull(
-            Long teamId,
+    Optional<TeamMemberViewJpaEntity> findById(
+            Long teamMemberId
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT tm
+            FROM TeamMemberViewJpaEntity tm
+            WHERE tm.id = :teamMemberId
+            """)
+    Optional<TeamMemberViewJpaEntity> findByIdForUpdate(
+            @Param("teamMemberId") Long teamMemberId
+    );
+
+    boolean existsByUserIdAndLeftAtIsNull(
             Long userId
     );
 
@@ -71,4 +87,18 @@ public interface SpringDataTeamMemberRepository
             ORDER BY u.name ASC, u.id ASC
             """)
     List<UnassignedStudentProjection> findUnassignedStudents();
+
+    @Query("""
+        SELECT
+            tm.userId AS userId,
+            t.name AS teamName
+        FROM TeamMemberViewJpaEntity tm
+        JOIN TeamJpaEntity t
+            ON t.id = tm.teamId
+        WHERE tm.userId IN :userIds
+          AND tm.leftAt IS NULL
+        """)
+    List<UserTeamNameProjection> findActiveTeamNamesByUserIds(
+            @Param("userIds") List<Long> userIds
+    );
 }

@@ -20,6 +20,7 @@ import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,7 +66,9 @@ public class BootcampCommandService implements BootcampCommandUsecase {
         log.info("[update] 부트캠프 수정 완료 | bootcampId={}, orgName={}", bootcampId, orgName);
     }
 
+    @CacheEvict(value = "attendanceSummary", allEntries = true)
     @Override
+    @Transactional
     public void savePolicy(BootcampPolicyRequest request) {
         bootcampRepository.findById(request.bootcampId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
@@ -87,7 +90,9 @@ public class BootcampCommandService implements BootcampCommandUsecase {
         log.info("[savePolicy] 출결 정책 저장 완료 | bootcampId={}", request.bootcampId());
     }
 
+    @CacheEvict(value = "attendanceSummary", allEntries = true)
     @Override
+    @Transactional
     public void updateSettings(Long userId, String orgName, String proName,
                                LocalDate startDate, LocalDate endDate,
                                List<PeriodCommand> periods) {
