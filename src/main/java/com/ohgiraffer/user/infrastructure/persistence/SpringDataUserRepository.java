@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,4 +49,6 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, L
           AND u.status = com.ohgiraffer.user.domain.model.UserStatus.ACTIVE
         """)
     int completeActiveStudentsByBootcampId(@Param("bootcampId") Long bootcampId);
+
+    List<UserJpaEntity> findAllByRoleIn(List<Role> roles);
 }

@@ -144,6 +144,11 @@ public enum ErrorCode {
     NOTICE_IMAGE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "NOTICE_010", "본문에 넣을 수 없는 이미지 형식입니다."),
     NOTICE_ATTACHMENT_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "NOTICE_011", "첨부할 수 없는 파일 형식입니다."),
 
+    CONSULTATION_NOT_FOUND(HttpStatus.NOT_FOUND, "CONSULTATION_001", "존재하지 않는 상담입니다."),
+    CONSULTATION_ALREADY_BOOKED(HttpStatus.CONFLICT, "CONSULTATION_002", "이미 예약된 시간입니다."),
+    CONSULTATION_ALREADY_CLOSED(HttpStatus.CONFLICT, "CONSULTATION_003", "이미 종료되었거나 취소된 상담입니다."),
+    CONSULTATION_TIME_IN_USE(HttpStatus.CONFLICT, "CONSULTATION_004", "이미 예약이 잡힌 시간은 가능 시간에서 해제할 수 없습니다."),
+
     CALENDAR_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CALENDAR_001", "존재하지 않는 일정입니다."),
     CALENDAR_EVENT_NOT_CREATOR(HttpStatus.FORBIDDEN, "CALENDAR_002", "일정을 등록한 사람만 삭제할 수 있습니다."),
     AI_API_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI_001", "AI API 호출 중 오류가 발생했습니다.");
