@@ -73,8 +73,12 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
                     .filter(m -> m.getUserId().equals(principalId))
                     .findFirst()
                     .ifPresent(myMembership -> {
-                        myMembership.markRead(latestMessageId);
-                        chatChannelMemberRepository.save(myMembership);
+                        // 역행 방지 - 이미 더 최신까지 읽은 상태면 갱신 스킵 (동시 요청 시 오래된 값으로 덮어쓰는 것 방지)
+                        if (myMembership.getLastReadMessageId() == null
+                                || myMembership.getLastReadMessageId() < latestMessageId) {
+                            myMembership.markRead(latestMessageId);
+                            chatChannelMemberRepository.save(myMembership);
+                        }
                     });
         }
 
