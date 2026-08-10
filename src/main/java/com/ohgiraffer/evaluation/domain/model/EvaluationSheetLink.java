@@ -104,6 +104,22 @@ public class EvaluationSheetLink {
         );
     }
 
+    /**
+     * 동기화를 마친 시각을 기록한 연동 정보를 만든다.
+     *
+     * <p>연동 설정을 고치는 것과 나누어 둔다. 설정을 바꿨다고 동기화를 한 것은 아니고,
+     * 동기화했다고 설정이 달라지지도 않는다.
+     */
+    public EvaluationSheetLink markSynced(Instant syncedAt) {
+        return new EvaluationSheetLink(
+                id,
+                sheetUrl,
+                tabName,
+                columnMapping,
+                syncedAt
+        );
+    }
+
     private static void validateSheetUrl(String sheetUrl) {
         if (sheetUrl == null || sheetUrl.isBlank()) {
             throw new BusinessException(

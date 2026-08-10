@@ -2,8 +2,12 @@ package com.ohgiraffer.evaluation.presentation.api;
 
 import com.ohgiraffer.evaluation.application.usecase.EvaluationSyncUseCase;
 import com.ohgiraffer.evaluation.presentation.api.response.EvaluationSyncResponse;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.global.exception.ErrorResponse;
+import com.ohgiraffer.security.user.CustomUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -11,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -76,9 +81,25 @@ public class EvaluationSyncController {
     })
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     @PostMapping
-    public ResponseEntity<EvaluationSyncResponse> sync() {
+    public ResponseEntity<EvaluationSyncResponse> sync(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
         return ResponseEntity.ok(
-                EvaluationSyncResponse.from(evaluationSyncUseCase.sync())
+                EvaluationSyncResponse.from(
+                        evaluationSyncUseCase.sync(currentUserId(principal)))
         );
+    }
+
+    /**
+     * SecurityConfig 가 인증을 요구하므로 정상 흐름에서는 null 이 아니다.
+     * 설정이 바뀌어 인증 없이 도달했을 때 NullPointerException 대신 401 로 알리기 위한 방어다.
+     */
+    private Long currentUserId(CustomUserPrincipal principal) {
+        if (principal == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        return principal.getId();
     }
 }

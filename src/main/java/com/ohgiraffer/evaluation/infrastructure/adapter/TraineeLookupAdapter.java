@@ -2,7 +2,6 @@ package com.ohgiraffer.evaluation.infrastructure.adapter;
 
 import com.ohgiraffer.evaluation.application.port.TraineeLookupPort;
 import com.ohgiraffer.user.domain.model.Role;
-import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +23,7 @@ public class TraineeLookupAdapter implements TraineeLookupPort {
     }
 
     @Override
-    public Map<String, Long> findTraineeIdsByEmails(Collection<String> emails) {
+    public Map<String, Trainee> findTraineesByEmails(Collection<String> emails) {
         /*
          * 사용자 저장소에 이메일 목록 조회가 없어 하나씩 묻는다.
          * 다만 시트에는 같은 훈련생이 항목 수만큼 반복되므로, 중복을 먼저 걷어내면
@@ -38,15 +37,17 @@ public class TraineeLookupAdapter implements TraineeLookupPort {
                 .filter(email -> !email.isEmpty())
                 .collect(Collectors.toSet());
 
-        Map<String, Long> traineeIds = new HashMap<>();
+        Map<String, Trainee> trainees = new HashMap<>();
 
         for (String email : distinctEmails) {
             userRepository.findByEmail(email)
                     .filter(user -> user.getRole() == Role.STUDENT)
-                    .map(User::getId)
-                    .ifPresent(id -> traineeIds.put(email, id));
+                    .ifPresent(user -> trainees.put(
+                            email,
+                            new Trainee(user.getId(), user.getName())
+                    ));
         }
 
-        return traineeIds;
+        return trainees;
     }
 }

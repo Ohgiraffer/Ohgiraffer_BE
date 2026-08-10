@@ -6,8 +6,10 @@ import com.ohgiraffer.evaluation.application.query.EvaluationSyncResult;
 import com.ohgiraffer.evaluation.domain.model.EvaluationColumnMapping;
 import com.ohgiraffer.evaluation.domain.model.EvaluationRecord;
 import com.ohgiraffer.evaluation.domain.model.EvaluationSheetLink;
+import com.ohgiraffer.evaluation.domain.model.SheetSyncLog;
 import com.ohgiraffer.evaluation.domain.repository.EvaluationRecordRepository;
 import com.ohgiraffer.evaluation.domain.repository.EvaluationSheetLinkRepository;
+import com.ohgiraffer.evaluation.domain.repository.SheetSyncLogRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,7 +45,9 @@ class EvaluationSyncServiceTest {
 
     private static final Long SHEET_LINK_ID = 1L;
     private static final Long TRAINEE_ID = 101L;
+    private static final Long EXECUTOR_ID = 1L;
     private static final String EMAIL = "student101@campflow.test";
+    private static final String TRAINEE_NAME = "김철수";
 
     private static final List<String> HEADER =
             List.of("이메일", "이름", "평가유형", "평가항목", "점수", "의견");
@@ -60,6 +64,9 @@ class EvaluationSyncServiceTest {
     @Mock
     private TraineeLookupPort traineeLookupPort;
 
+    @Mock
+    private SheetSyncLogRepository sheetSyncLogRepository;
+
     private EvaluationSyncService evaluationSyncService;
 
     @BeforeEach
@@ -67,14 +74,24 @@ class EvaluationSyncServiceTest {
         evaluationSyncService = new EvaluationSyncService(
                 evaluationSheetLinkRepository,
                 evaluationRecordRepository,
+                sheetSyncLogRepository,
                 evaluationSheetReaderPort,
                 traineeLookupPort
         );
 
         when(evaluationSheetLinkRepository.find())
                 .thenReturn(Optional.of(sheetLink()));
-        when(traineeLookupPort.findTraineeIdsByEmails(any()))
-                .thenReturn(Map.of(EMAIL, TRAINEE_ID));
+        when(traineeLookupPort.findTraineesByEmails(any()))
+                .thenReturn(Map.of(EMAIL,
+                        new TraineeLookupPort.Trainee(TRAINEE_ID, TRAINEE_NAME)));
+        when(sheetSyncLogRepository.save(any()))
+                .thenAnswer(invocation -> {
+                    SheetSyncLog log = invocation.getArgument(0);
+                    return SheetSyncLog.restore(
+                            99L, log.getSheetLinkId(), log.getExecutedBy(),
+                            log.getChangedCount(), log.getDiffSummary(),
+                            log.getSyncedAt());
+                });
         when(evaluationRecordRepository.findAllBySheetLinkId(SHEET_LINK_ID))
                 .thenReturn(List.of());
         when(evaluationRecordRepository.saveAll(any()))
@@ -89,7 +106,7 @@ class EvaluationSyncServiceTest {
                 row(EMAIL, "김철수", "중간평가", "협업", "90", "")
         );
 
-        EvaluationSyncResult result = evaluationSyncService.sync();
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
 
         assertEquals(2, result.addedCount());
         assertEquals(0, result.updatedCount());
@@ -102,7 +119,7 @@ class EvaluationSyncServiceTest {
         givenStored(stored("코드 품질", new BigDecimal("70"), "리팩터링 필요"));
         givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "88", "리팩터링 필요"));
 
-        EvaluationSyncResult result = evaluationSyncService.sync();
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
 
         assertEquals(0, result.addedCount());
         assertEquals(1, result.updatedCount());
@@ -115,7 +132,7 @@ class EvaluationSyncServiceTest {
         givenStored(stored("코드 품질", new BigDecimal("85.00"), "잘함"));
         givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "85", "잘함"));
 
-        EvaluationSyncResult result = evaluationSyncService.sync();
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
 
         /*
          * BigDecimal 은 equals 가 소수 자릿수까지 따져 85 와 85.00 을 다르게 본다.
@@ -133,7 +150,7 @@ class EvaluationSyncServiceTest {
                 row("없는사람@campflow.test", "???", "중간평가", "협업", "90", "")
         );
 
-        EvaluationSyncResult result = evaluationSyncService.sync();
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
 
         /*
          * 시트가 100행인데 오타 하나로 전부 막히면 쓰기 어렵다.
@@ -150,7 +167,7 @@ class EvaluationSyncServiceTest {
     void syncSkipsNonNumericScore() {
         givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "미제출", ""));
 
-        EvaluationSyncResult result = evaluationSyncService.sync();
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
 
         assertEquals(0, result.addedCount());
         assertEquals(1, result.skipped().size());
@@ -165,7 +182,7 @@ class EvaluationSyncServiceTest {
                 row(EMAIL, "김철수", "중간평가", "코드 품질", "90", "")
         );
 
-        EvaluationSyncResult result = evaluationSyncService.sync();
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
 
         /*
          * 그대로 두면 한 트랜잭션에서 같은 행을 두 번 저장하게 된다.
@@ -183,10 +200,80 @@ class EvaluationSyncServiceTest {
                 List.of("", "", "", "", "", "")
         );
 
-        EvaluationSyncResult result = evaluationSyncService.sync();
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
 
         assertEquals(1, result.addedCount());
         assertTrue(result.skipped().isEmpty());
+    }
+
+    @Test
+    @DisplayName("변경이 있으면 이력을 남기고 실행자를 기록한다")
+    void syncWritesLogWhenChanged() {
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "85", "잘함"));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        ArgumentCaptor<SheetSyncLog> captor =
+                ArgumentCaptor.forClass(SheetSyncLog.class);
+        verify(sheetSyncLogRepository).save(captor.capture());
+
+        SheetSyncLog log = captor.getValue();
+
+        assertEquals(SHEET_LINK_ID, log.getSheetLinkId());
+        assertEquals(EXECUTOR_ID, log.getExecutedBy());
+        assertEquals(1, log.getChangedCount());
+        assertEquals(99L, result.syncLogId());
+    }
+
+    @Test
+    @DisplayName("변경이 없으면 이력을 남기지 않는다")
+    void syncSkipsLogWhenNothingChanged() {
+        givenStored(stored("코드 품질", new BigDecimal("85"), "잘함"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "85", "잘함"));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        /*
+         * 이력 목록은 "언제 무엇이 몇 건 바뀌었나" 를 보는 곳이다.
+         * 눌렀지만 바뀐 것이 없는 실행까지 쌓이면 정작 볼 것이 묻힌다.
+         */
+        verify(sheetSyncLogRepository, never()).save(any());
+        assertEquals(null, result.syncLogId());
+    }
+
+    @Test
+    @DisplayName("변경이 없어도 마지막 동기화 시각은 갱신한다")
+    void syncUpdatesLastSyncedAtEvenWhenNothingChanged() {
+        givenStored(stored("코드 품질", new BigDecimal("85"), "잘함"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "85", "잘함"));
+
+        evaluationSyncService.sync(EXECUTOR_ID);
+
+        /*
+         * "언제 확인했는가" 는 "무엇이 바뀌었는가" 와 별개의 정보다.
+         */
+        ArgumentCaptor<EvaluationSheetLink> captor =
+                ArgumentCaptor.forClass(EvaluationSheetLink.class);
+        verify(evaluationSheetLinkRepository).save(captor.capture());
+
+        assertTrue(captor.getValue().getLastSyncedAt() != null);
+    }
+
+    @Test
+    @DisplayName("요약문에 점수 변화를 담는다")
+    void syncSummaryContainsScoreChange() {
+        givenStored(stored("코드 품질", new BigDecimal("70"), "리팩터링 필요"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "88", "리팩터링 필요"));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        /*
+         * 요구사항이 "단순 셀 변경 목록이 아니라 점수 변화 중심" 이라 무엇이 어떻게
+         * 바뀌었는지가 문장에 드러나야 한다.
+         */
+        assertTrue(result.diffSummary().contains("김철수"));
+        assertTrue(result.diffSummary().contains("70"));
+        assertTrue(result.diffSummary().contains("88"));
     }
 
     @Test
@@ -196,7 +283,7 @@ class EvaluationSyncServiceTest {
 
         BusinessException exception = assertThrows(
                 BusinessException.class,
-                () -> evaluationSyncService.sync()
+                () -> evaluationSyncService.sync(EXECUTOR_ID)
         );
 
         assertEquals(
@@ -215,7 +302,7 @@ class EvaluationSyncServiceTest {
 
         BusinessException exception = assertThrows(
                 BusinessException.class,
-                () -> evaluationSyncService.sync()
+                () -> evaluationSyncService.sync(EXECUTOR_ID)
         );
 
         /*
