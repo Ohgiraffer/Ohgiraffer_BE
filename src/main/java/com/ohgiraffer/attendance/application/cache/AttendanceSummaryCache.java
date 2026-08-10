@@ -12,13 +12,18 @@ import com.ohgiraffer.bootcamp.domain.model.BootcampPeriodResult;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.ohgiraffer.attendance.domain.policy.AttendanceMetricsCalculator.countWeekdays;
 
@@ -30,11 +35,44 @@ public class AttendanceSummaryCache {
     private final AttendanceRepository attendanceRepository;
     private final UserQueryUsecase userQueryUsecase;
     private final BootcampQueryUsecase bootcampQueryUsecase;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     private static final int LATE_EARLY_LEAVE_CONVERSION_COUNT = 3;
+    private static final String CACHE_PREFIX = "attendanceSummary::";
+    private static final Duration TTL = Duration.ofHours(25);
 
-    @Cacheable(value = "attendanceSummary", key = "#userId + '-' + T(java.time.LocalDate).now()")
+    // 같은 userId+date 키에 대해 동시에 여러 스레드가 캐시 미스를 겪어도
+    // 실제 DB 조회/계산은 한 번만 실행되도록 막는 키 단위 락
+    private final Map<String, ReentrantLock> lockMap = new ConcurrentHashMap<>();
+
     public AttendanceSummaryResponse getCachedSummary(Long userId) {
+        String key = CACHE_PREFIX + userId + "-" + LocalDate.now();
+
+        AttendanceSummaryResponse cached =
+                (AttendanceSummaryResponse) redisTemplate.opsForValue().get(key);
+        if (cached != null) {
+            return cached;
+        }
+
+        ReentrantLock lock = lockMap.computeIfAbsent(key, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            // 락을 기다리는 동안 다른 스레드가 이미 계산해서 캐시에 넣었을 수 있으므로 재확인
+            cached = (AttendanceSummaryResponse) redisTemplate.opsForValue().get(key);
+            if (cached != null) {
+                return cached;
+            }
+
+            AttendanceSummaryResponse result = loadFromDb(userId);
+            redisTemplate.opsForValue().set(key, result, TTL);
+            return result;
+        } finally {
+            lock.unlock();
+            lockMap.remove(key, lock);
+        }
+    }
+
+    private AttendanceSummaryResponse loadFromDb(Long userId) {
         Long bootcampId = userQueryUsecase.getBootcampId(userId);
         BootcampPeriodResult bootcampPeriod = bootcampQueryUsecase.getPeriod(bootcampId);
         AttendancePolicyResult policy = bootcampQueryUsecase.getPolicy(bootcampId);
