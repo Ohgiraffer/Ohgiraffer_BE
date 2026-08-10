@@ -8,6 +8,7 @@ public interface GetTeamListUseCase {
 
     List<TeamListResult> getTeams(
             Long requesterId,
-            Role requesterRole
+            Role requesterRole,
+            Long teamPeriodId
     );
 }

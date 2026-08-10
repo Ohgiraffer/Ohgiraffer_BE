@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 public record CreateApprovalResponse(
         Long approvalId,
         Long requesterId,
-        Long approverId,
         ApprovalType requestType,
         ApprovalStatus status,
         String title,
@@ -22,7 +21,6 @@ public record CreateApprovalResponse(
         return new CreateApprovalResponse(
                 result.approvalId(),
                 result.requesterId(),
-                result.approverId(),
                 result.requestType(),
                 result.status(),
                 result.title(),

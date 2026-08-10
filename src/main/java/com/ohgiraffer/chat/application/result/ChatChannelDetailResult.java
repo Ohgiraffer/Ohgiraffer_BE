@@ -24,6 +24,7 @@ public record ChatChannelDetailResult(
             String memberName,
             String email,
             String role,
+            String profileImageUrl,
             Instant joinedAt,
             Long lastReadMessageId,
             boolean isRead

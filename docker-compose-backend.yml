@@ -20,11 +20,25 @@ services:
       GOOGLE_SHEETS_ENABLED: ${GOOGLE_SHEETS_ENABLED:-false}
       GOOGLE_SHEETS_CREDENTIALS_LOCATION: file:/app/secrets/ohgiraffer-sheets-key.json
       GOOGLE_FORMS_ENABLED: ${GOOGLE_FORMS_ENABLED:-false}
+      GOOGLE_FORMS_OAUTH_CREDENTIALS_LOCATION: file:/app/secrets/ohgiraffer-forms-oauth-client.json
+      GOOGLE_FORMS_TOKEN_DIRECTORY: /app/secrets/forms-tokens
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
     volumes:
       - type: bind
         source: ~/ohgiraffer-sheets-key.json
         target: /app/secrets/ohgiraffer-sheets-key.json
         read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ~/ohgiraffer-forms-oauth-client.json
+        target: /app/secrets/ohgiraffer-forms-oauth-client.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ~/forms-tokens
+        target: /app/secrets/forms-tokens
         bind:
           create_host_path: false
     depends_on:

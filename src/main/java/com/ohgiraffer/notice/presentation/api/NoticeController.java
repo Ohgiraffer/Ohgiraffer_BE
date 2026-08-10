@@ -3,7 +3,9 @@ package com.ohgiraffer.notice.presentation.api;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.global.exception.ErrorResponse;
+import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.notice.application.query.NoticeConfirmationView;
+import com.ohgiraffer.notice.application.query.NoticeDetailView;
 import com.ohgiraffer.notice.application.usecase.NoticeCommandUseCase;
 import com.ohgiraffer.notice.application.usecase.NoticeQueryUseCase;
 import com.ohgiraffer.notice.domain.model.Notice;
@@ -11,6 +13,7 @@ import com.ohgiraffer.notice.domain.model.ViewerRole;
 import com.ohgiraffer.notice.presentation.api.request.CreateNoticeRequest;
 import com.ohgiraffer.notice.presentation.api.request.UpdateNoticeRequest;
 import com.ohgiraffer.notice.presentation.api.response.CreateNoticeResponse;
+import com.ohgiraffer.notice.presentation.api.response.NoticeAttachmentResponse;
 import com.ohgiraffer.notice.presentation.api.response.NoticeConfirmationResponse;
 import com.ohgiraffer.notice.presentation.api.response.NoticeDashboardResponse;
 import com.ohgiraffer.notice.presentation.api.response.NoticeDetailResponse;
@@ -48,13 +51,16 @@ public class NoticeController {
 
     private final NoticeCommandUseCase noticeCommandUseCase;
     private final NoticeQueryUseCase noticeQueryUseCase;
+    private final S3UrlResolver s3UrlResolver;
 
     public NoticeController(
             NoticeCommandUseCase noticeCommandUseCase,
-            NoticeQueryUseCase noticeQueryUseCase
+            NoticeQueryUseCase noticeQueryUseCase,
+            S3UrlResolver s3UrlResolver
     ) {
         this.noticeCommandUseCase = noticeCommandUseCase;
         this.noticeQueryUseCase = noticeQueryUseCase;
+        this.s3UrlResolver = s3UrlResolver;
     }
 
     /**
@@ -189,14 +195,29 @@ public class NoticeController {
             @Parameter(description = "공지 식별자", example = "1")
             @PathVariable Long noticeId
     ) {
-        return ResponseEntity.ok(
-                NoticeDetailResponse.from(
-                        noticeQueryUseCase.findDetail(
-                                noticeId,
-                                viewerRole(principal),
-                                currentUserId(principal)
+        NoticeDetailView view = noticeQueryUseCase.findDetail(
+                noticeId,
+                viewerRole(principal),
+                currentUserId(principal)
+        );
+
+        /*
+         * 다운로드 주소는 저장된 값이 아니라 여기서 발급한다. 만료 시간이 있어
+         * 저장해 두면 곧 못 쓰게 되므로, 조회할 때마다 키로부터 새로 만든다.
+         */
+        List<NoticeAttachmentResponse> attachments = view.attachments()
+                .stream()
+                .map(attachment -> NoticeAttachmentResponse.from(
+                        attachment,
+                        s3UrlResolver.resolveDownload(
+                                attachment.getFileKey(),
+                                attachment.getFileName()
                         )
-                )
+                ))
+                .toList();
+
+        return ResponseEntity.ok(
+                NoticeDetailResponse.from(view, attachments)
         );
     }
 

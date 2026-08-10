@@ -37,6 +37,15 @@ public class ChatController {
     private final ChatMessageMirrorQueryUseCase chatMessageMirrorQueryUseCase;
     private final ChatReplyCommandUseCase chatReplyCommandUseCase;
     private final ChatUserQueryUseCase chatUserQueryUseCase;
+    private final ChatUserCommandUseCase chatUserCommandUseCase;
+
+    // 채팅 진입 시 Sendbird 세션 토큰 발급
+    @PostMapping("/sendbird/session-token")
+    public ResponseEntity<SendbirdSessionTokenResponse> issueSendbirdSessionToken(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        return ResponseEntity.ok(chatUserCommandUseCase.issueSendbirdSessionToken(principal.getId()));
+    }
 
     // 채팅방 생성
     @PostMapping("/channels")
@@ -144,6 +153,15 @@ public class ChatController {
     ) {
         ChatChannelDetailResult result = chatChannelQueryUseCase.getChannelDetail(channelId, principal.getId());
         return ResponseEntity.ok(ChatChannelDetailResponse.from(result));
+    }
+
+    // 특정 메시지 답글 개수 단건 조회
+    @GetMapping("/messages/{messageId}/reply-count")
+    public ResponseEntity<ReplyCountResponse> getReplyCount(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable String messageId
+    ) {
+        return ResponseEntity.ok(chatMessageMirrorQueryUseCase.getReplyCount(messageId, principal.getId()));
     }
 
     // 채팅 상대 검색 (새채팅 모달 전용)

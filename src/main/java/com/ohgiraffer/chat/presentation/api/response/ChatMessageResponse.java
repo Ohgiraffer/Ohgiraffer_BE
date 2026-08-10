@@ -17,13 +17,15 @@ public record ChatMessageResponse(
         String content,
         String attachmentUrl,
         String messageType,
-        Instant sentAt
+        Instant sentAt,
+        Long unreadCount
 ) {
 
+    // 메시지 전송 직후 응답 - 안읽음 수 개념이 없는 시점이라 항상 null
     public static ChatMessageResponse from(SendbirdMessageResult result) {
         return new ChatMessageResponse(
                 result.sendbirdMessageId(), result.channelId(), result.senderId(),
-                result.content(), result.attachmentUrl(), result.messageType(), result.sentAt()
+                result.content(), result.attachmentUrl(), result.messageType(), result.sentAt(), null
         );
     }
 
@@ -32,7 +34,7 @@ public record ChatMessageResponse(
         return new ChatMessageResponse(
                 result.sendbirdMessageId(), result.channelId(), result.senderId(),
                 result.content(), result.attachmentUrl(),
-                result.attachmentUrl() != null ? "FILE" : "MESG", result.sentAt()
+                result.attachmentUrl() != null ? "FILE" : "MESG", result.sentAt(), result.unreadCount()
         );
     }
 

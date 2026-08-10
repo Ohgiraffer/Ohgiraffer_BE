@@ -92,12 +92,16 @@ springdoc:
 logging:
   level:
     root: INFO
-    com.wanted.momocity: DEBUG
+    com.ohgiraffer: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.stat: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
+#    org.hibernate.orm.jdbc.bind: TRACE
     org.springframework.data.redis: DEBUG
     org.flywaydb: INFO
+
+campflow:
+  logging:
+    service-io: false
 
 # ===== Async =====
 app:
@@ -109,6 +113,8 @@ app:
   retry:
     fixed-delay-ms: 5000
   seed-scale: large
+  cookie:
+    secure: ${COOKIE_SECURE:false}
 
 sendbird:
   app-id: ${SENDBIRD_APP_ID}
@@ -121,6 +127,12 @@ ai:
     model: ${GEMINI_MODEL:gemini-3.6-flash}
     timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:90}
 
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      
 # ==== management =====
 management:
   endpoints:
