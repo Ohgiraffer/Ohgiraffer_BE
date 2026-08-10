@@ -18,9 +18,11 @@ public class TeamHistoryRepositoryAdapter
 
     @Override
     public List<TeamSnapshotMember> findSnapshotMembers(
+            Long teamPeriodId,
             LocalDateTime snapshotAt
     ) {
         return springDataTeamMemberRepository.findSnapshotMembers(
+                        teamPeriodId,
                         snapshotAt
                 )
                 .stream()
@@ -30,10 +32,12 @@ public class TeamHistoryRepositoryAdapter
 
     @Override
     public List<TeamMemberHistory> findHistoriesIntersectingPeriod(
+            Long teamPeriodId,
             LocalDateTime startAt,
             LocalDateTime endAt
     ) {
         return springDataTeamMemberRepository.findHistoriesIntersectingPeriod(
+                        teamPeriodId,
                         startAt,
                         endAt
                 )

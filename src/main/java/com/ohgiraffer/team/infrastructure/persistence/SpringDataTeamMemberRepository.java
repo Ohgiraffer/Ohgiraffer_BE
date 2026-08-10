@@ -138,11 +138,13 @@ public interface SpringDataTeamMemberRepository
                 ON t.id = tm.teamId
             JOIN UserJpaEntity u
                 ON u.id = tm.userId
-            WHERE tm.joinedAt <= :snapshotAt
+            WHERE t.teamPeriodId = :teamPeriodId
+              AND tm.joinedAt <= :snapshotAt
               AND (tm.leftAt IS NULL OR tm.leftAt > :snapshotAt)
             ORDER BY t.id ASC, u.name ASC, u.id ASC
             """)
     List<TeamSnapshotMemberProjection> findSnapshotMembers(
+            @Param("teamPeriodId") Long teamPeriodId,
             @Param("snapshotAt") LocalDateTime snapshotAt
     );
 
@@ -160,22 +162,27 @@ public interface SpringDataTeamMemberRepository
                 ON t.id = tm.teamId
             JOIN UserJpaEntity u
                 ON u.id = tm.userId
-            WHERE tm.joinedAt <= :endAt
+            WHERE t.teamPeriodId = :teamPeriodId
+              AND tm.joinedAt <= :endAt
               AND (tm.leftAt IS NULL OR tm.leftAt >= :startAt)
             ORDER BY tm.userId ASC, tm.joinedAt ASC, tm.id ASC
             """)
     List<TeamMemberHistoryProjection> findHistoriesIntersectingPeriod(
+            @Param("teamPeriodId") Long teamPeriodId,
             @Param("startAt") LocalDateTime startAt,
             @Param("endAt") LocalDateTime endAt
-        SELECT
-            tm.userId AS userId,
-            t.name AS teamName
-        FROM TeamMemberViewJpaEntity tm
-        JOIN TeamJpaEntity t
-            ON t.id = tm.teamId
-        WHERE tm.userId IN :userIds
-          AND tm.leftAt IS NULL
-        """)
+    );
+
+    @Query("""
+            SELECT
+                tm.userId AS userId,
+                t.name AS teamName
+            FROM TeamMemberViewJpaEntity tm
+            JOIN TeamJpaEntity t
+                ON t.id = tm.teamId
+            WHERE tm.userId IN :userIds
+              AND tm.leftAt IS NULL
+            """)
     List<UserTeamNameProjection> findActiveTeamNamesByUserIds(
             @Param("userIds") List<Long> userIds
     );
