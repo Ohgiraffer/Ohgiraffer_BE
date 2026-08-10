@@ -1,7 +1,5 @@
-package com.ohgiraffer.team.infrastructure.adapter;
+package com.ohgiraffer.team.infrastructure.persistence;
 
-import com.ohgiraffer.team.infrastructure.persistence.SpringDataTeamMemberRepository;
-import com.ohgiraffer.team.infrastructure.persistence.UserTeamNameProjection;
 import com.ohgiraffer.user.application.port.GetTeamNamesByUserIdsPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

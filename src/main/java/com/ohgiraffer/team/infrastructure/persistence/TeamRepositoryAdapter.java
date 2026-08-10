@@ -251,12 +251,14 @@ public class TeamRepositoryAdapter
             String message =
                     current.getMessage();
 
-            if (message != null
-                    && message.toLowerCase()
-                    .contains(
-                            "uq_team_name"
-                    )) {
-                return true;
+            if (message != null) {
+                String lowerMessage =
+                        message.toLowerCase();
+
+                if (lowerMessage.contains("uq_team_period_name")
+                        || lowerMessage.contains("uq_team_name")) {
+                    return true;
+                }
             }
 
             current =
