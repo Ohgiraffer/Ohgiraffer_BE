@@ -20,7 +20,6 @@ import java.util.Map;
 @Component
 public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetPort {
 
-    private static final int MIN_HEADER_COLUMN_COUNT = 1;
     private static final int REQUIRED_BUDGET_MAPPING_COUNT = 4;
 
     private final GoogleSheetsClient googleSheetsClient;
@@ -221,6 +220,8 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
             return List.of();
         }
 
+        List<String> bestColumns = List.of();
+
         for (List<Object> row : rows) {
             List<String> columns = toStringList(
                     row
@@ -231,12 +232,12 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
                     )
                     .toList();
 
-            if (columns.size() >= MIN_HEADER_COLUMN_COUNT) {
-                return columns;
+            if (columns.size() > bestColumns.size()) {
+                bestColumns = columns;
             }
         }
 
-        return List.of();
+        return bestColumns;
     }
 
     private int findMappedHeaderRowIndex(
@@ -357,14 +358,11 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
             return List.of();
         }
 
-        return row
-                .stream()
+        return row.stream()
                 .map(
                         value -> value == null
                                 ? ""
-                                : value
-                                .toString()
-                                .strip()
+                                : value.toString().strip()
                 )
                 .toList();
     }
@@ -387,8 +385,7 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
                 continue;
             }
 
-            String header = value
-                    .toString()
+            String header = value.toString()
                     .strip();
 
             if (!header.isBlank()) {
@@ -432,12 +429,9 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
             return "";
         }
 
-        return row
-                .get(
-                        index
-                )
-                .toString()
-                .strip();
+        return row.get(
+                index
+        ).toString().strip();
     }
 
     private BigDecimal getCellAsAmount(
