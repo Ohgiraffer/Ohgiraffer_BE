@@ -10,4 +10,6 @@ public interface LeaveBalanceRepository {
     Optional<LeaveBalance> findByUserIdAndPeriodEnd(Long userId, LocalDate periodEnd);
     boolean existsByUserIdAndPeriodStart(Long userId, LocalDate periodStart);
     LeaveBalance save(LeaveBalance leaveBalance);
+
+    boolean tryConsume(Long userId, LocalDate periodStart, java.math.BigDecimal amount);
 }

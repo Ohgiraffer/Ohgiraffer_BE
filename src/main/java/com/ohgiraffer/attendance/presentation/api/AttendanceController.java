@@ -1,9 +1,7 @@
 package com.ohgiraffer.attendance.presentation.api;
 
 import com.ohgiraffer.attendance.application.usecase.AttendanceQueryUsecase;
-import com.ohgiraffer.attendance.presentation.api.response.AttendanceBalanceResponse;
-import com.ohgiraffer.attendance.presentation.api.response.MonthlyAttendanceResponse;
-import com.ohgiraffer.attendance.presentation.api.response.AttendanceSummaryResponse;
+import com.ohgiraffer.attendance.presentation.api.response.*;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -19,6 +17,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.YearMonth;
+import java.util.List;
 
 
 @RestController
@@ -131,5 +130,52 @@ public class AttendanceController {
         return ResponseEntity.ok(
                 attendanceQueryUsecase.getLeaveBalanceForManager(principal.getId(), studentId)
         );
+    }
+
+    @Operation(summary = "훈련생 출결 목록 조회 (관리자용)", description = "매니저/강사가 같은 부트캠프 소속 훈련생 전체의 출결 통계와 위험도를 목록으로 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/list")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<List<StudentAttendanceSummaryResponse>> getSummaries(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        return ResponseEntity.ok(attendanceQueryUsecase.getSummaries(principal.getId()));
+    }
+
+    @Operation(summary = "출결 대시보드 요약 조회 (관리자용)", description = "매니저/강사가 같은 부트캠프 소속 훈련생 전체를 대상으로 평균 출석률, 예상 수료율, 인원 통계를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/dashboard-summary")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<AttendanceDashboardSummaryResponse> getDashboardSummary(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        return ResponseEntity.ok(attendanceQueryUsecase.getDashboardSummary(principal.getId()));
+    }
+
+    @Operation(summary = "단위기간별 출석 추이 조회 (관리자용)", description = "매니저/강사가 선택한 단위기간 내 날짜별 출석/결석 인원수를 조회합니다. periodId 생략 시 오늘이 속한 단위기간을 기본값으로 사용합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 단위기간, 다른 부트캠프 소속, 또는 오늘이 속한 단위기간 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/present-absent/count")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<List<AttendanceTrendResponse>> getAttendanceTrend(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @RequestParam(required = false) Long periodId
+    ) {
+        return ResponseEntity.ok(attendanceQueryUsecase.getAttendanceTrend(principal.getId(), periodId));
     }
 }

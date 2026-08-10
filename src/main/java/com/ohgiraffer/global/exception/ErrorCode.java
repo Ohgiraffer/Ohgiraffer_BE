@@ -99,6 +99,13 @@ public enum ErrorCode {
     SUBMISSION_FILE_DOWNLOAD_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "SUBMISSION_017", "파일 제출 항목만 다운로드할 수 있습니다."),
     SUBMISSION_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "SUBMISSION_018", "제출 파일을 찾을 수 없습니다."),
     SUBMISSION_FILE_PREVIEW_NOT_SUPPORTED(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "SUBMISSION_019", "미리보기를 지원하지 않는 파일 형식입니다."),
+    SUBMISSION_BOX_STRUCTURE_CHANGE_NOT_ALLOWED(HttpStatus.CONFLICT, "SUBMISSION_020", "제출물이 존재하는 제출함의 제출 단위 또는 제출 항목 구조는 변경할 수 없습니다."),
+
+    SPACE_NOT_FOUND(HttpStatus.NOT_FOUND, "SPACE_001", "공간을 찾을 수 없습니다."),
+    SPACE_NAME_DUPLICATED(HttpStatus.CONFLICT, "SPACE_002", "이미 사용 중인 공간명입니다."),
+    SPACE_HAS_OCCUPANTS(HttpStatus.CONFLICT, "SPACE_003", "현재 이용자가 있는 공간은 삭제할 수 없습니다."),
+    SPACE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SPACE_004", "공간을 관리할 권한이 없습니다."),
+    SPACE_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "SPACE_005", "해당 공간의 최대 수용 인원을 초과했습니다."),
 
     TEAM_DUPLICATE_NAME(HttpStatus.CONFLICT, "TEAM_003", "이미 존재하는 팀명입니다."),
     TEAM_INVALID_PERIOD(HttpStatus.BAD_REQUEST, "TEAM_004", "팀 시작일은 종료일보다 늦을 수 없습니다."),
@@ -115,6 +122,7 @@ public enum ErrorCode {
     ATTENDANCE_PERIOD_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_001", "존재하지 않거나 소속 부트캠프의 단위기간이 아닙니다."),
     LEAVE_BALANCE_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_002", "해당 기간의 휴가 잔여일수 정보를 찾을 수 없습니다."),
     SICK_BALANCE_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_003", "해당 기간의 병결 잔여일수 정보를 찾을 수 없습니다."),
+    ATTENDANCE_APPROVAL_CONFLICT(HttpStatus.CONFLICT, "ATTENDANCE_004", "다른 승인 건으로 이미 처리된 날짜입니다."),
 
     BOOTCAMP_NOT_FOUND(HttpStatus.NOT_FOUND, "BOOTCAMP_001", "부트캠프를 찾을 수 없습니다."),
     INVALID_PERIOD_RANGE(HttpStatus.BAD_REQUEST, "BOOTCAMP_002", "단위기간 시작일이 종료일보다 늦을 수 없습니다."),

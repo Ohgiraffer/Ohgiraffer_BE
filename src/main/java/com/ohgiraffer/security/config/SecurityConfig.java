@@ -88,10 +88,10 @@ public class SecurityConfig {
                         .requestMatchers("/auth/logout").authenticated()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/metrics", "/actuator/metrics/**", "/actuator/prometheus").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/chat/webhooks/sendbird").permitAll()
-                        .requestMatchers("/actuator/prometheus").permitAll()
 
                         // 공지 본문에 삽입된 이미지. 브라우저의 img 태그는 Authorization 헤더를
                         // 붙이지 않아 인증을 걸면 본문 이미지가 전부 깨진다.
