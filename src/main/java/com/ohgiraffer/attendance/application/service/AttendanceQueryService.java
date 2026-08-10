@@ -81,7 +81,7 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
     @Override
     public List<StudentAttendanceSummaryResponse> getSummaries(Long requesterId) {
         Long bootcampId = userQueryUsecase.getBootcampId(requesterId);
-        return attendanceListCache.getCachedSummaries(bootcampId);
+        return attendanceListCache.getCachedSummaries(bootcampId).items();
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.ohgiraffer.space.application.service;
 
+import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.space.application.port.SpaceStatusData;
 import com.ohgiraffer.space.application.port.SpaceStatusQueryPort;
 import com.ohgiraffer.space.application.usecase.GetSpaceStatusUseCase;
@@ -24,6 +25,9 @@ public class QuerySpaceStatusService
     private final SpaceStatusQueryPort
             spaceStatusQueryPort;
 
+    private final S3UrlResolver
+            s3UrlResolver;
+
     @Override
     public List<SpaceStatusResult> getSpaceStatuses(
             Long requesterId
@@ -39,7 +43,8 @@ public class QuerySpaceStatusService
                 .map(status ->
                         SpaceStatusResult.from(
                                 status,
-                                requesterId
+                                requesterId,
+                                s3UrlResolver::resolve
                         )
                 )
                 .toList();

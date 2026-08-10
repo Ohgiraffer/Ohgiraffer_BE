@@ -46,40 +46,29 @@ public class TeamRepositoryAdapter
         }
     }
 
-    private boolean isTeamNameUniqueConstraintViolation(
-            DataIntegrityViolationException exception
-    ) {
-        Throwable current =
-                exception;
-
-        while (current != null) {
-            String message =
-                    current.getMessage();
-
-            if (message != null
-                    && message.toLowerCase().contains("uq_team_name")) {
-                return true;
-            }
-
-            current =
-                    current.getCause();
-        }
-
-        return false;
-    }
-
     @Override
     public TeamMember saveMember(
             TeamMember teamMember
     ) {
-        TeamMemberViewJpaEntity savedEntity =
-                springDataTeamMemberRepository.save(
-                        TeamMemberViewJpaEntity.from(
-                                teamMember
-                        )
-                );
+        try {
+            TeamMemberViewJpaEntity savedEntity =
+                    springDataTeamMemberRepository.saveAndFlush(
+                            TeamMemberViewJpaEntity.from(
+                                    teamMember
+                            )
+                    );
 
-        return savedEntity.toDomain();
+            return savedEntity.toDomain();
+        } catch (DataIntegrityViolationException exception) {
+            if (isActiveTeamMemberUniqueConstraintViolation(exception)) {
+                throw new BusinessException(
+                        ErrorCode.TEAM_MEMBER_ALREADY_ASSIGNED,
+                        exception
+                );
+            }
+
+            throw exception;
+        }
     }
 
     @Override
@@ -91,10 +80,24 @@ public class TeamRepositoryAdapter
     }
 
     @Override
+    public List<Team> findVisibleTeamsByPeriodId(
+            Long teamPeriodId
+    ) {
+        return springDataTeamRepository.findAllByTeamPeriodIdAndDeletedAtIsNullOrderByIdAsc(
+                        teamPeriodId
+                )
+                .stream()
+                .map(TeamJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public Optional<Team> findById(
             Long teamId
     ) {
-        return springDataTeamRepository.findById(teamId)
+        return springDataTeamRepository.findById(
+                        teamId
+                )
                 .map(TeamJpaEntity::toDomain);
     }
 
@@ -102,19 +105,35 @@ public class TeamRepositoryAdapter
     public Optional<Team> findByIdForUpdate(
             Long teamId
     ) {
-        return springDataTeamRepository
-                .findByIdForUpdate(
+        return springDataTeamRepository.findByIdForUpdate(
                         teamId
                 )
                 .map(TeamJpaEntity::toDomain);
     }
 
     @Override
+    public List<TeamMember> findActiveMembers() {
+        return springDataTeamMemberRepository.findActiveMembers()
+                .stream()
+                .map(this::toTeamMember)
+                .toList();
+    }
+
+    @Override
+    public List<TeamMember> findActiveMembersForUpdate() {
+        return springDataTeamMemberRepository.findActiveMembersForUpdate()
+                .stream()
+                .map(TeamMemberViewJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<TeamMember> findActiveMembersByTeamId(
             Long teamId
     ) {
-        return springDataTeamMemberRepository
-                .findActiveMembersByTeamId(teamId)
+        return springDataTeamMemberRepository.findActiveMembersByTeamId(
+                        teamId
+                )
                 .stream()
                 .map(this::toTeamMember)
                 .toList();
@@ -129,8 +148,9 @@ public class TeamRepositoryAdapter
             return List.of();
         }
 
-        return springDataTeamMemberRepository
-                .findActiveMembersByTeamIds(teamIds)
+        return springDataTeamMemberRepository.findActiveMembersByTeamIds(
+                        teamIds
+                )
                 .stream()
                 .map(this::toTeamMember)
                 .toList();
@@ -140,8 +160,9 @@ public class TeamRepositoryAdapter
     public Optional<TeamMember> findMemberById(
             Long teamMemberId
     ) {
-        return springDataTeamMemberRepository
-                .findById(teamMemberId)
+        return springDataTeamMemberRepository.findById(
+                        teamMemberId
+                )
                 .map(TeamMemberViewJpaEntity::toDomain);
     }
 
@@ -149,8 +170,7 @@ public class TeamRepositoryAdapter
     public Optional<TeamMember> findMemberByIdForUpdate(
             Long teamMemberId
     ) {
-        return springDataTeamMemberRepository
-                .findByIdForUpdate(
+        return springDataTeamMemberRepository.findByIdForUpdate(
                         teamMemberId
                 )
                 .map(TeamMemberViewJpaEntity::toDomain);
@@ -160,36 +180,38 @@ public class TeamRepositoryAdapter
     public boolean existsActiveMemberByUserId(
             Long userId
     ) {
-        return springDataTeamMemberRepository
-                .existsByUserIdAndLeftAtIsNull(
-                        userId
-                );
-    }
-
-    @Override
-    public boolean existsByName(
-            String name
-    ) {
-        return springDataTeamRepository.existsByName(
-                name
+        return springDataTeamMemberRepository.existsByUserIdAndLeftAtIsNull(
+                userId
         );
     }
 
     @Override
-    public boolean existsByNameAndIdNot(
+    public boolean existsByNameAndTeamPeriodId(
             String name,
+            Long teamPeriodId
+    ) {
+        return springDataTeamRepository.existsByNameAndTeamPeriodId(
+                name,
+                teamPeriodId
+        );
+    }
+
+    @Override
+    public boolean existsByNameAndTeamPeriodIdAndIdNot(
+            String name,
+            Long teamPeriodId,
             Long teamId
     ) {
-        return springDataTeamRepository.existsByNameAndIdNot(
+        return springDataTeamRepository.existsByNameAndTeamPeriodIdAndIdNot(
                 name,
+                teamPeriodId,
                 teamId
         );
     }
 
     @Override
     public List<UnassignedStudent> findUnassignedStudents() {
-        return springDataTeamMemberRepository
-                .findUnassignedStudents()
+        return springDataTeamMemberRepository.findUnassignedStudents()
                 .stream()
                 .map(this::toUnassignedStudent)
                 .toList();
@@ -217,5 +239,55 @@ public class TeamRepositoryAdapter
                 projection.getName(),
                 projection.getEmail()
         );
+    }
+
+    private boolean isTeamNameUniqueConstraintViolation(
+            DataIntegrityViolationException exception
+    ) {
+        Throwable current =
+                exception;
+
+        while (current != null) {
+            String message =
+                    current.getMessage();
+
+            if (message != null
+                    && message.toLowerCase()
+                    .contains(
+                            "uq_team_name"
+                    )) {
+                return true;
+            }
+
+            current =
+                    current.getCause();
+        }
+
+        return false;
+    }
+
+    private boolean isActiveTeamMemberUniqueConstraintViolation(
+            DataIntegrityViolationException exception
+    ) {
+        Throwable current =
+                exception;
+
+        while (current != null) {
+            String message =
+                    current.getMessage();
+
+            if (message != null
+                    && message.toLowerCase()
+                    .contains(
+                            "uq_team_member_active_user"
+                    )) {
+                return true;
+            }
+
+            current =
+                    current.getCause();
+        }
+
+        return false;
     }
 }

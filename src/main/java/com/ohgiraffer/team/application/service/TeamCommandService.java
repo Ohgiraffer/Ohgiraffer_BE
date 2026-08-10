@@ -2,22 +2,16 @@ package com.ohgiraffer.team.application.service;
 
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
-import com.ohgiraffer.team.application.command.AssignTeamMemberCommand;
-import com.ohgiraffer.team.application.command.CreateTeamCommand;
-import com.ohgiraffer.team.application.command.MoveTeamMemberCommand;
-import com.ohgiraffer.team.application.command.RemoveTeamMemberCommand;
-import com.ohgiraffer.team.application.command.UpdateTeamCommand;
-import com.ohgiraffer.team.application.usecase.AssignTeamMemberResult;
-import com.ohgiraffer.team.application.usecase.AssignTeamMemberUseCase;
-import com.ohgiraffer.team.application.usecase.CreateTeamResult;
-import com.ohgiraffer.team.application.usecase.CreateTeamUseCase;
-import com.ohgiraffer.team.application.usecase.MoveTeamMemberUseCase;
-import com.ohgiraffer.team.application.usecase.RemoveTeamMemberUseCase;
-import com.ohgiraffer.team.application.usecase.TeamDetailResult;
-import com.ohgiraffer.team.application.usecase.TeamMemberResult;
-import com.ohgiraffer.team.application.usecase.UpdateTeamUseCase;
+import com.ohgiraffer.team.application.command.CreateTeamPeriodCommand;
+import com.ohgiraffer.team.application.command.SaveTeamConfigurationCommand;
+import com.ohgiraffer.team.application.command.TeamConfigurationCommand;
+import com.ohgiraffer.team.application.usecase.CreateTeamPeriodUseCase;
+import com.ohgiraffer.team.application.usecase.SaveTeamConfigurationUseCase;
+import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
+import com.ohgiraffer.team.domain.model.TeamPeriod;
+import com.ohgiraffer.team.domain.repository.TeamPeriodRepository;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
 import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.domain.model.User;
@@ -28,24 +22,28 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class TeamCommandService
-        implements CreateTeamUseCase,
-        UpdateTeamUseCase,
-        AssignTeamMemberUseCase,
-        MoveTeamMemberUseCase,
-        RemoveTeamMemberUseCase {
+        implements CreateTeamPeriodUseCase,
+        SaveTeamConfigurationUseCase {
 
     private final TeamRepository teamRepository;
+    private final TeamPeriodRepository teamPeriodRepository;
     private final UserRepository userRepository;
 
     @Override
-    public CreateTeamResult createTeam(
-            CreateTeamCommand command,
+    public TeamPeriodResult createTeamPeriod(
+            CreateTeamPeriodCommand command,
             Role requesterRole
     ) {
         validateManagerAccess(
@@ -53,30 +51,25 @@ public class TeamCommandService
                 requesterRole
         );
 
-        Team team =
-                Team.create(
-                        command.name(),
+        TeamPeriod teamPeriod =
+                TeamPeriod.create(
                         command.startDate(),
                         command.endDate()
                 );
 
-        validateDuplicateName(
-                team.getName()
-        );
-
-        Team savedTeam =
-                teamRepository.save(
-                        team
+        TeamPeriod savedTeamPeriod =
+                teamPeriodRepository.save(
+                        teamPeriod
                 );
 
-        return CreateTeamResult.from(
-                savedTeam
+        return TeamPeriodResult.from(
+                savedTeamPeriod
         );
     }
 
     @Override
-    public TeamDetailResult updateTeam(
-            UpdateTeamCommand command,
+    public void saveTeamConfiguration(
+            SaveTeamConfigurationCommand command,
             Role requesterRole
     ) {
         validateManagerAccess(
@@ -84,285 +77,498 @@ public class TeamCommandService
                 requesterRole
         );
 
-        validateTeamId(
-                command.teamId()
+        validateConfigurationRequest(
+                command
         );
 
-        Team team =
-                teamRepository.findByIdForUpdate(
-                                command.teamId()
+        TeamPeriod teamPeriod =
+                teamPeriodRepository.findByIdForUpdate(
+                                command.teamPeriodId()
                         )
                         .orElseThrow(() ->
                                 new BusinessException(
                                         ErrorCode.TEAM_NOT_FOUND
                                 )
                         );
+
+        teamPeriod.validateAssignable();
+
+        LocalDateTime changedAt =
+                LocalDateTime.now();
+
+        Map<Long, Team> visibleTeamById =
+                teamRepository.findVisibleTeamsByPeriodId(
+                                teamPeriod.getId()
+                        )
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        Team::getId,
+                                        Function.identity()
+                                )
+                        );
+
+        validateRequestedTeams(
+                command.teams(),
+                visibleTeamById,
+                teamPeriod.getId()
+        );
+
+        validateDeletedTeams(
+                command.deletedTeamIds(),
+                visibleTeamById
+        );
+
+        List<Team> savedTeams =
+                saveRequestedTeams(
+                        command.teams(),
+                        visibleTeamById,
+                        teamPeriod
+                );
+
+        Map<Long, Long> desiredTeamByUserId =
+                createDesiredTeamByUserId(
+                        savedTeams,
+                        command.teams()
+                );
+
+        Set<Long> unassignedUserIds =
+                new HashSet<>(
+                        command.unassignedUserIds()
+                );
+
+        Set<Long> requestedUserIds =
+                new HashSet<>();
+
+        requestedUserIds.addAll(
+                desiredTeamByUserId.keySet()
+        );
+
+        requestedUserIds.addAll(
+                unassignedUserIds
+        );
+
+        validateAssignableUsers(
+                requestedUserIds
+        );
+
+        List<TeamMember> activeMembers =
+                teamRepository.findActiveMembersForUpdate();
+
+        Map<Long, TeamMember> activeMemberByUserId =
+                createActiveMemberByUserId(
+                        activeMembers
+                );
+
+        closeDeletedTeamMembers(
+                command.deletedTeamIds(),
+                requestedUserIds,
+                activeMembers,
+                changedAt
+        );
+
+        desiredTeamByUserId.forEach((userId, targetTeamId) ->
+                applyAssignedState(
+                        userId,
+                        targetTeamId,
+                        activeMemberByUserId.get(userId),
+                        changedAt
+                )
+        );
+
+        unassignedUserIds.forEach(userId ->
+                applyUnassignedState(
+                        activeMemberByUserId.get(userId),
+                        changedAt
+                )
+        );
+
+        markDeletedTeams(
+                command.deletedTeamIds(),
+                visibleTeamById,
+                changedAt
+        );
+    }
+
+    private List<Team> saveRequestedTeams(
+            List<TeamConfigurationCommand> teamCommands,
+            Map<Long, Team> visibleTeamById,
+            TeamPeriod teamPeriod
+    ) {
+        return teamCommands.stream()
+                .map(command -> saveRequestedTeam(
+                        command,
+                        visibleTeamById,
+                        teamPeriod
+                ))
+                .toList();
+    }
+
+    private Team saveRequestedTeam(
+            TeamConfigurationCommand command,
+            Map<Long, Team> visibleTeamById,
+            TeamPeriod teamPeriod
+    ) {
+        if (command.teamId() == null) {
+            Team team =
+                    Team.create(
+                            teamPeriod.getId(),
+                            command.name(),
+                            teamPeriod.getStartDate(),
+                            teamPeriod.getEndDate()
+                    );
+
+            validateDuplicateName(
+                    team.getName(),
+                    teamPeriod.getId()
+            );
+
+            return teamRepository.save(
+                    team
+            );
+        }
+
+        Team team =
+                visibleTeamById.get(
+                        command.teamId()
+                );
+
+        if (team == null) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_NOT_FOUND
+            );
+        }
 
         Team updatedTeam =
                 team.update(
                         command.name(),
-                        command.startDate(),
-                        command.endDate()
+                        teamPeriod.getStartDate(),
+                        teamPeriod.getEndDate()
                 );
 
         validateDuplicateNameForUpdate(
                 updatedTeam.getName(),
+                teamPeriod.getId(),
                 updatedTeam.getId()
         );
 
-        Team savedTeam =
-                teamRepository.save(
-                        updatedTeam
-                );
-
-        List<TeamMemberResult> members =
-                teamRepository.findActiveMembersByTeamId(
-                                savedTeam.getId()
-                        )
-                        .stream()
-                        .map(TeamMemberResult::from)
-                        .toList();
-
-        return TeamDetailResult.of(
-                savedTeam,
-                members
+        return teamRepository.save(
+                updatedTeam
         );
     }
 
-    @Override
-    public AssignTeamMemberResult assignTeamMember(
-            AssignTeamMemberCommand command,
-            Role requesterRole
+    private Map<Long, Long> createDesiredTeamByUserId(
+            List<Team> savedTeams,
+            List<TeamConfigurationCommand> teamCommands
     ) {
-        validateManagerAccess(
-                command.requesterId(),
-                requesterRole
-        );
+        Map<Long, Long> desiredTeamByUserId =
+                new LinkedHashMap<>();
 
-        validateTeamId(
-                command.teamId()
-        );
+        for (int index = 0; index < teamCommands.size(); index++) {
+            Team savedTeam =
+                    savedTeams.get(
+                            index
+                    );
 
-        validateUserId(
-                command.userId()
-        );
+            TeamConfigurationCommand command =
+                    teamCommands.get(
+                            index
+                    );
 
-        Team team =
-                teamRepository.findById(
-                                command.teamId()
-                        )
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.TEAM_NOT_FOUND
-                                )
+            for (Long userId : command.userIds()) {
+                Long previousTeamId =
+                        desiredTeamByUserId.putIfAbsent(
+                                userId,
+                                savedTeam.getId()
                         );
 
-        validateTeamAssignable(
-                team
-        );
+                if (previousTeamId != null) {
+                    throw new BusinessException(
+                            ErrorCode.INVALID_INPUT_VALUE,
+                            "중복된 훈련생이 포함되어 있습니다."
+                    );
+                }
+            }
+        }
 
-        User user =
-                findAssignableUser(
-                        command.userId()
+        return desiredTeamByUserId;
+    }
+
+    private void closeDeletedTeamMembers(
+            List<Long> deletedTeamIds,
+            Set<Long> requestedUserIds,
+            List<TeamMember> activeMembers,
+            LocalDateTime changedAt
+    ) {
+        Set<Long> deletedTeamIdSet =
+                new HashSet<>(
+                        deletedTeamIds
                 );
 
-        validateNotAssigned(
-                user.getId()
+        activeMembers.stream()
+                .filter(member -> deletedTeamIdSet.contains(
+                        member.getTeamId()
+                ))
+                .filter(member -> !requestedUserIds.contains(
+                        member.getUserId()
+                ))
+                .map(member -> member.leave(
+                        changedAt
+                ))
+                .forEach(teamRepository::saveMember);
+    }
+
+    private void markDeletedTeams(
+            List<Long> deletedTeamIds,
+            Map<Long, Team> visibleTeamById,
+            LocalDateTime deletedAt
+    ) {
+        deletedTeamIds.stream()
+                .map(visibleTeamById::get)
+                .map(team -> team.markDeleted(
+                        deletedAt
+                ))
+                .forEach(teamRepository::save);
+    }
+
+    private void applyAssignedState(
+            Long userId,
+            Long targetTeamId,
+            TeamMember currentMember,
+            LocalDateTime changedAt
+    ) {
+        if (currentMember == null) {
+            teamRepository.saveMember(
+                    TeamMember.create(
+                            targetTeamId,
+                            userId
+                    )
+            );
+            return;
+        }
+
+        if (currentMember.getTeamId()
+                .equals(targetTeamId)) {
+            return;
+        }
+
+        teamRepository.saveMember(
+                currentMember.leave(
+                        changedAt
+                )
         );
 
-        TeamMember teamMember =
+        teamRepository.saveMember(
                 TeamMember.create(
-                        team.getId(),
-                        user.getId()
-                );
-
-        TeamMember savedMember =
-                teamRepository.saveMember(
-                        teamMember
-                );
-
-        return AssignTeamMemberResult.of(
-                savedMember,
-                user
+                        targetTeamId,
+                        userId
+                )
         );
     }
 
-    @Override
-    public AssignTeamMemberResult moveTeamMember(
-            MoveTeamMemberCommand command,
-            Role requesterRole
+    private void applyUnassignedState(
+            TeamMember currentMember,
+            LocalDateTime changedAt
     ) {
-        validateManagerAccess(
-                command.requesterId(),
-                requesterRole
+        if (currentMember == null) {
+            return;
+        }
+
+        teamRepository.saveMember(
+                currentMember.leave(
+                        changedAt
+                )
+        );
+    }
+
+    private Map<Long, TeamMember> createActiveMemberByUserId(
+            List<TeamMember> activeMembers
+    ) {
+        Map<Long, TeamMember> activeMemberByUserId =
+                new LinkedHashMap<>();
+
+        for (TeamMember activeMember : activeMembers) {
+            TeamMember duplicatedMember =
+                    activeMemberByUserId.putIfAbsent(
+                            activeMember.getUserId(),
+                            activeMember
+                    );
+
+            if (duplicatedMember != null) {
+                throw new BusinessException(
+                        ErrorCode.TEAM_MEMBER_ALREADY_ASSIGNED
+                );
+            }
+        }
+
+        return activeMemberByUserId;
+    }
+
+    private void validateConfigurationRequest(
+            SaveTeamConfigurationCommand command
+    ) {
+        validateTeamPeriodId(
+                command.teamPeriodId()
         );
 
-        validateTeamId(
-                command.sourceTeamId()
+        validateTeams(
+                command.teams()
         );
 
-        validateTeamId(
-                command.targetTeamId()
+        validateDeletedTeamIds(
+                command.deletedTeamIds()
         );
 
-        validateTeamMemberId(
-                command.teamMemberId()
-        );
+        command.unassignedUserIds()
+                .forEach(this::validateUserId);
 
-        if (command.sourceTeamId()
-                .equals(command.targetTeamId())) {
+        validateDuplicateUsersAcrossRequest(
+                command
+        );
+    }
+
+    private void validateTeams(
+            List<TeamConfigurationCommand> teams
+    ) {
+        Set<Long> teamIds =
+                new HashSet<>();
+
+        Set<String> teamNames =
+                new HashSet<>();
+
+        for (TeamConfigurationCommand team : teams) {
+            if (team.teamId() != null) {
+                validateTeamId(
+                        team.teamId()
+                );
+
+                if (!teamIds.add(team.teamId())) {
+                    throw new BusinessException(
+                            ErrorCode.INVALID_INPUT_VALUE,
+                            "중복된 팀이 포함되어 있습니다."
+                    );
+                }
+            }
+
+            if (team.name() != null
+                    && !teamNames.add(team.name().trim())) {
+                throw new BusinessException(
+                        ErrorCode.TEAM_DUPLICATE_NAME
+                );
+            }
+
+            team.userIds()
+                    .forEach(this::validateUserId);
+        }
+    }
+
+    private void validateRequestedTeams(
+            List<TeamConfigurationCommand> teams,
+            Map<Long, Team> visibleTeamById,
+            Long teamPeriodId
+    ) {
+        for (TeamConfigurationCommand team : teams) {
+            if (team.teamId() == null) {
+                continue;
+            }
+
+            Team existingTeam =
+                    visibleTeamById.get(
+                            team.teamId()
+                    );
+
+            if (existingTeam == null
+                    || !existingTeam.getTeamPeriodId()
+                    .equals(teamPeriodId)) {
+                throw new BusinessException(
+                        ErrorCode.TEAM_NOT_FOUND
+                );
+            }
+        }
+    }
+
+    private void validateDeletedTeamIds(
+            List<Long> deletedTeamIds
+    ) {
+        Set<Long> teamIds =
+                new HashSet<>();
+
+        for (Long teamId : deletedTeamIds) {
+            validateTeamId(
+                    teamId
+            );
+
+            if (!teamIds.add(teamId)) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT_VALUE,
+                        "중복된 삭제 팀이 포함되어 있습니다."
+                );
+            }
+        }
+    }
+
+    private void validateDeletedTeams(
+            List<Long> deletedTeamIds,
+            Map<Long, Team> visibleTeamById
+    ) {
+        for (Long teamId : deletedTeamIds) {
+            if (!visibleTeamById.containsKey(teamId)) {
+                throw new BusinessException(
+                        ErrorCode.TEAM_NOT_FOUND
+                );
+            }
+        }
+    }
+
+    private void validateDuplicateUsersAcrossRequest(
+            SaveTeamConfigurationCommand command
+    ) {
+        Set<Long> userIds =
+                new HashSet<>();
+
+        for (TeamConfigurationCommand team : command.teams()) {
+            for (Long userId : team.userIds()) {
+                if (!userIds.add(userId)) {
+                    throw new BusinessException(
+                            ErrorCode.INVALID_INPUT_VALUE,
+                            "중복된 훈련생이 포함되어 있습니다."
+                    );
+                }
+            }
+        }
+
+        for (Long userId : command.unassignedUserIds()) {
+            if (!userIds.add(userId)) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT_VALUE,
+                        "중복된 훈련생이 포함되어 있습니다."
+                );
+            }
+        }
+    }
+
+    private void validateAssignableUsers(
+            Set<Long> userIds
+    ) {
+        if (userIds.isEmpty()) {
+            return;
+        }
+
+        List<User> users =
+                userRepository.findByIdIn(
+                        userIds.stream()
+                                .toList()
+                );
+
+        if (users.size() != userIds.size()) {
             throw new BusinessException(
-                    ErrorCode.TEAM_SAME_TARGET
+                    ErrorCode.USER_NOT_FOUND
             );
         }
 
-        Team sourceTeam =
-                teamRepository.findById(
-                                command.sourceTeamId()
-                        )
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.TEAM_NOT_FOUND
-                                )
-                        );
-
-        Team targetTeam =
-                teamRepository.findById(
-                                command.targetTeamId()
-                        )
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.TEAM_NOT_FOUND
-                                )
-                        );
-
-        validateTeamAssignable(
-                sourceTeam
+        users.forEach(
+                this::validateAssignableStudent
         );
-
-        validateTeamAssignable(
-                targetTeam
-        );
-
-        TeamMember currentMember =
-                teamRepository.findMemberByIdForUpdate(
-                                command.teamMemberId()
-                        )
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.TEAM_MEMBER_NOT_FOUND
-                                )
-                        );
-
-        currentMember.validateBelongsTo(
-                sourceTeam.getId()
-        );
-
-        TeamMember closedMember =
-                currentMember.leave(
-                        LocalDateTime.now()
-                );
-
-        teamRepository.saveMember(
-                closedMember
-        );
-
-        User user =
-                findAssignableUser(
-                        currentMember.getUserId()
-                );
-
-        TeamMember newMember =
-                TeamMember.create(
-                        targetTeam.getId(),
-                        user.getId()
-                );
-
-        TeamMember savedMember =
-                teamRepository.saveMember(
-                        newMember
-                );
-
-        return AssignTeamMemberResult.of(
-                savedMember,
-                user
-        );
-    }
-
-    @Override
-    public void removeTeamMember(
-            RemoveTeamMemberCommand command,
-            Role requesterRole
-    ) {
-        validateManagerAccess(
-                command.requesterId(),
-                requesterRole
-        );
-
-        validateTeamId(
-                command.teamId()
-        );
-
-        validateTeamMemberId(
-                command.teamMemberId()
-        );
-
-        Team team =
-                teamRepository.findById(
-                                command.teamId()
-                        )
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.TEAM_NOT_FOUND
-                                )
-                        );
-
-        validateTeamAssignable(
-                team
-        );
-
-        TeamMember currentMember =
-                teamRepository.findMemberByIdForUpdate(
-                                command.teamMemberId()
-                        )
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.TEAM_MEMBER_NOT_FOUND
-                                )
-                        );
-
-        currentMember.validateBelongsTo(
-                team.getId()
-        );
-
-        TeamMember removedMember =
-                currentMember.leave(
-                        LocalDateTime.now()
-                );
-
-        teamRepository.saveMember(
-                removedMember
-        );
-    }
-
-    private User findAssignableUser(
-            Long userId
-    ) {
-        User user =
-                userRepository.findById(
-                                userId
-                        )
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.USER_NOT_FOUND
-                                )
-                        );
-
-        validateAssignableStudent(
-                user
-        );
-
-        return user;
     }
 
     private void validateManagerAccess(
@@ -385,6 +591,18 @@ public class TeamCommandService
         }
     }
 
+    private void validateTeamPeriodId(
+            Long teamPeriodId
+    ) {
+        if (teamPeriodId == null
+                || teamPeriodId <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "팀 기간 ID가 올바르지 않습니다."
+            );
+        }
+    }
+
     private void validateTeamId(
             Long teamId
     ) {
@@ -393,18 +611,6 @@ public class TeamCommandService
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "팀 ID가 올바르지 않습니다."
-            );
-        }
-    }
-
-    private void validateTeamMemberId(
-            Long teamMemberId
-    ) {
-        if (teamMemberId == null
-                || teamMemberId <= 0) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "팀원 배정 ID가 올바르지 않습니다."
             );
         }
     }
@@ -421,16 +627,6 @@ public class TeamCommandService
         }
     }
 
-    private void validateTeamAssignable(
-            Team team
-    ) {
-        if (team.isDissolved()) {
-            throw new BusinessException(
-                    ErrorCode.TEAM_ALREADY_DISSOLVED
-            );
-        }
-    }
-
     private void validateAssignableStudent(
             User user
     ) {
@@ -442,20 +638,14 @@ public class TeamCommandService
         }
     }
 
-    private void validateNotAssigned(
-            Long userId
-    ) {
-        if (teamRepository.existsActiveMemberByUserId(userId)) {
-            throw new BusinessException(
-                    ErrorCode.TEAM_MEMBER_ALREADY_ASSIGNED
-            );
-        }
-    }
-
     private void validateDuplicateName(
-            String name
+            String name,
+            Long teamPeriodId
     ) {
-        if (teamRepository.existsByName(name)) {
+        if (teamRepository.existsByNameAndTeamPeriodId(
+                name,
+                teamPeriodId
+        )) {
             throw new BusinessException(
                     ErrorCode.TEAM_DUPLICATE_NAME
             );
@@ -464,10 +654,12 @@ public class TeamCommandService
 
     private void validateDuplicateNameForUpdate(
             String name,
+            Long teamPeriodId,
             Long teamId
     ) {
-        if (teamRepository.existsByNameAndIdNot(
+        if (teamRepository.existsByNameAndTeamPeriodIdAndIdNot(
                 name,
+                teamPeriodId,
                 teamId
         )) {
             throw new BusinessException(
