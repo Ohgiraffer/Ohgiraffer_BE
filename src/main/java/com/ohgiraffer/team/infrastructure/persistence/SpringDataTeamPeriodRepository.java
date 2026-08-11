@@ -26,6 +26,34 @@ public interface SpringDataTeamPeriodRepository
             @Param("teamPeriodId") Long teamPeriodId
     );
 
+    @Query("""
+            SELECT COUNT(tp) > 0
+            FROM TeamPeriodJpaEntity tp
+            WHERE tp.archivedAt IS NULL
+              AND tp.deletedAt IS NULL
+              AND tp.startDate <= :endDate
+              AND tp.endDate >= :startDate
+            """)
+    boolean existsVisiblePeriodOverlapping(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    @Query("""
+            SELECT COUNT(tp) > 0
+            FROM TeamPeriodJpaEntity tp
+            WHERE tp.id <> :teamPeriodId
+              AND tp.archivedAt IS NULL
+              AND tp.deletedAt IS NULL
+              AND tp.startDate <= :endDate
+              AND tp.endDate >= :startDate
+            """)
+    boolean existsVisiblePeriodOverlappingAndIdNot(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("teamPeriodId") Long teamPeriodId
+    );
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT tp

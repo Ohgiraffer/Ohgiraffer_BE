@@ -177,10 +177,3 @@ resilience4j:
 
 admin:
   internal-token: ${ADMIN_INTERNAL_TOKEN:changeme}
-
-# ===== NOTION =====
-notion:
-  api-token: ${NOTION_API_TOKEN}
-  data-source-id: ${NOTION_DATA_SOURCE_ID}
-  template-id: ${NOTION_TEMPLATE_ID}
-  api-version: ${NOTION_API_VERSION:2026-03-11}

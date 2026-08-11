@@ -174,10 +174,7 @@ resilience4j:
         record-exceptions:
           - org.springframework.web.client.RestClientException
           - com.ohgiraffer.global.exception.BusinessException
-
-admin:
-  internal-token: ${ADMIN_INTERNAL_TOKEN:changeme}
-
+          
 # ===== NOTION =====
 notion:
   api-token: ${NOTION_API_TOKEN}

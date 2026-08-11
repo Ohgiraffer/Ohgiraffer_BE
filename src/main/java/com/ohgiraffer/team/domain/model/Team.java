@@ -136,6 +136,39 @@ public class Team {
         );
     }
 
+    public Team assignNotionPageId(
+            String notionPageId
+    ) {
+        if (notionPageId == null
+                || notionPageId.isBlank()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "Notion 페이지 ID가 올바르지 않습니다."
+            );
+        }
+
+        if (notionPageId.equals(
+                this.notionPageId
+        )) {
+            return this;
+        }
+
+        return new Team(
+                id,
+                teamPeriodId,
+                name,
+                sendbirdChannelUrl,
+                notionPageId.trim(),
+                startDate,
+                endDate,
+                dissolvedAt,
+                archivedAt,
+                deletedAt,
+                channelDeletedAt,
+                workspaceDeletedAt
+        );
+    }
+
     public Team markDeleted(
             LocalDateTime deletedAt
     ) {
