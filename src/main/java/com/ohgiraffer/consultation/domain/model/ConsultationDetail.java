@@ -10,6 +10,7 @@ public record ConsultationDetail(
         LocalDateTime scheduledAt,
         String content,
         String counselorNote,
+        String aiBrief,
         ConsultationStatus status
 ) {
 }

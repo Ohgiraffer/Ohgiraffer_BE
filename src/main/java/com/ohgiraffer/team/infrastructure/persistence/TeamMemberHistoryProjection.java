@@ -14,6 +14,8 @@ public interface TeamMemberHistoryProjection {
 
     String getUserName();
 
+    String getProfileImg();
+
     LocalDateTime getJoinedAt();
 
     LocalDateTime getLeftAt();

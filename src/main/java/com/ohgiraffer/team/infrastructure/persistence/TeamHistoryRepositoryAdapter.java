@@ -53,7 +53,8 @@ public class TeamHistoryRepositoryAdapter
                 projection.getTeamId(),
                 projection.getTeamName(),
                 projection.getUserId(),
-                projection.getUserName()
+                projection.getUserName(),
+                projection.getProfileImg()
         );
     }
 
@@ -66,6 +67,7 @@ public class TeamHistoryRepositoryAdapter
                 projection.getTeamName(),
                 projection.getUserId(),
                 projection.getUserName(),
+                projection.getProfileImg(),
                 projection.getJoinedAt(),
                 projection.getLeftAt()
         );

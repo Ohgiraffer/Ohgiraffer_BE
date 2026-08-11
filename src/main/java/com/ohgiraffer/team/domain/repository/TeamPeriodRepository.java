@@ -23,6 +23,21 @@ public interface TeamPeriodRepository {
             Long teamPeriodId
     );
 
+    boolean existsVisiblePeriodOverlapping(
+            LocalDate startDate,
+            LocalDate endDate
+    );
+
+    boolean existsVisiblePeriodOverlappingAndIdNot(
+            LocalDate startDate,
+            LocalDate endDate,
+            Long teamPeriodId
+    );
+
+    void deleteById(
+            Long teamPeriodId
+    );
+
     List<TeamPeriod> findArchivablePeriodsForUpdate(
             LocalDate today
     );

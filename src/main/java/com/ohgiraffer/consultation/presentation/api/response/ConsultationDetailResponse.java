@@ -13,6 +13,7 @@ public record ConsultationDetailResponse(
         LocalDateTime scheduledAt,
         String content,
         String counselorNote,
+        String aiBrief,
         ConsultationStatus status
 ) {
     public static ConsultationDetailResponse from(ConsultationDetail detail) {
@@ -24,6 +25,7 @@ public record ConsultationDetailResponse(
                 detail.scheduledAt(),
                 detail.content(),
                 detail.counselorNote(),
+                detail.aiBrief(),
                 detail.status()
         );
     }

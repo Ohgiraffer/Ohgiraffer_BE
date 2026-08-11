@@ -1,11 +1,13 @@
 package com.ohgiraffer.approval.presentation.api;
 
 import com.ohgiraffer.approval.application.command.RegisterSignatureCommand;
+import com.ohgiraffer.approval.application.service.RegisterSignatureService;
 import com.ohgiraffer.approval.application.usecase.DeleteMySignatureUseCase;
 import com.ohgiraffer.approval.application.usecase.GetMySignatureUseCase;
 import com.ohgiraffer.approval.application.usecase.RegisterSignatureUseCase;
 import com.ohgiraffer.approval.application.usecase.SignatureResult;
 import com.ohgiraffer.approval.presentation.api.response.SignatureResponse;
+import com.ohgiraffer.global.aop.file.MaxFileSize;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
@@ -47,7 +49,7 @@ public class SignatureController {
     )
     @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR', 'MANAGER')")
     public ResponseEntity<SignatureResponse> registerSignature(
-            @RequestPart("file") MultipartFile file,
+            @MaxFileSize(RegisterSignatureService.MAX_FILE_SIZE_BYTES) @RequestPart("file") MultipartFile file,
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         RegisterSignatureCommand command =

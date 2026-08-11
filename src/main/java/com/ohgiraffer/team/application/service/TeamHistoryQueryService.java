@@ -2,6 +2,7 @@ package com.ohgiraffer.team.application.service;
 
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.team.application.usecase.GetTeamHistoryUseCase;
 import com.ohgiraffer.team.application.usecase.TeamChangeHistoryResult;
 import com.ohgiraffer.team.application.usecase.TeamHistoryResult;
@@ -39,6 +40,7 @@ public class TeamHistoryQueryService
     private final TeamRepository teamRepository;
     private final TeamHistoryRepository teamHistoryRepository;
     private final TeamPeriodRepository teamPeriodRepository;
+    private final S3UrlResolver s3UrlResolver;
 
     @Override
     public TeamHistoryResult getTeamHistories(
@@ -129,7 +131,10 @@ public class TeamHistoryQueryService
                                         Collectors.mapping(
                                                 member -> new TeamSnapshotMemberResult(
                                                         member.getUserId(),
-                                                        member.getUserName()
+                                                        member.getUserName(),
+                                                        resolveProfileImgUrl(
+                                                                member.getProfileImg()
+                                                        )
                                                 ),
                                                 Collectors.toList()
                                         )
@@ -248,6 +253,9 @@ public class TeamHistoryQueryService
         return new TeamChangeHistoryResult(
                 current.getUserId(),
                 current.getUserName(),
+                resolveProfileImgUrl(
+                        current.getProfileImg()
+                ),
                 fromTeamId,
                 fromTeamName,
                 current.getTeamId(),
@@ -262,6 +270,9 @@ public class TeamHistoryQueryService
         return new TeamChangeHistoryResult(
                 current.getUserId(),
                 current.getUserName(),
+                resolveProfileImgUrl(
+                        current.getProfileImg()
+                ),
                 current.getTeamId(),
                 current.getTeamName(),
                 null,
@@ -352,6 +363,19 @@ public class TeamHistoryQueryService
         return value != null
                 && !value.isBefore(startAt)
                 && !value.isAfter(endAt);
+    }
+
+    private String resolveProfileImgUrl(
+            String profileImg
+    ) {
+        if (profileImg == null
+                || profileImg.isBlank()) {
+            return null;
+        }
+
+        return s3UrlResolver.resolve(
+                profileImg
+        );
     }
 
     private void validateRequester(

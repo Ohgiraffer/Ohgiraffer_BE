@@ -12,6 +12,7 @@ public class TeamMember {
     private final Long userId;
     private final String userName;
     private final String email;
+    private final String profileImg;
     private final LocalDateTime joinedAt;
     private final LocalDateTime leftAt;
 
@@ -21,6 +22,7 @@ public class TeamMember {
             Long userId,
             String userName,
             String email,
+            String profileImg,
             LocalDateTime joinedAt,
             LocalDateTime leftAt
     ) {
@@ -29,6 +31,7 @@ public class TeamMember {
         this.userId = userId;
         this.userName = userName;
         this.email = email;
+        this.profileImg = profileImg;
         this.joinedAt = joinedAt;
         this.leftAt = leftAt;
     }
@@ -43,6 +46,7 @@ public class TeamMember {
                 userId,
                 null,
                 null,
+                null,
                 LocalDateTime.now(),
                 null
         );
@@ -54,6 +58,7 @@ public class TeamMember {
             Long userId,
             String userName,
             String email,
+            String profileImg,
             LocalDateTime joinedAt,
             LocalDateTime leftAt
     ) {
@@ -63,6 +68,7 @@ public class TeamMember {
                 userId,
                 userName,
                 email,
+                profileImg,
                 joinedAt,
                 leftAt
         );
@@ -83,6 +89,7 @@ public class TeamMember {
                 userId,
                 userName,
                 email,
+                profileImg,
                 joinedAt,
                 leftAt
         );
@@ -116,6 +123,10 @@ public class TeamMember {
 
     public String getEmail() {
         return email;
+    }
+
+    public String getProfileImg() {
+        return profileImg;
     }
 
     public LocalDateTime getJoinedAt() {

@@ -4,15 +4,18 @@ import com.ohgiraffer.consultation.application.command.RegisterAvailableTimeComm
 import com.ohgiraffer.consultation.application.command.RequestConsultationCommand;
 import com.ohgiraffer.consultation.application.command.SaveRecordCommand;
 import com.ohgiraffer.consultation.application.usecase.ConsultationCommandUsecase;
+import com.ohgiraffer.consultation.domain.event.ConsultationRequestedEvent;
 import com.ohgiraffer.consultation.domain.model.Consultation;
 import com.ohgiraffer.consultation.domain.model.ConsultationStatus;
 import com.ohgiraffer.consultation.domain.model.CounselorAvailableDate;
+import com.ohgiraffer.consultation.domain.model.SaveRecordResult;
 import com.ohgiraffer.consultation.domain.repository.ConsultationRepository;
 import com.ohgiraffer.consultation.domain.repository.CounselorAvailableDateRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,13 +29,16 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-@Transactional
 public class ConsultationCommandService implements ConsultationCommandUsecase {
 
     private final ConsultationRepository consultationRepository;
     private final CounselorAvailableDateRepository availableDateRepository;
+    private final ConsultationAiBriefGenerator aiBriefGenerator;
+    private final ConsultationRecordWriter recordWriter;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
+    @Transactional
     public Long requestConsultation(RequestConsultationCommand command) {
         boolean isAvailable = availableDateRepository
                 .findByCounselorIdAndAvailableDateForUpdate(command.counselorId(), command.scheduledAt().toLocalDate())
@@ -56,27 +62,41 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
                 command.scheduledAt()
         );
 
+        Long consultationId;
         try {
-            return consultationRepository.save(consultation).getId();
+            consultationId = consultationRepository.save(consultation).getId();
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.CONSULTATION_ALREADY_BOOKED);
         }
+
+        eventPublisher.publishEvent(new ConsultationRequestedEvent(
+                consultationId,
+                command.counselorId(),
+                command.requesterId(),
+                command.topic(),
+                command.scheduledAt()
+        ));
+
+        return consultationId;
     }
 
     @Override
-    public void saveRecord(SaveRecordCommand command) {
-        Consultation consultation = consultationRepository.findById(command.consultationId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.CONSULTATION_NOT_FOUND));
+    public SaveRecordResult saveRecord(SaveRecordCommand command) {
+        int recordVersion = recordWriter.writeRecord(command.consultationId(), command.callerId(), command.counselorNote());
 
-        if (!consultation.isCounseledBy(command.callerId())) {
-            throw new BusinessException(ErrorCode.CONSULTATION_ACCESS_DENIED);
+        Optional<String> aiBrief = aiBriefGenerator.generate(command.counselorNote());
+
+        if (aiBrief.isPresent()) {
+            recordWriter.applyAiBrief(command.consultationId(), aiBrief.get(), recordVersion);
+            return SaveRecordResult.success();
         }
 
-        consultation.completeWithRecord(command.counselorNote());
-        consultationRepository.save(consultation);
+        recordWriter.markAiBriefFailed(command.consultationId(), recordVersion);
+        return SaveRecordResult.aiFailed();
     }
 
     @Override
+    @Transactional
     public void registerAvailableTime(RegisterAvailableTimeCommand command) {
         Optional<CounselorAvailableDate> existing = availableDateRepository
                 .findByCounselorIdAndAvailableDateForUpdate(command.counselorId(), command.date());

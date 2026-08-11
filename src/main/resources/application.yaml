@@ -47,8 +47,11 @@ spring:
       password: ${REDIS_PASSWORD:}
   servlet:
     multipart:
-      max-file-size: 110MB
-      max-request-size: 120MB
+      max-file-size: 1GB
+      max-request-size: 1GB
+    encoding:
+      charset: UTF-8
+      force: true
 
 google:
   sheets:
@@ -127,11 +130,6 @@ ai:
     model: ${GEMINI_MODEL:gemini-3.6-flash}
     timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:90}
 
-server:
-  servlet:
-    encoding:
-      charset: UTF-8
-      force: true
       
 # ==== management =====
 management:
@@ -153,3 +151,10 @@ management:
       # → RED 방법론의 Duration(응답시간) 지표를 나중에 바로 쓸 수 있음
       percentiles-histogram:
         http.server.requests: true
+
+# ===== NOTION =====
+notion:
+  api-token: ${NOTION_API_TOKEN}
+  data-source-id: ${NOTION_DATA_SOURCE_ID}
+  template-id: ${NOTION_TEMPLATE_ID}
+  api-version: ${NOTION_API_VERSION:2026-03-11}

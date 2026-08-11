@@ -3,6 +3,7 @@ package com.ohgiraffer.team.infrastructure.persistence;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,6 +21,7 @@ public interface SpringDataTeamMemberRepository
                 tm.userId AS userId,
                 u.name AS userName,
                 u.email AS email,
+                u.profileImg AS profileImg,
                 tm.joinedAt AS joinedAt,
                 tm.leftAt AS leftAt
             FROM TeamMemberViewJpaEntity tm
@@ -52,6 +54,7 @@ public interface SpringDataTeamMemberRepository
                 tm.userId AS userId,
                 u.name AS userName,
                 u.email AS email,
+                u.profileImg AS profileImg,
                 tm.joinedAt AS joinedAt,
                 tm.leftAt AS leftAt
             FROM TeamMemberViewJpaEntity tm
@@ -72,6 +75,7 @@ public interface SpringDataTeamMemberRepository
                 tm.userId AS userId,
                 u.name AS userName,
                 u.email AS email,
+                u.profileImg AS profileImg,
                 tm.joinedAt AS joinedAt,
                 tm.leftAt AS leftAt
             FROM TeamMemberViewJpaEntity tm
@@ -113,7 +117,8 @@ public interface SpringDataTeamMemberRepository
             SELECT
                 u.id AS userId,
                 u.name AS name,
-                u.email AS email
+                u.email AS email,
+                u.profileImg AS profileImg
             FROM UserJpaEntity u
             WHERE u.role = com.ohgiraffer.user.domain.model.Role.STUDENT
               AND u.status = com.ohgiraffer.user.domain.model.UserStatus.ACTIVE
@@ -132,7 +137,8 @@ public interface SpringDataTeamMemberRepository
                 tm.teamId AS teamId,
                 t.name AS teamName,
                 tm.userId AS userId,
-                u.name AS userName
+                u.name AS userName,
+                u.profileImg AS profileImg
             FROM TeamMemberViewJpaEntity tm
             JOIN TeamJpaEntity t
                 ON t.id = tm.teamId
@@ -155,6 +161,7 @@ public interface SpringDataTeamMemberRepository
                 t.name AS teamName,
                 tm.userId AS userId,
                 u.name AS userName,
+                u.profileImg AS profileImg,
                 tm.joinedAt AS joinedAt,
                 tm.leftAt AS leftAt
             FROM TeamMemberViewJpaEntity tm
@@ -185,5 +192,30 @@ public interface SpringDataTeamMemberRepository
             """)
     List<UserTeamNameProjection> findActiveTeamNamesByUserIds(
             @Param("userIds") List<Long> userIds
+    );
+
+    @Query("""
+        SELECT COUNT(tm) > 0
+        FROM TeamMemberViewJpaEntity tm
+        JOIN TeamJpaEntity t
+            ON t.id = tm.teamId
+        WHERE t.teamPeriodId = :teamPeriodId
+          AND tm.leftAt IS NULL
+        """)
+    boolean existsActiveMemberByTeamPeriodId(
+            @Param("teamPeriodId") Long teamPeriodId
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        DELETE FROM TeamMemberViewJpaEntity tm
+        WHERE tm.teamId IN (
+            SELECT t.id
+            FROM TeamJpaEntity t
+            WHERE t.teamPeriodId = :teamPeriodId
+        )
+        """)
+    void deleteByTeamPeriodId(
+            @Param("teamPeriodId") Long teamPeriodId
     );
 }
