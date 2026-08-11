@@ -4,10 +4,10 @@
  * 절대 원칙: 여기 정의된 scriptId 외에는 아무것도 실행할 수 없다.
  * AI나 사용자 입력으로 임의의 명령/스크립트를 실행하는 경로는 만들지 않는다.
  * (config/actions.js의 ALERT_POLICY에서 scriptId를 지정하고, 그 값이 여기 없으면 실행 자체가 거부됨)
- *
- * 지금은 데모/개발 단계라 실제 인프라를 건드리지 않는 mock 함수로 구현.
- * 나중에 실제 조치(재시작 API 호출 등)로 교체할 때도 이 파일의 함수 시그니처만 유지하면 됨.
  */
+
+const BACKEND_ADMIN_URL = process.env.BACKEND_ADMIN_URL; // 예: https://be.campflow.co.kr
+const ADMIN_INTERNAL_TOKEN = process.env.ADMIN_INTERNAL_TOKEN;
 
 // 실행 이력 (데모용 인메모리 기록. 서버 재시작하면 초기화됨)
 const executionHistory = [];
@@ -18,18 +18,44 @@ const executionHistory = [];
  */
 const WHITELIST = {
   "reset-db-connection-pool": async (context) => {
-    // 실제로는 여기서 백엔드의 관리용 엔드포인트를 호출해 HikariCP 풀을 리셋하게 됨.
-    // 지금은 mock: 실제 인프라를 건드리지 않고 성공했다고 가정.
-    await sleep(300); // 실제 API 호출을 흉내내는 지연
-    return {
-      success: true,
-      message: `[MOCK] ${context.alertName} - DB 커넥션 풀 리셋 명령을 전송했습니다. (실제 호출 아님, 데모용)`,
-    };
+    if (!BACKEND_ADMIN_URL || !ADMIN_INTERNAL_TOKEN) {
+      return {
+        success: false,
+        message:
+          "BACKEND_ADMIN_URL 또는 ADMIN_INTERNAL_TOKEN이 설정되지 않아 실제 호출을 건너뜁니다. (.env 확인 필요)",
+      };
+    }
+
+    try {
+      const res = await fetch(`${BACKEND_ADMIN_URL}/admin/reset-connection-pool`, {
+        method: "POST",
+        headers: {
+          "X-Internal-Token": ADMIN_INTERNAL_TOKEN,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        return {
+          success: false,
+          message: `백엔드 응답 실패 (HTTP ${res.status}): ${data.message || "알 수 없는 오류"}`,
+        };
+      }
+
+      return {
+        success: true,
+        message: `${data.message} (리셋 전 idle 커넥션: ${data.idleConnectionsBeforeReset}개)`,
+      };
+    } catch (err) {
+      return { success: false, message: `백엔드 호출 중 네트워크 오류: ${err.message}` };
+    }
   },
 
   "restart-app-process": async (context) => {
-    // 이건 정책상 MEDIUM(1인승인) 등급이라 지금 단계에서는 자동 실행 경로를 안 탐.
-    // 화이트리스트에는 등록해두되, 향후 승인 로직과 연결될 때 사용.
+    // 이건 아직 실제 엔드포인트가 없어서 mock 유지.
+    // 실제 재시작은 위험도가 더 높은 조치라, 이후 별도로 안전장치를 갖춰서 연결할 것.
     await sleep(300);
     return {
       success: true,

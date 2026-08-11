@@ -1,0 +1,20 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  # 모니터링 서버(EC2)의 Loki로 원격 전송.
+  # 백엔드 서버와 모니터링 서버가 서로 다른 EC2이므로,
+  # 모니터링 서버의 퍼블릭 IP + 3100 포트로 직접 push한다.
+  - url: http://3.35.66.222:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: campflow-app-file
+    static_configs:
+      - targets: [localhost]
+        labels:
+          container: campflow-app
+          __path__: /var/log/campflow/*.log
