@@ -174,3 +174,10 @@ resilience4j:
         record-exceptions:
           - org.springframework.web.client.RestClientException
           - com.ohgiraffer.global.exception.BusinessException
+          
+# ===== NOTION =====
+notion:
+  api-token: ${NOTION_API_TOKEN}
+  data-source-id: ${NOTION_DATA_SOURCE_ID}
+  template-id: ${NOTION_TEMPLATE_ID}
+  api-version: ${NOTION_API_VERSION:2026-03-11}

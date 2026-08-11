@@ -4,6 +4,7 @@ import com.ohgiraffer.chat.domain.model.ChatChannel;
 import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
 import com.ohgiraffer.chat.infrastructure.persistence.ChatChannelJpaEntity;
 import com.ohgiraffer.chat.infrastructure.persistence.ChatChannelJpaRepository;
+import com.ohgiraffer.chat.infrastructure.persistence.ChatChannelMemberJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -19,9 +20,14 @@ import java.util.Optional;
 public class ChatChannelRepositoryAdapter implements ChatChannelRepository {
 
     private final ChatChannelJpaRepository jpaRepository;
+    private final ChatChannelMemberJpaRepository memberJpaRepository;
 
-    public ChatChannelRepositoryAdapter(ChatChannelJpaRepository jpaRepository) {
+    public ChatChannelRepositoryAdapter(
+            ChatChannelJpaRepository jpaRepository,
+            ChatChannelMemberJpaRepository memberJpaRepository
+    ) {
         this.jpaRepository = jpaRepository;
+        this.memberJpaRepository = memberJpaRepository;
     }
 
     // 신규 채널 저장 / 기존 채널 갱신 공용
@@ -57,8 +63,20 @@ public class ChatChannelRepositoryAdapter implements ChatChannelRepository {
     @Override
     public List<ChatChannel> findAllBySendbirdChannelUrlIn(List<String> sendbirdChannelUrls) {
         return jpaRepository.findAllBySendbirdChannelUrlIn(sendbirdChannelUrls).stream()
-                .map(ChatChannelJpaEntity::toDomain) // 실제 변환 메서드명은 파일 확인 필요
+                .map(ChatChannelJpaEntity::toDomain)
                 .toList();
     }
 
+    @Override
+    public void deleteMembersBySendbirdChannelUrl(String sendbirdChannelUrl) {
+        jpaRepository.findBySendbirdChannelUrl(sendbirdChannelUrl)
+                .ifPresent(channel -> memberJpaRepository.deleteByChatChannelId(
+                        channel.getId()
+                ));
+    }
+
+    @Override
+    public void deleteBySendbirdChannelUrl(String sendbirdChannelUrl) {
+        jpaRepository.deleteBySendbirdChannelUrl(sendbirdChannelUrl);
+    }
 }

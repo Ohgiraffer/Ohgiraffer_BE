@@ -68,6 +68,27 @@ public class TeamPeriod {
         );
     }
 
+    public TeamPeriod update(
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        validateAssignable();
+
+        validatePeriod(
+                startDate,
+                endDate
+        );
+
+        return new TeamPeriod(
+                id,
+                startDate,
+                endDate,
+                archivedAt,
+                deletedAt,
+                createdAt
+        );
+    }
+
     public TeamPeriod archive(
             LocalDateTime archivedAt
     ) {

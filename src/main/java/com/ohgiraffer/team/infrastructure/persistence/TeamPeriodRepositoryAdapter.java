@@ -60,6 +60,39 @@ public class TeamPeriodRepositoryAdapter
     }
 
     @Override
+    public boolean existsVisiblePeriodOverlapping(
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        return springDataTeamPeriodRepository.existsVisiblePeriodOverlapping(
+                startDate,
+                endDate
+        );
+    }
+
+    @Override
+    public boolean existsVisiblePeriodOverlappingAndIdNot(
+            LocalDate startDate,
+            LocalDate endDate,
+            Long teamPeriodId
+    ) {
+        return springDataTeamPeriodRepository.existsVisiblePeriodOverlappingAndIdNot(
+                startDate,
+                endDate,
+                teamPeriodId
+        );
+    }
+
+    @Override
+    public void deleteById(
+            Long teamPeriodId
+    ) {
+        springDataTeamPeriodRepository.deleteById(
+                teamPeriodId
+        );
+    }
+
+    @Override
     public List<TeamPeriod> findArchivablePeriodsForUpdate(
             LocalDate today
     ) {
