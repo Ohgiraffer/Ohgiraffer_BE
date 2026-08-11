@@ -24,6 +24,8 @@ public class ConsultationCalendarEventListener {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final Duration SLOT_DURATION = Duration.ofMinutes(30);
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long RETRY_DELAY_MS = 500;
 
     private final CalendarEventCommandUseCase calendarEventCommandUseCase;
     private final GetUserInfoPort getUserInfoPort;
@@ -51,20 +53,35 @@ public class ConsultationCalendarEventListener {
     }
 
     private void createEventSafely(String title, Instant startTime, Instant endTime, Long ownerId, Long consultationId) {
-        try {
-            calendarEventCommandUseCase.create(new CreateCalendarEventCommand(
-                    title,
-                    EventType.PERSONAL,
-                    startTime,
-                    endTime,
-                    false,
-                    null,
-                    ownerId
-            ));
-            log.info("[상담 캘린더 일정 등록 성공] consultationId={}, ownerId={}", consultationId, ownerId);
-        } catch (Exception e) {
-            log.warn("[상담 캘린더 일정 등록 실패] consultationId={}, ownerId={}", consultationId, ownerId, e);
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                calendarEventCommandUseCase.create(new CreateCalendarEventCommand(
+                        title,
+                        EventType.PERSONAL,
+                        startTime,
+                        endTime,
+                        false,
+                        null,
+                        ownerId
+                ));
+                log.info("[상담 캘린더 일정 등록 성공] consultationId={}, ownerId={}, 시도={}/{}",
+                        consultationId, ownerId, attempt, MAX_ATTEMPTS);
+                return;
+            } catch (Exception e) {
+                log.warn("[상담 캘린더 일정 등록 실패] consultationId={}, ownerId={}, 시도={}/{}",
+                        consultationId, ownerId, attempt, MAX_ATTEMPTS, e);
+                if (attempt < MAX_ATTEMPTS) {
+                    try {
+                        Thread.sleep(RETRY_DELAY_MS);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+            }
         }
+        log.error("[상담 캘린더 일정 등록 최종 실패] consultationId={}, ownerId={}, {}회 재시도 후 포기",
+                consultationId, ownerId, MAX_ATTEMPTS);
     }
 
     private String resolveName(Long userId) {

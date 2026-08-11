@@ -29,15 +29,16 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-@Transactional
 public class ConsultationCommandService implements ConsultationCommandUsecase {
 
     private final ConsultationRepository consultationRepository;
     private final CounselorAvailableDateRepository availableDateRepository;
     private final ConsultationAiBriefGenerator aiBriefGenerator;
+    private final ConsultationRecordWriter recordWriter;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
+    @Transactional
     public Long requestConsultation(RequestConsultationCommand command) {
         boolean isAvailable = availableDateRepository
                 .findByCounselorIdAndAvailableDateForUpdate(command.counselorId(), command.scheduledAt().toLocalDate())
@@ -81,24 +82,21 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
 
     @Override
     public SaveRecordResult saveRecord(SaveRecordCommand command) {
-        Consultation consultation = consultationRepository.findById(command.consultationId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.CONSULTATION_NOT_FOUND));
-
-        if (!consultation.isCounseledBy(command.callerId())) {
-            throw new BusinessException(ErrorCode.CONSULTATION_ACCESS_DENIED);
-        }
-
-        consultation.completeWithRecord(command.counselorNote());
+        recordWriter.writeRecord(command.consultationId(), command.callerId(), command.counselorNote());
 
         Optional<String> aiBrief = aiBriefGenerator.generate(command.counselorNote());
-        aiBrief.ifPresent(consultation::applyAiBrief);
 
-        consultationRepository.save(consultation);
+        if (aiBrief.isPresent()) {
+            recordWriter.applyAiBrief(command.consultationId(), aiBrief.get());
+            return SaveRecordResult.success();
+        }
 
-        return aiBrief.isPresent() ? SaveRecordResult.success() : SaveRecordResult.aiFailed();
+        recordWriter.markAiBriefFailed(command.consultationId());
+        return SaveRecordResult.aiFailed();
     }
 
     @Override
+    @Transactional
     public void registerAvailableTime(RegisterAvailableTimeCommand command) {
         Optional<CounselorAvailableDate> existing = availableDateRepository
                 .findByCounselorIdAndAvailableDateForUpdate(command.counselorId(), command.date());

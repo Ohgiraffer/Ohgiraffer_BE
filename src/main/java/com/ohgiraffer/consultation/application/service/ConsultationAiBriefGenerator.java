@@ -26,20 +26,17 @@ public class ConsultationAiBriefGenerator {
             } catch (Exception e) {
                 log.warn("[상담 AI 요약 실패] {}/{}번째 시도", attempt, MAX_ATTEMPTS, e);
                 if (attempt < MAX_ATTEMPTS) {
-                    sleep();
+                    try {
+                        Thread.sleep(RETRY_DELAY_MS);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return Optional.empty();
+                    }
                 }
             }
         }
 
         return Optional.empty();
-    }
-
-    private void sleep() {
-        try {
-            Thread.sleep(RETRY_DELAY_MS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     private String buildPrompt(String counselorNote) {

@@ -26,6 +26,7 @@ public class Consultation {
     private String externalRefId;
 
     private static final Duration RECORD_DEADLINE = Duration.ofDays(1);
+    private static final String AI_BRIEF_FAILED_MESSAGE = "AI 요약 생성에 실패했습니다. 재시도 해주시길 바랍니다.";
 
     @Builder
     private Consultation(Long id, Long counselorId, Long requesterId, String topic, String content,
@@ -65,7 +66,16 @@ public class Consultation {
         }
 
         this.counselorNote = counselorNote;
+        this.aiBrief = null; // 메모 내용이 바뀌니까 일단 비움 (AI 재시도 전까지의 중간 상태)
         this.status = ConsultationStatus.COMPLETED;
+    }
+
+    public void applyAiBrief(String aiBrief) {
+        this.aiBrief = aiBrief;
+    }
+
+    public void markAiBriefFailed() {
+        this.aiBrief = AI_BRIEF_FAILED_MESSAGE;
     }
 
     public void expire() {
@@ -81,9 +91,5 @@ public class Consultation {
 
     public boolean isCounseledBy(Long userId) {
         return this.counselorId != null && this.counselorId.equals(userId);
-    }
-
-    public void applyAiBrief(String aiBrief) {
-        this.aiBrief = aiBrief;
     }
 }

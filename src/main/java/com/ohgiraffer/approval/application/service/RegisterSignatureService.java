@@ -24,7 +24,7 @@ import java.util.Set;
 @Service
 public class RegisterSignatureService implements RegisterSignatureUseCase {
 
-    private static final long MAX_FILE_SIZE_BYTES = 1024L * 1024L;
+    public static final long MAX_FILE_SIZE_BYTES = 1024L * 1024L;
 
     private static final Set<String> ALLOWED_FILE_TYPES =
             Set.of("image/png", "image/jpeg");

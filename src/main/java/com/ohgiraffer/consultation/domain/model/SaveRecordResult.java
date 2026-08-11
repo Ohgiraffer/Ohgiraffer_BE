@@ -7,6 +7,6 @@ public record SaveRecordResult(boolean aiBriefGenerated, String message) {
     }
 
     public static SaveRecordResult aiFailed() {
-        return new SaveRecordResult(false, "메모는 저장되었지만 AI 요약 생성에 실패했습니다. 다시 시도에 주시길 바랍니다.");
+        return new SaveRecordResult(false, "메모는 저장되었지만 AI 요약 생성에 실패했습니다. 다시 시도해 주시길 바랍니다.");
     }
 }
