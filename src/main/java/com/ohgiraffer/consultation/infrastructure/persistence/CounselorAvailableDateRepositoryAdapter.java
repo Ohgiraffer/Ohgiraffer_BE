@@ -48,21 +48,6 @@ public class CounselorAvailableDateRepositoryAdapter implements CounselorAvailab
     }
 
     @Override
-    public List<CounselorAvailableDate> findByCounselorIdAndAvailableDateBetween(
-            Long counselorId, LocalDate from, LocalDate to) {
-
-        List<CounselorAvailableDateJpaEntity> dateEntities =
-                springDataDateRepository.findByCounselorIdAndAvailableDateBetween(counselorId, from, to);
-
-        List<Long> dateIds = dateEntities.stream().map(CounselorAvailableDateJpaEntity::getId).toList();
-        Map<Long, List<LocalTime>> timesByDateId = availableTimeRepository.findByAvailableDateIdIn(dateIds);
-
-        return dateEntities.stream()
-                .map(entity -> entity.toDomain(timesByDateId.getOrDefault(entity.getId(), List.of())))
-                .toList();
-    }
-
-    @Override
     public List<LocalDate> findAvailableDatesOnly(Long counselorId, LocalDate from, LocalDate to) {
         return springDataDateRepository.findAvailableDatesOnly(counselorId, from, to);
     }

@@ -36,7 +36,7 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
 
         return getUserInfoPort.getUsersByRole(List.of("INSTRUCTOR", "MANAGER")).stream()
                 .filter(u -> counselorIdsWithAvailability.contains(u.userId()))
-                .map(u -> new CounselorInfo(u.userId(), u.name(), u.role()))
+                .map(u -> new CounselorInfo(u.userId(), u.name(), u.role(), u.profileImgUrl()))
                 .toList();
     }
 
@@ -112,6 +112,8 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
             throw new BusinessException(ErrorCode.CONSULTATION_ACCESS_DENIED);
         }
 
+        boolean canViewCounselorRecord = "INSTRUCTOR".equals(callerRole) || "MANAGER".equals(callerRole);
+
         return new ConsultationDetail(
                 c.getId(),
                 c.getTopic(),
@@ -119,7 +121,8 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
                 resolveName(c.getCounselorId()),
                 c.getScheduledAt(),
                 c.getContent(),
-                c.getCounselorNote(),
+                canViewCounselorRecord ? c.getCounselorNote() : null,
+                canViewCounselorRecord ? c.getAiBrief() : null,
                 c.getStatus()
         );
     }

@@ -15,8 +15,6 @@ public interface CounselorAvailableDateRepository {
 
     Optional<CounselorAvailableDate> findByCounselorIdAndAvailableDateForUpdate(Long counselorId, LocalDate date);
 
-    List<CounselorAvailableDate> findByCounselorIdAndAvailableDateBetween(Long counselorId, LocalDate from, LocalDate to);
-
     List<LocalDate> findAvailableDatesOnly(Long counselorId, LocalDate from, LocalDate to);
 
     Set<Long> findCounselorIdsWithAvailabilityFrom(LocalDate from);

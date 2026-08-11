@@ -38,6 +38,9 @@ public class ConsultationJpaEntity {
     @Column(name = "ai_brief")
     private String aiBrief;
 
+    @Column(name = "record_version", nullable = false)
+    private int recordVersion;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private ConsultationStatus status;
@@ -49,7 +52,7 @@ public class ConsultationJpaEntity {
     private String externalRefId;
 
     private ConsultationJpaEntity(Long id, Long counselorId, Long requesterId, String topic, String content,
-                                  String counselorNote, String aiBrief, ConsultationStatus status,
+                                  String counselorNote, String aiBrief, int recordVersion, ConsultationStatus status,
                                   LocalDateTime scheduledAt, String externalRefId) {
         this.id = id;
         this.counselorId = counselorId;
@@ -58,6 +61,7 @@ public class ConsultationJpaEntity {
         this.content = content;
         this.counselorNote = counselorNote;
         this.aiBrief = aiBrief;
+        this.recordVersion = recordVersion;
         this.status = status;
         this.scheduledAt = scheduledAt;
         this.externalRefId = externalRefId;
@@ -72,6 +76,7 @@ public class ConsultationJpaEntity {
                 domain.getContent(),
                 domain.getCounselorNote(),
                 domain.getAiBrief(),
+                domain.getRecordVersion(),
                 domain.getStatus(),
                 domain.getScheduledAt(),
                 domain.getExternalRefId()
@@ -87,6 +92,7 @@ public class ConsultationJpaEntity {
                 .content(content)
                 .counselorNote(counselorNote)
                 .aiBrief(aiBrief)
+                .recordVersion(recordVersion)
                 .status(status)
                 .scheduledAt(scheduledAt)
                 .externalRefId(externalRefId)
