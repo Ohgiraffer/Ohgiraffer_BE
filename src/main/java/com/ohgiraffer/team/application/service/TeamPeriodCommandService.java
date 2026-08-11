@@ -8,6 +8,8 @@ import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.team.application.command.CreateTeamPeriodCommand;
 import com.ohgiraffer.team.application.command.DeleteTeamPeriodCommand;
 import com.ohgiraffer.team.application.command.UpdateTeamPeriodCommand;
+import com.ohgiraffer.team.application.event.TeamExternalResourceDeleteTarget;
+import com.ohgiraffer.team.application.event.TeamPeriodDeletedEvent;
 import com.ohgiraffer.team.application.usecase.CreateTeamPeriodUseCase;
 import com.ohgiraffer.team.application.usecase.DeleteTeamPeriodUseCase;
 import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
@@ -17,10 +19,12 @@ import com.ohgiraffer.team.domain.repository.TeamPeriodRepository;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
 import com.ohgiraffer.user.domain.model.Role;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +38,7 @@ public class TeamPeriodCommandService
     private final TeamPeriodRepository teamPeriodRepository;
     private final BootcampRepository bootcampRepository;
     private final GetUserBootcampIdPort getUserBootcampIdPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public TeamPeriodResult createTeamPeriod(
@@ -166,6 +171,11 @@ public class TeamPeriodCommandService
                 teamPeriod.getId()
         );
 
+        List<TeamExternalResourceDeleteTarget> externalResourceDeleteTargets =
+                createExternalResourceDeleteTargets(
+                        teamPeriod.getId()
+                );
+
         teamRepository.deleteMembersByTeamPeriodId(
                 teamPeriod.getId()
         );
@@ -176,6 +186,42 @@ public class TeamPeriodCommandService
 
         teamPeriodRepository.deleteById(
                 teamPeriod.getId()
+        );
+
+        publishTeamPeriodDeletedEvent(
+                teamPeriod.getId(),
+                externalResourceDeleteTargets
+        );
+    }
+
+    private List<TeamExternalResourceDeleteTarget> createExternalResourceDeleteTargets(
+            Long teamPeriodId
+    ) {
+        return teamRepository.findVisibleTeamsByPeriodId(
+                        teamPeriodId
+                )
+                .stream()
+                .map(team -> new TeamExternalResourceDeleteTarget(
+                        team.getId(),
+                        team.getSendbirdChannelUrl(),
+                        team.getNotionPageId()
+                ))
+                .toList();
+    }
+
+    private void publishTeamPeriodDeletedEvent(
+            Long teamPeriodId,
+            List<TeamExternalResourceDeleteTarget> targets
+    ) {
+        if (targets.isEmpty()) {
+            return;
+        }
+
+        eventPublisher.publishEvent(
+                new TeamPeriodDeletedEvent(
+                        teamPeriodId,
+                        targets
+                )
         );
     }
 

@@ -19,4 +19,8 @@ public interface TeamWorkspacePort {
             String teamName,
             List<String> memberNames
     );
+
+    void archiveTeamPage(
+            String notionPageId
+    );
 }

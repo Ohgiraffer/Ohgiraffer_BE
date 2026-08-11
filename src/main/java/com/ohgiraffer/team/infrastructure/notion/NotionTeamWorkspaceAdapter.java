@@ -147,6 +147,26 @@ public class NotionTeamWorkspaceAdapter implements TeamWorkspacePort {
         }
     }
 
+    @Override
+    public void archiveTeamPage(
+            String notionPageId
+    ) {
+        try {
+            notionRestClient.patch()
+                    .uri("/pages/{pageId}", notionPageId)
+                    .body(Map.of(
+                            "archived", true
+                    ))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException exception) {
+            throw new BusinessException(
+                    ErrorCode.TEAM_NOTION_API_ERROR,
+                    "Notion 페이지 삭제 처리에 실패했습니다."
+            );
+        }
+    }
+
     private Map<String, Object> createProperties(
             Long teamId,
             String teamName,

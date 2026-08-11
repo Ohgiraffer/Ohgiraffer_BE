@@ -24,8 +24,8 @@ public class TeamNotionWorkspaceService {
 
     @DistributedLock(
             key = "'team:notion:workspace:' + #teamId",
-            waitTime = 10,
-            leaseTime = 60,
+            waitTime = 30,
+            leaseTime = 300,
             timeUnit = TimeUnit.SECONDS
     )
     public void syncTeamWorkspace(Long teamId) {
