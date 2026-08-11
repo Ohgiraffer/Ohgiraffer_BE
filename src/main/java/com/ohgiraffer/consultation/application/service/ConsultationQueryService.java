@@ -112,6 +112,8 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
             throw new BusinessException(ErrorCode.CONSULTATION_ACCESS_DENIED);
         }
 
+        boolean canViewCounselorRecord = "INSTRUCTOR".equals(callerRole) || "MANAGER".equals(callerRole);
+
         return new ConsultationDetail(
                 c.getId(),
                 c.getTopic(),
@@ -119,7 +121,8 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
                 resolveName(c.getCounselorId()),
                 c.getScheduledAt(),
                 c.getContent(),
-                c.getCounselorNote(),
+                canViewCounselorRecord ? c.getCounselorNote() : null,
+                canViewCounselorRecord ? c.getAiBrief() : null,
                 c.getStatus()
         );
     }

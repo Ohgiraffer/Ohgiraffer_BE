@@ -47,8 +47,8 @@ spring:
       password: ${REDIS_PASSWORD:}
   servlet:
     multipart:
-      max-file-size: 110MB
-      max-request-size: 120MB
+      max-file-size: 1GB
+      max-request-size: 1GB
 
 google:
   sheets:

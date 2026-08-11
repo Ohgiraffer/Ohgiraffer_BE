@@ -56,12 +56,14 @@ public class Consultation {
     }
 
     public void completeWithRecord(String counselorNote) {
-        if (this.status != ConsultationStatus.PENDING) {
+        if (this.status == ConsultationStatus.CANCELLED) {
             throw new BusinessException(ErrorCode.CONSULTATION_ALREADY_CLOSED);
         }
-        if (LocalDateTime.now().isAfter(this.scheduledAt.plus(RECORD_DEADLINE))) {
+        if (this.status == ConsultationStatus.PENDING
+                && LocalDateTime.now().isAfter(this.scheduledAt.plus(RECORD_DEADLINE))) {
             throw new BusinessException(ErrorCode.CONSULTATION_RECORD_DEADLINE_PASSED);
         }
+
         this.counselorNote = counselorNote;
         this.status = ConsultationStatus.COMPLETED;
     }
@@ -79,5 +81,9 @@ public class Consultation {
 
     public boolean isCounseledBy(Long userId) {
         return this.counselorId != null && this.counselorId.equals(userId);
+    }
+
+    public void applyAiBrief(String aiBrief) {
+        this.aiBrief = aiBrief;
     }
 }

@@ -7,6 +7,7 @@ import com.ohgiraffer.consultation.application.usecase.ConsultationCommandUsecas
 import com.ohgiraffer.consultation.domain.model.Consultation;
 import com.ohgiraffer.consultation.domain.model.ConsultationStatus;
 import com.ohgiraffer.consultation.domain.model.CounselorAvailableDate;
+import com.ohgiraffer.consultation.domain.model.SaveRecordResult;
 import com.ohgiraffer.consultation.domain.repository.ConsultationRepository;
 import com.ohgiraffer.consultation.domain.repository.CounselorAvailableDateRepository;
 import com.ohgiraffer.global.exception.BusinessException;
@@ -31,6 +32,7 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
 
     private final ConsultationRepository consultationRepository;
     private final CounselorAvailableDateRepository availableDateRepository;
+    private final ConsultationAiBriefGenerator aiBriefGenerator;
 
     @Override
     public Long requestConsultation(RequestConsultationCommand command) {
@@ -64,7 +66,7 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
     }
 
     @Override
-    public void saveRecord(SaveRecordCommand command) {
+    public SaveRecordResult saveRecord(SaveRecordCommand command) {
         Consultation consultation = consultationRepository.findById(command.consultationId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CONSULTATION_NOT_FOUND));
 
@@ -73,7 +75,13 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
         }
 
         consultation.completeWithRecord(command.counselorNote());
+
+        Optional<String> aiBrief = aiBriefGenerator.generate(command.counselorNote());
+        aiBrief.ifPresent(consultation::applyAiBrief);
+
         consultationRepository.save(consultation);
+
+        return aiBrief.isPresent() ? SaveRecordResult.success() : SaveRecordResult.aiFailed();
     }
 
     @Override
