@@ -4,7 +4,7 @@ spring:
 
   # ===== Database (MySQL) =====
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:campflow}?characterEncoding=UTF-8&useUnicode=true&serverTimezone=Asia/Seoul
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:campflow}?characterEncoding=UTF-8&useUnicode=true&serverTimezone=UTC
     username: ${MYSQL_USERNAME:campflow}
     password: ${MYSQL_PASSWORD:1234}   # 본인 로컬 비밀번호로 교체
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -76,8 +76,8 @@ cloud:
     region:
       static: ap-northeast-2
     credentials:
-      access-key: ${AWS_ACCESS_KEY_ID}
-      secret-key: ${AWS_SECRET_ACCESS_KEY}
+      access-key: ${AWS_ACCESS_KEY_ID:dummy}
+      secret-key: ${AWS_SECRET_ACCESS_KEY:dummy}
 
 
 # ===== Swagger (SpringDoc) =====

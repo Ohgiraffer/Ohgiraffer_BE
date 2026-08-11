@@ -126,5 +126,17 @@ public class SubmissionBoxItemJpaEntity extends BaseTimeEntity {
         );
     }
 
-    public Long getId() {return id;}
+    void changeSortOrder(
+            int sortOrder
+    ) {
+        this.sortOrder = sortOrder;
+    }
+
+    public int getSortOrder() {
+        return sortOrder;
+    }
+
+    public Long getId() {
+        return id;
+    }
 }

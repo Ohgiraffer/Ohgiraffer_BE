@@ -5,6 +5,8 @@ import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.team.application.command.CreateTeamPeriodCommand;
 import com.ohgiraffer.team.application.command.SaveTeamConfigurationCommand;
 import com.ohgiraffer.team.application.command.TeamConfigurationCommand;
+import com.ohgiraffer.team.application.event.TeamChannelSyncTarget;
+import com.ohgiraffer.team.application.event.TeamConfigurationSavedEvent;
 import com.ohgiraffer.team.application.usecase.CreateTeamPeriodUseCase;
 import com.ohgiraffer.team.application.usecase.SaveTeamConfigurationUseCase;
 import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
@@ -18,10 +20,12 @@ import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.model.UserStatus;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,6 +44,7 @@ public class TeamCommandService
     private final TeamRepository teamRepository;
     private final TeamPeriodRepository teamPeriodRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public TeamPeriodResult createTeamPeriod(
@@ -160,6 +165,14 @@ public class TeamCommandService
                         activeMembers
                 );
 
+        Set<Long> affectedTeamIds =
+                createAffectedTeamIds(
+                        savedTeams,
+                        command.deletedTeamIds(),
+                        requestedUserIds,
+                        activeMembers
+                );
+
         closeDeletedTeamMembers(
                 command.deletedTeamIds(),
                 requestedUserIds,
@@ -187,6 +200,12 @@ public class TeamCommandService
                 command.deletedTeamIds(),
                 visibleTeamById,
                 changedAt
+        );
+
+        publishTeamConfigurationSavedEvent(
+                affectedTeamIds,
+                command.deletedTeamIds(),
+                command.createChatChannel()
         );
     }
 
@@ -294,6 +313,33 @@ public class TeamCommandService
         return desiredTeamByUserId;
     }
 
+    private Set<Long> createAffectedTeamIds(
+            List<Team> savedTeams,
+            List<Long> deletedTeamIds,
+            Set<Long> requestedUserIds,
+            List<TeamMember> activeMembers
+    ) {
+        Set<Long> affectedTeamIds =
+                new HashSet<>();
+
+        savedTeams.stream()
+                .map(Team::getId)
+                .forEach(affectedTeamIds::add);
+
+        affectedTeamIds.addAll(
+                deletedTeamIds
+        );
+
+        activeMembers.stream()
+                .filter(member -> requestedUserIds.contains(
+                        member.getUserId()
+                ))
+                .map(TeamMember::getTeamId)
+                .forEach(affectedTeamIds::add);
+
+        return affectedTeamIds;
+    }
+
     private void closeDeletedTeamMembers(
             List<Long> deletedTeamIds,
             Set<Long> requestedUserIds,
@@ -381,6 +427,69 @@ public class TeamCommandService
         );
     }
 
+    private void publishTeamConfigurationSavedEvent(
+            Set<Long> affectedTeamIds,
+            List<Long> deletedTeamIds,
+            boolean createChatChannel
+    ) {
+        if (affectedTeamIds.isEmpty()) {
+            return;
+        }
+
+        Set<Long> deletedTeamIdSet =
+                new HashSet<>(
+                        deletedTeamIds
+                );
+
+        Map<Long, List<Long>> activeUserIdsByTeamId =
+                teamRepository.findActiveMembersByTeamIds(
+                                affectedTeamIds.stream()
+                                        .filter(teamId -> !deletedTeamIdSet.contains(
+                                                teamId
+                                        ))
+                                        .toList()
+                        )
+                        .stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        TeamMember::getTeamId,
+                                        Collectors.mapping(
+                                                TeamMember::getUserId,
+                                                Collectors.toList()
+                                        )
+                                )
+                        );
+
+        List<TeamChannelSyncTarget> channelSyncTargets =
+                new ArrayList<>();
+
+        affectedTeamIds.forEach(teamId -> {
+            List<Long> memberUserIds =
+                    deletedTeamIdSet.contains(
+                            teamId
+                    )
+                            ? List.of()
+                            : activeUserIdsByTeamId.getOrDefault(
+                            teamId,
+                            List.of()
+                    );
+
+            channelSyncTargets.add(
+                    new TeamChannelSyncTarget(
+                            teamId,
+                            memberUserIds
+                    )
+            );
+        });
+
+        eventPublisher.publishEvent(
+                new TeamConfigurationSavedEvent(
+                        channelSyncTargets,
+                        createChatChannel
+                )
+        );
+    }
+
     private Map<Long, TeamMember> createActiveMemberByUserId(
             List<TeamMember> activeMembers
     ) {
@@ -416,6 +525,11 @@ public class TeamCommandService
         );
 
         validateDeletedTeamIds(
+                command.deletedTeamIds()
+        );
+
+        validateNoDeletedTeamInRequestedTeams(
+                command.teams(),
                 command.deletedTeamIds()
         );
 
@@ -502,6 +616,28 @@ public class TeamCommandService
                 throw new BusinessException(
                         ErrorCode.INVALID_INPUT_VALUE,
                         "중복된 삭제 팀이 포함되어 있습니다."
+                );
+            }
+        }
+    }
+
+    private void validateNoDeletedTeamInRequestedTeams(
+            List<TeamConfigurationCommand> teams,
+            List<Long> deletedTeamIds
+    ) {
+        Set<Long> deletedTeamIdSet =
+                new HashSet<>(
+                        deletedTeamIds
+                );
+
+        for (TeamConfigurationCommand team : teams) {
+            if (team.teamId() != null
+                    && deletedTeamIdSet.contains(
+                    team.teamId()
+            )) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT_VALUE,
+                        "저장 팀과 삭제 팀이 중복되었습니다."
                 );
             }
         }
