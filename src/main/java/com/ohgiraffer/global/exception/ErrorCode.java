@@ -165,6 +165,7 @@ public enum ErrorCode {
     CALENDAR_EVENT_NOT_CREATOR(HttpStatus.FORBIDDEN, "CALENDAR_002", "일정을 등록한 사람만 삭제할 수 있습니다."),
     AI_API_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI_001", "AI API 호출 중 오류가 발생했습니다."),
 
+    AI_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI_002", "AI 비서 서비스가 일시적으로 원활하지 않습니다. 잠시 후 다시 시도해주세요."),
     LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "LOCK_001", "다른 요청이 처리 중입니다. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus status;
