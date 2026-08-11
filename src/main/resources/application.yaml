@@ -101,6 +101,10 @@ logging:
 #    org.hibernate.orm.jdbc.bind: TRACE
     org.springframework.data.redis: DEBUG
     org.flywaydb: INFO
+  file:
+    name: /var/log/campflow/app.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
 campflow:
   logging:
@@ -151,6 +155,26 @@ management:
       # → RED 방법론의 Duration(응답시간) 지표를 나중에 바로 쓸 수 있음
       percentiles-histogram:
         http.server.requests: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      geminiApi:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 30s
+        slow-call-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - org.springframework.web.client.RestClientException
+          - com.ohgiraffer.global.exception.BusinessException
+
+admin:
+  internal-token: ${ADMIN_INTERNAL_TOKEN:changeme}
 
 # ===== NOTION =====
 notion:

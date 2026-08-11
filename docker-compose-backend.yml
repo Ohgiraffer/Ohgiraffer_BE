@@ -23,7 +23,9 @@ services:
       GOOGLE_FORMS_OAUTH_CREDENTIALS_LOCATION: file:/app/secrets/ohgiraffer-forms-oauth-client.json
       GOOGLE_FORMS_TOKEN_DIRECTORY: /app/secrets/forms-tokens
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      ADMIN_INTERNAL_TOKEN: ${ADMIN_INTERNAL_TOKEN:?ADMIN_INTERNAL_TOKEN 환경변수가 반드시 설정되어야 합니다}
     volumes:
+      - app-logs:/var/log/campflow
       - type: bind
         source: ~/ohgiraffer-sheets-key.json
         target: /app/secrets/ohgiraffer-sheets-key.json
@@ -66,5 +68,15 @@ services:
       retries: 5
     restart: unless-stopped
 
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: promtail-backend
+    volumes:
+      - ./promtail-backend-config.yml:/etc/promtail/config.yml
+      - app-logs:/var/log/campflow:ro
+    command: -config.file=/etc/promtail/config.yml
+    restart: unless-stopped
+
 volumes:
   redis-data:
+  app-logs:

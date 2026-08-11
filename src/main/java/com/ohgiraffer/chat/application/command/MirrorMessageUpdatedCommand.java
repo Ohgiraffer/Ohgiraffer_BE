@@ -1,5 +1,7 @@
 package com.ohgiraffer.chat.application.command;
 
+import java.time.Instant;
+
 /*
  * comment.
  *  Sendbird 웹훅 - 메시지/답글 수정 이벤트 미러링 커맨드
@@ -9,6 +11,7 @@ package com.ohgiraffer.chat.application.command;
 public record MirrorMessageUpdatedCommand(
         String sendbirdMessageId,
         String content,
-        String attachmentUrl
+        String attachmentUrl,
+        Instant eventAt
 ) {
 }

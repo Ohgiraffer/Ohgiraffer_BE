@@ -64,26 +64,40 @@ public class ChatMessageMirrorCommandService implements ChatMessageMirrorCommand
     }
 
     // 웹훅으로 수신한 메시지/답글 수정 이벤트 반영 - sendbird_message_id로 기존 레코드 찾아서 content 갱신
+    // findBySendbirdMessageIdForUpdate로 비관적 락 획득 - 동시에 들어온 update/delete가 순차 처리되도록 함
     @Override
     @Transactional
     public void mirrorUpdated(MirrorMessageUpdatedCommand command) {
-        ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageId(command.sendbirdMessageId())
+        ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageIdForUpdate(command.sendbirdMessageId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
-        message.edit(command.content(), command.attachmentUrl());
+        if (message.isOlderEventThan(command.eventAt())) {
+            log.info("[Chat] 순서 뒤바뀐 오래된 수정 이벤트 - 스킵 | sendbirdMessageId={}, eventAt={}",
+                    command.sendbirdMessageId(), command.eventAt());
+            return;
+        }
+
+        message.edit(command.content(), command.attachmentUrl(), command.eventAt());
         chatMessageMirrorRepository.save(message);
 
         log.info("[Chat] 메시지 수정 미러링 완료 | sendbirdMessageId={}", command.sendbirdMessageId());
     }
 
     // 웹훅으로 수신한 메시지/답글 삭제 이벤트 반영 - 소프트 삭제(deletedAt 세팅)
+    // findBySendbirdMessageIdForUpdate로 비관적 락 획득
     @Override
     @Transactional
     public void mirrorDeleted(MirrorMessageDeletedCommand command) {
-        ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageId(command.sendbirdMessageId())
+        ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageIdForUpdate(command.sendbirdMessageId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
-        message.delete();
+        if (message.isOlderEventThan(command.eventAt())) {
+            log.info("[Chat] 순서 뒤바뀐 오래된 삭제 이벤트 - 스킵 | sendbirdMessageId={}, eventAt={}",
+                    command.sendbirdMessageId(), command.eventAt());
+            return;
+        }
+
+        message.delete(command.eventAt());
         chatMessageMirrorRepository.save(message);
 
         log.info("[Chat] 메시지 삭제 미러링 완료 | sendbirdMessageId={}", command.sendbirdMessageId());

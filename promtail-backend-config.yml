@@ -6,17 +6,12 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  - url: http://loki:3100/loki/api/v1/push
+  # 모니터링 서버(EC2)의 Loki로 원격 전송.
+  # 백엔드 서버와 모니터링 서버가 서로 다른 EC2이므로,
+  # 모니터링 서버의 퍼블릭 IP + 3100 포트로 직접 push한다.
+  - url: http://172.31.35.147:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: docker
-    docker_sd_configs:
-      - host: unix:///var/run/docker.sock
-        refresh_interval: 5s
-    relabel_configs:
-      - source_labels: ["__meta_docker_container_name"]
-        regex: "/(.*)"
-        target_label: "container"
   - job_name: campflow-app-file
     static_configs:
       - targets: [localhost]
