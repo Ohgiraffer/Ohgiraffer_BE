@@ -3,6 +3,7 @@ package com.ohgiraffer.team.application.service;
 import com.ohgiraffer.bootcamp.application.port.GetUserBootcampIdPort;
 import com.ohgiraffer.bootcamp.domain.model.Bootcamp;
 import com.ohgiraffer.bootcamp.domain.repository.BootcampRepository;
+import com.ohgiraffer.global.aop.lock.DistributedLock;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.team.application.command.CreateTeamPeriodCommand;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +43,12 @@ public class TeamPeriodCommandService
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
+    @DistributedLock(
+            key = "'team:period:write'",
+            waitTime = 30,
+            leaseTime = 120,
+            timeUnit = TimeUnit.SECONDS
+    )
     public TeamPeriodResult createTeamPeriod(
             CreateTeamPeriodCommand command,
             Role requesterRole
@@ -83,6 +91,12 @@ public class TeamPeriodCommandService
     }
 
     @Override
+    @DistributedLock(
+            key = "'team:period:write'",
+            waitTime = 30,
+            leaseTime = 120,
+            timeUnit = TimeUnit.SECONDS
+    )
     public TeamPeriodResult updateTeamPeriod(
             UpdateTeamPeriodCommand command,
             Role requesterRole
@@ -142,6 +156,12 @@ public class TeamPeriodCommandService
     }
 
     @Override
+    @DistributedLock(
+            key = "'team:period:write'",
+            waitTime = 30,
+            leaseTime = 120,
+            timeUnit = TimeUnit.SECONDS
+    )
     public void deleteTeamPeriod(
             DeleteTeamPeriodCommand command,
             Role requesterRole

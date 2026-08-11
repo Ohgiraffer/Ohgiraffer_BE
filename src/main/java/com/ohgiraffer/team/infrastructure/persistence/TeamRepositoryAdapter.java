@@ -23,6 +23,12 @@ public class TeamRepositoryAdapter
     private static final String TEAM_NAME_UNIQUE_CONSTRAINT =
             "uq_team_period_name";
 
+    private static final String ACTIVE_TEAM_MEMBER_UNIQUE_CONSTRAINT =
+            "uq_team_member_active_user";
+
+    private static final String TEAM_MEMBER_UNIQUE_CONSTRAINT =
+            "UQ_TEAM_MEMBER";
+
     private final SpringDataTeamRepository springDataTeamRepository;
     private final SpringDataTeamMemberRepository springDataTeamMemberRepository;
 
@@ -56,14 +62,26 @@ public class TeamRepositoryAdapter
     public TeamMember saveMember(
             TeamMember teamMember
     ) {
-        TeamMemberViewJpaEntity savedEntity =
-                springDataTeamMemberRepository.saveAndFlush(
-                        TeamMemberViewJpaEntity.from(
-                                teamMember
-                        )
-                );
+        try {
+            TeamMemberViewJpaEntity savedEntity =
+                    springDataTeamMemberRepository.saveAndFlush(
+                            TeamMemberViewJpaEntity.from(
+                                    teamMember
+                            )
+                    );
 
-        return savedEntity.toDomain();
+            return savedEntity.toDomain();
+        } catch (DataIntegrityViolationException exception) {
+            if (isTeamMemberUniqueConstraintViolation(
+                    exception
+            )) {
+                throw new BusinessException(
+                        ErrorCode.TEAM_MEMBER_ALREADY_ASSIGNED
+                );
+            }
+
+            throw exception;
+        }
     }
 
     @Override
@@ -266,12 +284,34 @@ public class TeamRepositoryAdapter
     private boolean isTeamNameUniqueConstraintViolation(
             DataIntegrityViolationException exception
     ) {
+        return isConstraintViolation(
+                exception,
+                TEAM_NAME_UNIQUE_CONSTRAINT
+        );
+    }
+
+    private boolean isTeamMemberUniqueConstraintViolation(
+            DataIntegrityViolationException exception
+    ) {
+        return isConstraintViolation(
+                exception,
+                ACTIVE_TEAM_MEMBER_UNIQUE_CONSTRAINT
+        ) || isConstraintViolation(
+                exception,
+                TEAM_MEMBER_UNIQUE_CONSTRAINT
+        );
+    }
+
+    private boolean isConstraintViolation(
+            DataIntegrityViolationException exception,
+            String constraintName
+    ) {
         Throwable cause =
                 exception.getCause();
 
         while (cause != null) {
             if (cause instanceof ConstraintViolationException constraintViolationException
-                    && TEAM_NAME_UNIQUE_CONSTRAINT.equalsIgnoreCase(
+                    && constraintName.equalsIgnoreCase(
                     constraintViolationException.getConstraintName()
             )) {
                 return true;
@@ -280,7 +320,7 @@ public class TeamRepositoryAdapter
             if (cause instanceof SQLException sqlException
                     && sqlException.getMessage() != null
                     && sqlException.getMessage()
-                    .contains(TEAM_NAME_UNIQUE_CONSTRAINT)) {
+                    .contains(constraintName)) {
                 return true;
             }
 
