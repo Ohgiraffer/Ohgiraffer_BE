@@ -15,7 +15,7 @@ public interface ConsultationRepository {
 
     List<Consultation> findByRequesterId(Long requesterId);
 
-    List<Consultation> findUpcoming(LocalDateTime from);
+    List<Consultation> findUpcoming(Long counselorId, LocalDateTime from);
 
     List<Consultation> findAll();
 

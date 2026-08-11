@@ -32,10 +32,11 @@ public interface SpringDataConsultationRepository extends JpaRepository<Consulta
             ConsultationStatus status, LocalDateTime dateTime);
 
     @Query("""
-        SELECT c FROM ConsultationJpaEntity c
-        WHERE c.scheduledAt >= :from
-          AND c.status = 'PENDING'
-        ORDER BY c.scheduledAt ASC
-        """)
-    List<ConsultationJpaEntity> findUpcoming(@Param("from") LocalDateTime from);
+    SELECT c FROM ConsultationJpaEntity c
+    WHERE c.counselorId = :counselorId
+      AND c.scheduledAt >= :from
+      AND c.status = 'PENDING'
+    ORDER BY c.scheduledAt ASC
+    """)
+    List<ConsultationJpaEntity> findUpcoming(@Param("counselorId") Long counselorId, @Param("from") LocalDateTime from);
 }

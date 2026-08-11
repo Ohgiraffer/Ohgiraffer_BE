@@ -145,7 +145,7 @@ public class ConsultationController {
         return ResponseEntity.ok(ConsultationDetailResponse.from(detail));
     }
 
-    @Operation(summary = "다가오는 상담 조회", description = "운영진/강사가 예정된 상담 상위 3건을 조회합니다.")
+    @Operation(summary = "다가오는 상담 조회", description = "로그인한 강사/매니저 본인이 담당하는 예정된 상담을 조회합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "401", description = "인증되지 않음"),
@@ -154,8 +154,10 @@ public class ConsultationController {
     })
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     @GetMapping("/upcoming")
-    public ResponseEntity<List<ConsultationListItemResponse>> getUpcoming() {
-        List<ConsultationListItemResponse> response = consultationQueryUsecase.getUpcoming().stream()
+    public ResponseEntity<List<ConsultationListItemResponse>> getUpcoming(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        List<ConsultationListItemResponse> response = consultationQueryUsecase.getUpcoming(principal.getId()).stream()
                 .map(ConsultationListItemResponse::from)
                 .toList();
         return ResponseEntity.ok(response);
