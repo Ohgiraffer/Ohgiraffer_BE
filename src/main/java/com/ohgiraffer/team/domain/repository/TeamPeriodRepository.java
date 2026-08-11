@@ -34,6 +34,10 @@ public interface TeamPeriodRepository {
             Long teamPeriodId
     );
 
+    void deleteById(
+            Long teamPeriodId
+    );
+
     List<TeamPeriod> findArchivablePeriodsForUpdate(
             LocalDate today
     );

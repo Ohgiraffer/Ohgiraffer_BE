@@ -84,6 +84,15 @@ public class TeamPeriodRepositoryAdapter
     }
 
     @Override
+    public void deleteById(
+            Long teamPeriodId
+    ) {
+        springDataTeamPeriodRepository.deleteById(
+                teamPeriodId
+        );
+    }
+
+    @Override
     public List<TeamPeriod> findArchivablePeriodsForUpdate(
             LocalDate today
     ) {

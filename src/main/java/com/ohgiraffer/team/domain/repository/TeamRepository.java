@@ -66,5 +66,17 @@ public interface TeamRepository {
             Long teamId
     );
 
+    boolean existsActiveMemberByTeamPeriodId(
+            Long teamPeriodId
+    );
+
+    void deleteMembersByTeamPeriodId(
+            Long teamPeriodId
+    );
+
+    void deleteTeamsByTeamPeriodId(
+            Long teamPeriodId
+    );
+
     List<UnassignedStudent> findUnassignedStudents();
 }

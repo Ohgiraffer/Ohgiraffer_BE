@@ -2,9 +2,11 @@ package com.ohgiraffer.team.presentation.api;
 
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import com.ohgiraffer.team.application.command.CreateTeamPeriodCommand;
+import com.ohgiraffer.team.application.command.DeleteTeamPeriodCommand;
 import com.ohgiraffer.team.application.command.SaveTeamConfigurationCommand;
 import com.ohgiraffer.team.application.command.UpdateTeamPeriodCommand;
 import com.ohgiraffer.team.application.usecase.CreateTeamPeriodUseCase;
+import com.ohgiraffer.team.application.usecase.DeleteTeamPeriodUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamHistoryUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamListUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamPeriodListUseCase;
@@ -31,6 +33,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -54,6 +57,7 @@ public class TeamController {
     private final GetTeamPeriodListUseCase getTeamPeriodListUseCase;
     private final CreateTeamPeriodUseCase createTeamPeriodUseCase;
     private final UpdateTeamPeriodUseCase updateTeamPeriodUseCase;
+    private final DeleteTeamPeriodUseCase deleteTeamPeriodUseCase;
     private final SaveTeamConfigurationUseCase saveTeamConfigurationUseCase;
 
     @GetMapping("/periods")
@@ -126,6 +130,27 @@ public class TeamController {
                         result
                 )
         );
+    }
+
+    @DeleteMapping("/periods/{periodId:\\d+}")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<Void> deleteTeamPeriod(
+            @PathVariable Long periodId,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        DeleteTeamPeriodCommand command =
+                new DeleteTeamPeriodCommand(
+                        principal.getId(),
+                        periodId
+                );
+
+        deleteTeamPeriodUseCase.deleteTeamPeriod(
+                command,
+                principal.getRole()
+        );
+
+        return ResponseEntity.noContent()
+                .build();
     }
 
     @GetMapping

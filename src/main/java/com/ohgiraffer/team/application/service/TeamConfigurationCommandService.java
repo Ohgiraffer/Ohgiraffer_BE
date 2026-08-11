@@ -1,21 +1,13 @@
 package com.ohgiraffer.team.application.service;
 
-import com.ohgiraffer.bootcamp.application.port.GetUserBootcampIdPort;
-import com.ohgiraffer.bootcamp.domain.model.Bootcamp;
-import com.ohgiraffer.bootcamp.domain.repository.BootcampRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
-import com.ohgiraffer.team.application.command.CreateTeamPeriodCommand;
 import com.ohgiraffer.team.application.command.SaveTeamConfigurationCommand;
 import com.ohgiraffer.team.application.command.TeamConfigurationCommand;
-import com.ohgiraffer.team.application.command.UpdateTeamPeriodCommand;
 import com.ohgiraffer.team.application.event.TeamChannelSyncTarget;
 import com.ohgiraffer.team.application.event.TeamConfigurationSavedEvent;
 import com.ohgiraffer.team.application.event.TeamWorkspaceSyncTarget;
-import com.ohgiraffer.team.application.usecase.CreateTeamPeriodUseCase;
 import com.ohgiraffer.team.application.usecase.SaveTeamConfigurationUseCase;
-import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
-import com.ohgiraffer.team.application.usecase.UpdateTeamPeriodUseCase;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
 import com.ohgiraffer.team.domain.model.TeamPeriod;
@@ -30,7 +22,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -44,118 +35,13 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class TeamCommandService
-        implements CreateTeamPeriodUseCase,
-        UpdateTeamPeriodUseCase,
-        SaveTeamConfigurationUseCase {
+public class TeamConfigurationCommandService
+        implements SaveTeamConfigurationUseCase {
 
     private final TeamRepository teamRepository;
     private final TeamPeriodRepository teamPeriodRepository;
     private final UserRepository userRepository;
-    private final BootcampRepository bootcampRepository;
-    private final GetUserBootcampIdPort getUserBootcampIdPort;
     private final ApplicationEventPublisher eventPublisher;
-
-    @Override
-    public TeamPeriodResult createTeamPeriod(
-            CreateTeamPeriodCommand command,
-            Role requesterRole
-    ) {
-        validateManagerAccess(
-                command.requesterId(),
-                requesterRole
-        );
-
-        validateTeamPeriodRange(
-                command.startDate(),
-                command.endDate()
-        );
-
-        validatePeriodWithinRequesterBootcamp(
-                command.requesterId(),
-                command.startDate(),
-                command.endDate()
-        );
-
-        validatePeriodNotOverlapping(
-                command.startDate(),
-                command.endDate()
-        );
-
-        TeamPeriod teamPeriod =
-                TeamPeriod.create(
-                        command.startDate(),
-                        command.endDate()
-                );
-
-        TeamPeriod savedTeamPeriod =
-                teamPeriodRepository.save(
-                        teamPeriod
-                );
-
-        return TeamPeriodResult.from(
-                savedTeamPeriod
-        );
-    }
-
-    @Override
-    public TeamPeriodResult updateTeamPeriod(
-            UpdateTeamPeriodCommand command,
-            Role requesterRole
-    ) {
-        validateManagerAccess(
-                command.requesterId(),
-                requesterRole
-        );
-
-        validateTeamPeriodId(
-                command.teamPeriodId()
-        );
-
-        validateTeamPeriodRange(
-                command.startDate(),
-                command.endDate()
-        );
-
-        validatePeriodWithinRequesterBootcamp(
-                command.requesterId(),
-                command.startDate(),
-                command.endDate()
-        );
-
-        TeamPeriod teamPeriod =
-                teamPeriodRepository.findByIdForUpdate(
-                                command.teamPeriodId()
-                        )
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.TEAM_NOT_FOUND
-                                )
-                        );
-
-        teamPeriod.validateAssignable();
-
-        validatePeriodNotOverlappingForUpdate(
-                command.startDate(),
-                command.endDate(),
-                teamPeriod.getId()
-        );
-
-        TeamPeriod updatedTeamPeriod =
-                teamPeriod.update(
-                        command.startDate(),
-                        command.endDate()
-                );
-
-        TeamPeriod savedTeamPeriod =
-                teamPeriodRepository.save(
-                        updatedTeamPeriod
-                );
-
-        return TeamPeriodResult.from(
-                savedTeamPeriod
-        );
-    }
 
     @Override
     public void saveTeamConfiguration(
@@ -820,89 +706,6 @@ public class TeamCommandService
                 && requesterRole != Role.MANAGER) {
             throw new BusinessException(
                     ErrorCode.TEAM_ACCESS_DENIED
-            );
-        }
-    }
-
-    private void validateTeamPeriodRange(
-            LocalDate startDate,
-            LocalDate endDate
-    ) {
-        if (startDate == null
-                || endDate == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "팀 기간 시작일과 종료일을 입력해주세요."
-            );
-        }
-
-        if (startDate.isAfter(endDate)) {
-            throw new BusinessException(
-                    ErrorCode.TEAM_INVALID_PERIOD
-            );
-        }
-    }
-
-    private void validatePeriodWithinRequesterBootcamp(
-            Long requesterId,
-            LocalDate startDate,
-            LocalDate endDate
-    ) {
-        Long bootcampId =
-                getUserBootcampIdPort.findBootcampIdByUserId(
-                                requesterId
-                        )
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.BOOTCAMP_NOT_FOUND
-                                )
-                        );
-
-        Bootcamp bootcamp =
-                bootcampRepository.findById(
-                                bootcampId
-                        )
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.BOOTCAMP_NOT_FOUND
-                                )
-                        );
-
-        if (startDate.isBefore(bootcamp.getStartDate())
-                || endDate.isAfter(bootcamp.getEndDate())) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_PERIOD_RANGE,
-                    "팀 기간은 부트캠프 기간 내에서만 설정할 수 있습니다."
-            );
-        }
-    }
-
-    private void validatePeriodNotOverlapping(
-            LocalDate startDate,
-            LocalDate endDate
-    ) {
-        if (teamPeriodRepository.existsVisiblePeriodOverlapping(
-                startDate,
-                endDate
-        )) {
-            throw new BusinessException(
-                    ErrorCode.OVERLAPPING_PERIOD
-            );
-        }
-    }
-
-    private void validatePeriodNotOverlappingForUpdate(
-            LocalDate startDate,
-            LocalDate endDate,
-            Long teamPeriodId
-    ) {
-        if (teamPeriodRepository.existsVisiblePeriodOverlappingAndIdNot(
-                startDate,
-                endDate,
-                teamPeriodId
-        )) {
-            throw new BusinessException(
-                    ErrorCode.OVERLAPPING_PERIOD
             );
         }
     }
