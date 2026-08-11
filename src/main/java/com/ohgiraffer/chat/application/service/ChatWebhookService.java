@@ -80,11 +80,15 @@ public class ChatWebhookService {
     private void mirrorUpdated(Map<String, Object> raw) {
         Map<String, Object> payloadMsg = (Map<String, Object>) raw.get("payload");
         Map<String, Object> file = (Map<String, Object>) payloadMsg.get("file");
+        Object updatedAtRaw = payloadMsg.get("updated_at");
 
         MirrorMessageUpdatedCommand command = new MirrorMessageUpdatedCommand(
                 String.valueOf(payloadMsg.get("message_id")),
                 (String) payloadMsg.get("message"),
-                file != null ? (String) file.get("url") : null
+                file != null ? (String) file.get("url") : null,
+                updatedAtRaw != null
+                        ? Instant.ofEpochMilli(((Number) updatedAtRaw).longValue())
+                        : Instant.now()  // 필드 없을 시 폴백 - 정확도 떨어짐, 실 페이로드 확인 후 제거 검토
         );
 
         chatMessageMirrorCommandUseCase.mirrorUpdated(command);
@@ -94,9 +98,13 @@ public class ChatWebhookService {
     @SuppressWarnings("unchecked")
     private void mirrorDeleted(Map<String, Object> raw) {
         Map<String, Object> payloadMsg = (Map<String, Object>) raw.get("payload");
+        Object deletedAtRaw = payloadMsg.get("deleted_at");
 
         MirrorMessageDeletedCommand command = new MirrorMessageDeletedCommand(
-                String.valueOf(payloadMsg.get("message_id"))
+                String.valueOf(payloadMsg.get("message_id")),
+                deletedAtRaw != null
+                        ? Instant.ofEpochMilli(((Number) deletedAtRaw).longValue())
+                        : Instant.now()  // 필드 없을 시 폴백
         );
 
         chatMessageMirrorCommandUseCase.mirrorDeleted(command);

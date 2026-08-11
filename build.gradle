@@ -102,8 +102,7 @@ dependencies {
 
     // resilience4j Spring Boot 3 스타터 - AOP 기반 @CircuitBreaker 어노테이션 지원
     implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
-    // AOP 프록시 동작을 위해 필요 (Spring AOP 기반 어노테이션 처리)
-    implementation 'org.springframework.boot:spring-boot-starter-aop'
+
 }
 
 def querydslDir = "$buildDir/generated/querydsl"

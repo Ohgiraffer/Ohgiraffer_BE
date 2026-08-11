@@ -70,7 +70,13 @@ public class ChatMessageMirrorCommandService implements ChatMessageMirrorCommand
         ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageId(command.sendbirdMessageId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
-        message.edit(command.content(), command.attachmentUrl());
+        if (message.isOlderEventThan(command.eventAt())) {
+            log.info("[Chat] 순서 뒤바뀐 오래된 수정 이벤트 - 스킵 | sendbirdMessageId={}, eventAt={}",
+                    command.sendbirdMessageId(), command.eventAt());
+            return;
+        }
+
+        message.edit(command.content(), command.attachmentUrl(), command.eventAt());
         chatMessageMirrorRepository.save(message);
 
         log.info("[Chat] 메시지 수정 미러링 완료 | sendbirdMessageId={}", command.sendbirdMessageId());
@@ -83,7 +89,13 @@ public class ChatMessageMirrorCommandService implements ChatMessageMirrorCommand
         ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageId(command.sendbirdMessageId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
-        message.delete();
+        if (message.isOlderEventThan(command.eventAt())) {
+            log.info("[Chat] 순서 뒤바뀐 오래된 삭제 이벤트 - 스킵 | sendbirdMessageId={}, eventAt={}",
+                    command.sendbirdMessageId(), command.eventAt());
+            return;
+        }
+
+        message.delete(command.eventAt());
         chatMessageMirrorRepository.save(message);
 
         log.info("[Chat] 메시지 삭제 미러링 완료 | sendbirdMessageId={}", command.sendbirdMessageId());
