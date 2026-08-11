@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 public record TeamChangeHistoryResponse(
         Long userId,
         String userName,
+        String profileImgUrl,
         Long fromTeamId,
         String fromTeamName,
         Long toTeamId,
@@ -20,6 +21,7 @@ public record TeamChangeHistoryResponse(
         return new TeamChangeHistoryResponse(
                 result.userId(),
                 result.userName(),
+                result.profileImgUrl(),
                 result.fromTeamId(),
                 result.fromTeamName(),
                 result.toTeamId(),

@@ -2,6 +2,7 @@ package com.ohgiraffer.team.application.service;
 
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.team.application.usecase.GetTeamListUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamPeriodListUseCase;
 import com.ohgiraffer.team.application.usecase.GetUnassignedStudentUseCase;
@@ -11,6 +12,7 @@ import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
 import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
+import com.ohgiraffer.team.domain.model.UnassignedStudent;
 import com.ohgiraffer.team.domain.repository.TeamPeriodRepository;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
 import com.ohgiraffer.user.domain.model.Role;
@@ -32,6 +34,7 @@ public class TeamQueryService
 
     private final TeamRepository teamRepository;
     private final TeamPeriodRepository teamPeriodRepository;
+    private final S3UrlResolver s3UrlResolver;
 
     @Override
     public List<TeamListResult> getTeams(
@@ -76,7 +79,7 @@ public class TeamQueryService
                                 Collectors.groupingBy(
                                         TeamMember::getTeamId,
                                         Collectors.mapping(
-                                                TeamMemberResult::from,
+                                                this::toTeamMemberResult,
                                                 Collectors.toList()
                                         )
                                 )
@@ -127,8 +130,49 @@ public class TeamQueryService
 
         return teamRepository.findUnassignedStudents()
                 .stream()
-                .map(UnassignedStudentResult::from)
+                .map(this::toUnassignedStudentResult)
                 .toList();
+    }
+
+    private TeamMemberResult toTeamMemberResult(
+            TeamMember member
+    ) {
+        return new TeamMemberResult(
+                member.getId(),
+                member.getUserId(),
+                member.getUserName(),
+                member.getEmail(),
+                resolveProfileImgUrl(
+                        member.getProfileImg()
+                ),
+                member.getJoinedAt()
+        );
+    }
+
+    private UnassignedStudentResult toUnassignedStudentResult(
+            UnassignedStudent student
+    ) {
+        return new UnassignedStudentResult(
+                student.getUserId(),
+                student.getName(),
+                student.getEmail(),
+                resolveProfileImgUrl(
+                        student.getProfileImg()
+                )
+        );
+    }
+
+    private String resolveProfileImgUrl(
+            String profileImg
+    ) {
+        if (profileImg == null
+                || profileImg.isBlank()) {
+            return null;
+        }
+
+        return s3UrlResolver.resolve(
+                profileImg
+        );
     }
 
     private void validateRequester(

@@ -4,7 +4,8 @@ import com.ohgiraffer.team.application.usecase.TeamSnapshotMemberResult;
 
 public record TeamSnapshotMemberResponse(
         Long userId,
-        String userName
+        String userName,
+        String profileImgUrl
 ) {
 
     public static TeamSnapshotMemberResponse from(
@@ -12,7 +13,8 @@ public record TeamSnapshotMemberResponse(
     ) {
         return new TeamSnapshotMemberResponse(
                 result.userId(),
-                result.userName()
+                result.userName(),
+                result.profileImgUrl()
         );
     }
 }

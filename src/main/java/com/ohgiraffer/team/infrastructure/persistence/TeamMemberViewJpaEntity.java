@@ -78,6 +78,7 @@ public class TeamMemberViewJpaEntity {
                 userId,
                 null,
                 null,
+                null,
                 joinedAt,
                 leftAt
         );
