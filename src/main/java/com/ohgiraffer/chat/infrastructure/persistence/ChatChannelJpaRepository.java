@@ -22,4 +22,5 @@ public interface ChatChannelJpaRepository extends JpaRepository<ChatChannelJpaEn
     // 통합검색 결과에 섞인 여러 채널을 벌크 조회 - Spring Data 이름 기반 자동구현
     List<ChatChannelJpaEntity> findAllBySendbirdChannelUrlIn(List<String> sendbirdChannelUrls);
 
+    void deleteBySendbirdChannelUrl(String sendbirdChannelUrl);
 }

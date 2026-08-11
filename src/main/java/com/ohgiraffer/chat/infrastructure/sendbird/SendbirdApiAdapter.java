@@ -249,6 +249,52 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
         }
     }
 
+    @Override
+    public void deleteChannel(String channelId) {
+        try {
+            restClient.delete()
+                    .uri("/group_channels/{channel_url}", channelId)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (HttpClientErrorException e) {
+            if (isSendbirdChannelAlreadyMissing(e)) {
+                log.info(
+                        "[Sendbird] 삭제 대상 채널이 이미 존재하지 않음 | channelId={}",
+                        channelId
+                );
+                return;
+            }
+
+            throw new BusinessException(
+                    ErrorCode.CHAT_SENDBIRD_API_ERROR,
+                    "Sendbird 채널 삭제 실패"
+            );
+        } catch (RestClientException e) {
+            throw new BusinessException(
+                    ErrorCode.CHAT_SENDBIRD_API_ERROR,
+                    "Sendbird 채널 삭제 실패"
+            );
+        }
+    }
+
+    private boolean isSendbirdChannelAlreadyMissing(
+            HttpClientErrorException exception
+    ) {
+        String responseBody =
+                exception.getResponseBodyAsString();
+
+        return exception.getStatusCode()
+                .is4xxClientError()
+                && responseBody != null
+                && (
+                responseBody.contains("400201")
+                        || responseBody.toLowerCase()
+                        .contains("not found")
+                        || responseBody.toLowerCase()
+                        .contains("not exist")
+        );
+    }
+
     // 메시지 전송 - 첨부파일 유무로 FILE/MESG 타입 분기, 멘션 있으면 mentioned_user_ids 추가
     @Override
     public SendbirdMessageResult sendMessage(String channelId, Long senderId, String content,

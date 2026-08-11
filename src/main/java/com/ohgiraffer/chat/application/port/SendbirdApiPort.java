@@ -12,7 +12,6 @@ import java.util.List;
  *  Sendbird Platform API 호출 계약
  */
 
-
 public interface SendbirdApiPort {
 
     // 로그인 성공 시 샌드버드 유저 생성 또는 재사용 (채팅 유저 프로비저닝)
@@ -29,6 +28,9 @@ public interface SendbirdApiPort {
 
     // 팀변경 시 채널 멤버 초대/제외 반영
     void updateChannelMembers(String channelId, List<Long> addUserIds, List<Long> removeUserIds);
+
+    // 팀/그룹 채널 삭제
+    void deleteChannel(String channelId);
 
     // 메시지 전송 - 텍스트/파일/멘션 포함
     SendbirdMessageResult sendMessage(String channelId, Long senderId, String content, String attachmentUrl, List<Long> mentionedUserIds);
@@ -50,5 +52,4 @@ public interface SendbirdApiPort {
 
     // 웹훅 서명 검증
     boolean verifyWebhookSignature(String payload, String signature);
-
 }

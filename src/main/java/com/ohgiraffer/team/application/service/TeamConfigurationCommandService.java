@@ -2,14 +2,12 @@ package com.ohgiraffer.team.application.service;
 
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
-import com.ohgiraffer.team.application.command.CreateTeamPeriodCommand;
 import com.ohgiraffer.team.application.command.SaveTeamConfigurationCommand;
 import com.ohgiraffer.team.application.command.TeamConfigurationCommand;
 import com.ohgiraffer.team.application.event.TeamChannelSyncTarget;
 import com.ohgiraffer.team.application.event.TeamConfigurationSavedEvent;
-import com.ohgiraffer.team.application.usecase.CreateTeamPeriodUseCase;
+import com.ohgiraffer.team.application.event.TeamWorkspaceSyncTarget;
 import com.ohgiraffer.team.application.usecase.SaveTeamConfigurationUseCase;
-import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
 import com.ohgiraffer.team.domain.model.TeamPeriod;
@@ -37,40 +35,13 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class TeamCommandService
-        implements CreateTeamPeriodUseCase,
-        SaveTeamConfigurationUseCase {
+public class TeamConfigurationCommandService
+        implements SaveTeamConfigurationUseCase {
 
     private final TeamRepository teamRepository;
     private final TeamPeriodRepository teamPeriodRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
-
-    @Override
-    public TeamPeriodResult createTeamPeriod(
-            CreateTeamPeriodCommand command,
-            Role requesterRole
-    ) {
-        validateManagerAccess(
-                command.requesterId(),
-                requesterRole
-        );
-
-        TeamPeriod teamPeriod =
-                TeamPeriod.create(
-                        command.startDate(),
-                        command.endDate()
-                );
-
-        TeamPeriod savedTeamPeriod =
-                teamPeriodRepository.save(
-                        teamPeriod
-                );
-
-        return TeamPeriodResult.from(
-                savedTeamPeriod
-        );
-    }
 
     @Override
     public void saveTeamConfiguration(
@@ -205,7 +176,8 @@ public class TeamCommandService
         publishTeamConfigurationSavedEvent(
                 affectedTeamIds,
                 command.deletedTeamIds(),
-                command.createChatChannel()
+                command.createChatChannel(),
+                command.createNotionPage()
         );
     }
 
@@ -430,7 +402,8 @@ public class TeamCommandService
     private void publishTeamConfigurationSavedEvent(
             Set<Long> affectedTeamIds,
             List<Long> deletedTeamIds,
-            boolean createChatChannel
+            boolean createChatChannel,
+            boolean createNotionPage
     ) {
         if (affectedTeamIds.isEmpty()) {
             return;
@@ -441,13 +414,16 @@ public class TeamCommandService
                         deletedTeamIds
                 );
 
+        List<Long> activeTargetTeamIds =
+                affectedTeamIds.stream()
+                        .filter(teamId -> !deletedTeamIdSet.contains(
+                                teamId
+                        ))
+                        .toList();
+
         Map<Long, List<Long>> activeUserIdsByTeamId =
                 teamRepository.findActiveMembersByTeamIds(
-                                affectedTeamIds.stream()
-                                        .filter(teamId -> !deletedTeamIdSet.contains(
-                                                teamId
-                                        ))
-                                        .toList()
+                                activeTargetTeamIds
                         )
                         .stream()
                         .collect(
@@ -482,10 +458,17 @@ public class TeamCommandService
             );
         });
 
+        List<TeamWorkspaceSyncTarget> workspaceSyncTargets =
+                activeTargetTeamIds.stream()
+                        .map(TeamWorkspaceSyncTarget::new)
+                        .toList();
+
         eventPublisher.publishEvent(
                 new TeamConfigurationSavedEvent(
                         channelSyncTargets,
-                        createChatChannel
+                        workspaceSyncTargets,
+                        createChatChannel,
+                        createNotionPage
                 )
         );
     }
