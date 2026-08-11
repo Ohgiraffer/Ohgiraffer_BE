@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component
@@ -43,5 +44,11 @@ public class GetUserInfoPortAdapter implements GetUserInfoPort {
 
         return springDataUserRepository.findByIdIn(userIds).stream()
                 .collect(Collectors.toMap(UserJpaEntity::getId, UserJpaEntity::getName));
+    }
+
+    @Override
+    public Optional<UserSummary> getUserSummary(Long userId) {
+        return springDataUserRepository.findById(userId)
+                .map(u -> new UserSummary(u.getId(), u.getName(), u.getRole().name()));
     }
 }

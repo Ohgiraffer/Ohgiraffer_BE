@@ -94,7 +94,7 @@ public class ConsultationController {
     })
     @PreAuthorize("hasAnyRole( 'STUDENT')")
     @PostMapping
-    public ResponseEntity<Long> requestConsultation(
+    public ResponseEntity<RequestConsultationResponse> requestConsultation(
             @AuthenticationPrincipal CustomUserPrincipal principal,
             @Valid @RequestBody RequestConsultationRequest request
     ) {
@@ -106,7 +106,8 @@ public class ConsultationController {
                 request.content()
         );
 
-        return ResponseEntity.ok(consultationCommandUsecase.requestConsultation(command));
+        Long consultationId = consultationCommandUsecase.requestConsultation(command);
+        return ResponseEntity.ok(RequestConsultationResponse.from(consultationId));
     }
 
     @Operation(summary = "내 상담 이력 조회", description = "로그인한 훈련생 본인이 신청한 상담 이력을 조회합니다.")

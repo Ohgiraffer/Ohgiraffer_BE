@@ -4,6 +4,7 @@ import com.ohgiraffer.consultation.application.command.RegisterAvailableTimeComm
 import com.ohgiraffer.consultation.application.command.RequestConsultationCommand;
 import com.ohgiraffer.consultation.application.command.SaveRecordCommand;
 import com.ohgiraffer.consultation.application.usecase.ConsultationCommandUsecase;
+import com.ohgiraffer.consultation.domain.event.ConsultationRequestedEvent;
 import com.ohgiraffer.consultation.domain.model.Consultation;
 import com.ohgiraffer.consultation.domain.model.ConsultationStatus;
 import com.ohgiraffer.consultation.domain.model.CounselorAvailableDate;
@@ -14,6 +15,7 @@ import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,7 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
     private final ConsultationRepository consultationRepository;
     private final CounselorAvailableDateRepository availableDateRepository;
     private final ConsultationAiBriefGenerator aiBriefGenerator;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public Long requestConsultation(RequestConsultationCommand command) {
@@ -58,11 +61,22 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
                 command.scheduledAt()
         );
 
+        Long consultationId;
         try {
-            return consultationRepository.save(consultation).getId();
+            consultationId = consultationRepository.save(consultation).getId();
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.CONSULTATION_ALREADY_BOOKED);
         }
+
+        eventPublisher.publishEvent(new ConsultationRequestedEvent(
+                consultationId,
+                command.counselorId(),
+                command.requesterId(),
+                command.topic(),
+                command.scheduledAt()
+        ));
+
+        return consultationId;
     }
 
     @Override

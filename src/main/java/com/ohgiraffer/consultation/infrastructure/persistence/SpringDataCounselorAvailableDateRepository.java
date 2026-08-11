@@ -22,8 +22,6 @@ public interface SpringDataCounselorAvailableDateRepository extends JpaRepositor
     Optional<CounselorAvailableDateJpaEntity> findByCounselorIdAndAvailableDateForUpdate(
             @Param("counselorId") Long counselorId, @Param("date") LocalDate date);
 
-    List<CounselorAvailableDateJpaEntity> findByCounselorIdAndAvailableDateBetween(
-            Long counselorId, LocalDate from, LocalDate to);
 
     @Query("""
             SELECT d.availableDate FROM CounselorAvailableDateJpaEntity d
