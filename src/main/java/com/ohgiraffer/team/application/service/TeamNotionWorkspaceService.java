@@ -1,5 +1,6 @@
 package com.ohgiraffer.team.application.service;
 
+import com.ohgiraffer.global.aop.lock.DistributedLock;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.team.application.port.TeamWorkspacePort;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +22,12 @@ public class TeamNotionWorkspaceService {
     private final TeamWorkspacePort teamWorkspacePort;
     private final TeamNotionPageUpdater teamNotionPageUpdater;
 
+    @DistributedLock(
+            key = "'team:notion:workspace:' + #teamId",
+            waitTime = 10,
+            leaseTime = 60,
+            timeUnit = TimeUnit.SECONDS
+    )
     public void syncTeamWorkspace(Long teamId) {
         Team team =
                 teamRepository.findById(teamId)
@@ -34,6 +42,7 @@ public class TeamNotionWorkspaceService {
                         .stream()
                         .map(TeamMember::getUserName)
                         .filter(this::hasText)
+                        .map(String::trim)
                         .distinct()
                         .toList();
 
