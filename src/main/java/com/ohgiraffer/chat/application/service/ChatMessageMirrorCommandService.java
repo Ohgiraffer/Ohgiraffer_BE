@@ -64,10 +64,11 @@ public class ChatMessageMirrorCommandService implements ChatMessageMirrorCommand
     }
 
     // 웹훅으로 수신한 메시지/답글 수정 이벤트 반영 - sendbird_message_id로 기존 레코드 찾아서 content 갱신
+    // findBySendbirdMessageIdForUpdate로 비관적 락 획득 - 동시에 들어온 update/delete가 순차 처리되도록 함
     @Override
     @Transactional
     public void mirrorUpdated(MirrorMessageUpdatedCommand command) {
-        ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageId(command.sendbirdMessageId())
+        ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageIdForUpdate(command.sendbirdMessageId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
         if (message.isOlderEventThan(command.eventAt())) {
@@ -83,10 +84,11 @@ public class ChatMessageMirrorCommandService implements ChatMessageMirrorCommand
     }
 
     // 웹훅으로 수신한 메시지/답글 삭제 이벤트 반영 - 소프트 삭제(deletedAt 세팅)
+    // findBySendbirdMessageIdForUpdate로 비관적 락 획득
     @Override
     @Transactional
     public void mirrorDeleted(MirrorMessageDeletedCommand command) {
-        ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageId(command.sendbirdMessageId())
+        ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageIdForUpdate(command.sendbirdMessageId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
         if (message.isOlderEventThan(command.eventAt())) {

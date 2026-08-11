@@ -57,6 +57,13 @@ public class ChatMessageMirrorRepositoryAdapter implements ChatMessageMirrorRepo
         return jpaRepository.existsBySendbirdMessageId(sendbirdMessageId);
     }
 
+    // 웹훅 update/delete 동시성 제어용 - PESSIMISTIC_WRITE 락이 걸린 JPA 쿼리에 위임
+    // 같은 sendbirdMessageId에 대한 동시 update/delete 요청을 트랜잭션 종료까지 순차 처리시킴
+    @Override
+    public Optional<ChatMessageMirror> findBySendbirdMessageIdForUpdate(String sendbirdMessageId) {
+        return jpaRepository.findBySendbirdMessageIdForUpdate(sendbirdMessageId).map(ChatMessageMirrorJpaEntity::toDomain);
+    }
+
     // 채널 메시지 이력 조회 - 최신순, 삭제 제외
     @Override
     public Page<ChatMessageMirror> findByChannelIdOrderBySentAtDesc(String channelId, Pageable pageable) {

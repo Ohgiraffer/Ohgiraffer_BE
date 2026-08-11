@@ -1,9 +1,13 @@
 package com.ohgiraffer.chat.infrastructure.persistence;
 
 import com.ohgiraffer.chat.infrastructure.projection.ChannelLastMessageProjection;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +24,12 @@ public interface ChatMessageMirrorJpaRepository
     // 웹훅 멱등성 체크용
     Optional<ChatMessageMirrorJpaEntity> findBySendbirdMessageId(String sendbirdMessageId);
     boolean existsBySendbirdMessageId(String sendbirdMessageId);
+
+    // 웹훅 update/delete 동시성 제어용 - 같은 메시지에 대한 동시 요청을 순차 처리하기 위해 비관적 락 획득
+// PESSIMISTIC_WRITE: 트랜잭션 종료까지 해당 row를 잠궈, 동시에 들어온 다른 update/delete가 대기하게 함
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from ChatMessageMirrorJpaEntity e where e.sendbirdMessageId = :sendbirdMessageId")
+    Optional<ChatMessageMirrorJpaEntity> findBySendbirdMessageIdForUpdate(@Param("sendbirdMessageId") String sendbirdMessageId);
 
     // 채널 메시지 이력 조회, 삭제된 건 제외
     Page<ChatMessageMirrorJpaEntity> findByChannelIdAndDeletedAtIsNullOrderBySentAtDescIdDesc(String channelId, Pageable pageable);

@@ -5,10 +5,12 @@ import com.ohgiraffer.aiassistant.application.port.BriefingGenerationPort;
 import com.ohgiraffer.aiassistant.domain.model.BriefingSourceData;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
 
 /* comment.
  *  BriefingGenerationPort 실구현체
@@ -39,8 +41,22 @@ public class GeminiBriefingGenerationAdapter implements BriefingGenerationPort {
     // 문자열을 바로 리턴하면 BriefingGenerator가 이를 정상 응답으로 착각해 캐싱하므로,
     // 대신 구분 가능한 예외를 던져서 호출부(BriefingGenerator)가 캐싱 없이 처리하도록 함
     private String fallbackOnGeminiFailure(BriefingSourceData sourceData, Throwable t) {
-        log.warn("Gemini API 호출 실패 또는 서킷 오픈 상태로 fallback 실행. userId={}, cause={}",
-                sourceData.userId(), t.toString());
-        throw new BusinessException(ErrorCode.AI_SERVICE_UNAVAILABLE);  // ErrorCode에 신규 추가 필요
+        boolean isGeminiRelatedFailure = t instanceof RestClientException
+                || t instanceof CallNotPermittedException
+                || (t instanceof BusinessException be && be.getErrorCode() == ErrorCode.AI_API_CALL_FAILED);
+
+        if (isGeminiRelatedFailure) {
+            log.warn("Gemini API 호출 실패 또는 서킷 오픈 상태로 fallback 실행. userId={}, cause={}",
+                    sourceData.userId(), t.toString());
+            throw new BusinessException(ErrorCode.AI_SERVICE_UNAVAILABLE);
+        }
+
+        // Gemini와 무관한 예외는 원인을 숨기지 않고 그대로 전파
+        log.error("Gemini 호출 경로에서 예상치 못한 예외 발생 - fallback 대상 아님. userId={}",
+                sourceData.userId(), t);
+        if (t instanceof RuntimeException re) {
+            throw re;
+        }
+        throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, t);
     }
 }

@@ -72,7 +72,8 @@ public class ChatMessageMirror {
     // 이 이벤트가 이미 반영된 것보다 오래된 이벤트인지 판단
     // lastEventAt이 없는(과거 데이터) 경우는 비교 불가하므로 최신으로 간주하고 반영 허용
     public boolean isOlderEventThan(Instant eventAt) {
-        return this.lastEventAt != null && eventAt.isBefore(this.lastEventAt);
+        Instant baseline = (this.lastEventAt != null) ? this.lastEventAt : this.sentAt;
+        return eventAt.isBefore(baseline);
     }
 
     public void edit(String newContent, String newAttachmentUrl, Instant eventAt) {
