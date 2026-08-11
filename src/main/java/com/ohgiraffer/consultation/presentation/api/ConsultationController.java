@@ -199,6 +199,22 @@ public class ConsultationController {
         return ResponseEntity.ok(SaveRecordResponse.from(result));
     }
 
+    @Operation(summary = "내가 등록한 상담 가능일 목록 조회", description = "가능 시간 등록 화면에서 달력에 표시할, 해당 월에 이미 가능시간이 등록된 날짜 목록을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    @GetMapping("/available-dates/mine")
+    public ResponseEntity<Set<LocalDate>> getRegisteredDates(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM") YearMonth yearMonth
+    ) {
+        return ResponseEntity.ok(consultationQueryUsecase.getAvailableDates(principal.getId(), yearMonth));
+    }
+
     @Operation(summary = "내가 등록한 상담 가능 시간 조회", description = "가능 시간 등록 화면에서 특정일에 이미 등록된 시간을 조회합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),

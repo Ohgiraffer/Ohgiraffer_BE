@@ -5,6 +5,7 @@ import com.ohgiraffer.calendar.application.usecase.CalendarEventCommandUseCase;
 import com.ohgiraffer.calendar.domain.model.EventType;
 import com.ohgiraffer.consultation.application.port.GetUserInfoPort;
 import com.ohgiraffer.consultation.domain.event.ConsultationRequestedEvent;
+import com.ohgiraffer.user.domain.model.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -77,10 +78,10 @@ public class ConsultationCalendarEventListener {
                 .orElse("알 수 없음");
     }
 
-    private String roleLabel(String role) {
+    private String roleLabel(Role role) {
         return switch (role) {
-            case "INSTRUCTOR" -> "강사";
-            case "MANAGER" -> "매니저";
+            case INSTRUCTOR -> "강사";
+            case MANAGER -> "매니저";
             default -> "상담사";
         };
     }

@@ -1,6 +1,8 @@
 package com.ohgiraffer.user.infrastructure.adapter;
 
 import com.ohgiraffer.consultation.application.port.GetUserInfoPort;
+import com.ohgiraffer.consultation.domain.model.UserSummary;
+import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.infrastructure.persistence.SpringDataUserRepository;
 import com.ohgiraffer.user.infrastructure.persistence.UserJpaEntity;
@@ -17,6 +19,7 @@ import java.util.stream.Collectors;
 public class GetUserInfoPortAdapter implements GetUserInfoPort {
 
     private final SpringDataUserRepository springDataUserRepository;
+    private final S3UrlResolver s3UrlResolver;
 
     @Override
     public String getUserName(Long userId) {
@@ -32,7 +35,12 @@ public class GetUserInfoPortAdapter implements GetUserInfoPort {
                 .toList();
 
         return springDataUserRepository.findAllByRoleIn(roleEnums).stream()
-                .map(u -> new UserSummary(u.getId(), u.getName(), u.getRole().name()))
+                .map(u -> new UserSummary(
+                        u.getId(),
+                        u.getName(),
+                        u.getRole(),
+                        s3UrlResolver.resolve(u.getProfileImg())
+                ))
                 .toList();
     }
 
@@ -49,6 +57,11 @@ public class GetUserInfoPortAdapter implements GetUserInfoPort {
     @Override
     public Optional<UserSummary> getUserSummary(Long userId) {
         return springDataUserRepository.findById(userId)
-                .map(u -> new UserSummary(u.getId(), u.getName(), u.getRole().name()));
+                .map(u -> new UserSummary(
+                        u.getId(),
+                        u.getName(),
+                        u.getRole(),
+                        s3UrlResolver.resolve(u.getProfileImg())
+                ));
     }
 }

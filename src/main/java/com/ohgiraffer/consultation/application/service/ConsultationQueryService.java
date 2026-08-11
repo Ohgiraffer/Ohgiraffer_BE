@@ -36,7 +36,7 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
 
         return getUserInfoPort.getUsersByRole(List.of("INSTRUCTOR", "MANAGER")).stream()
                 .filter(u -> counselorIdsWithAvailability.contains(u.userId()))
-                .map(u -> new CounselorInfo(u.userId(), u.name(), u.role()))
+                .map(u -> new CounselorInfo(u.userId(), u.name(), u.role(), u.profileImgUrl()))
                 .toList();
     }
 
