@@ -14,10 +14,8 @@ public class ConsultationRecordWriter {
 
     private final ConsultationRepository consultationRepository;
 
-    // 메모를 저장하고 COMPLETED 처리 - AI 요약 없이
-
     @Transactional
-    public Consultation writeRecord(Long consultationId, Long callerId, String counselorNote) {
+    public int writeRecord(Long consultationId, Long callerId, String counselorNote) {
         Consultation consultation = consultationRepository.findById(consultationId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CONSULTATION_NOT_FOUND));
 
@@ -26,23 +24,24 @@ public class ConsultationRecordWriter {
         }
 
         consultation.completeWithRecord(counselorNote);
-        return consultationRepository.save(consultation);
+        consultationRepository.save(consultation);
+        return consultation.getRecordVersion();
     }
 
     @Transactional
-    public void applyAiBrief(Long consultationId, String aiBrief) {
+    public void applyAiBrief(Long consultationId, String aiBrief, int expectedVersion) {
         consultationRepository.findById(consultationId)
                 .ifPresent(consultation -> {
-                    consultation.applyAiBrief(aiBrief);
+                    consultation.applyAiBrief(aiBrief, expectedVersion);
                     consultationRepository.save(consultation);
                 });
     }
 
     @Transactional
-    public void markAiBriefFailed(Long consultationId) {
+    public void markAiBriefFailed(Long consultationId, int expectedVersion) {
         consultationRepository.findById(consultationId)
                 .ifPresent(consultation -> {
-                    consultation.markAiBriefFailed();
+                    consultation.markAiBriefFailed(expectedVersion);
                     consultationRepository.save(consultation);
                 });
     }

@@ -24,6 +24,7 @@ public class Consultation {
     private ConsultationStatus status;
     private LocalDateTime scheduledAt;
     private String externalRefId;
+    private int recordVersion;
 
     private static final Duration RECORD_DEADLINE = Duration.ofDays(1);
     private static final String AI_BRIEF_FAILED_MESSAGE = "AI 요약 생성에 실패했습니다. 재시도 해주시길 바랍니다.";
@@ -31,7 +32,7 @@ public class Consultation {
     @Builder
     private Consultation(Long id, Long counselorId, Long requesterId, String topic, String content,
                          String counselorNote, String aiBrief, ConsultationStatus status,
-                         LocalDateTime scheduledAt, String externalRefId) {
+                         LocalDateTime scheduledAt, String externalRefId, int recordVersion) {
         this.id = id;
         this.counselorId = counselorId;
         this.requesterId = requesterId;
@@ -42,6 +43,7 @@ public class Consultation {
         this.status = status;
         this.scheduledAt = scheduledAt;
         this.externalRefId = externalRefId;
+        this.recordVersion = recordVersion;
     }
 
     public static Consultation request(Long counselorId, Long requesterId, String topic,
@@ -53,6 +55,7 @@ public class Consultation {
                 .content(content)
                 .status(ConsultationStatus.PENDING)
                 .scheduledAt(scheduledAt)
+                .recordVersion(0)
                 .build();
     }
 
@@ -66,15 +69,22 @@ public class Consultation {
         }
 
         this.counselorNote = counselorNote;
-        this.aiBrief = null; // 메모 내용이 바뀌니까 일단 비움 (AI 재시도 전까지의 중간 상태)
+        this.aiBrief = null; // 메모 내용이 바뀌니까 일단 비움
+        this.recordVersion++; // 메모가 갱신될 때마다 증가
         this.status = ConsultationStatus.COMPLETED;
     }
 
-    public void applyAiBrief(String aiBrief) {
+    public void applyAiBrief(String aiBrief, int expectedVersion) {
+        if (this.recordVersion != expectedVersion) {
+            return;
+        }
         this.aiBrief = aiBrief;
     }
 
-    public void markAiBriefFailed() {
+    public void markAiBriefFailed(int expectedVersion) {
+        if (this.recordVersion != expectedVersion) {
+            return;
+        }
         this.aiBrief = AI_BRIEF_FAILED_MESSAGE;
     }
 

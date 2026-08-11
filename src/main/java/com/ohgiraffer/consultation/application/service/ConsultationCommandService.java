@@ -82,16 +82,16 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
 
     @Override
     public SaveRecordResult saveRecord(SaveRecordCommand command) {
-        recordWriter.writeRecord(command.consultationId(), command.callerId(), command.counselorNote());
+        int recordVersion = recordWriter.writeRecord(command.consultationId(), command.callerId(), command.counselorNote());
 
         Optional<String> aiBrief = aiBriefGenerator.generate(command.counselorNote());
 
         if (aiBrief.isPresent()) {
-            recordWriter.applyAiBrief(command.consultationId(), aiBrief.get());
+            recordWriter.applyAiBrief(command.consultationId(), aiBrief.get(), recordVersion);
             return SaveRecordResult.success();
         }
 
-        recordWriter.markAiBriefFailed(command.consultationId());
+        recordWriter.markAiBriefFailed(command.consultationId(), recordVersion);
         return SaveRecordResult.aiFailed();
     }
 
