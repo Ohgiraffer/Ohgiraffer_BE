@@ -22,13 +22,12 @@ public interface SpringDataSubmissionBoxRepository
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = "items")
     @Query("""
-        SELECT submissionBox
-        FROM SubmissionBoxJpaEntity submissionBox
-        WHERE submissionBox.id = :submissionBoxId
-        """)
-    Optional<SubmissionBoxJpaEntity> findWithItemsByIdForUpdate(
+    SELECT submissionBox
+    FROM SubmissionBoxJpaEntity submissionBox
+    WHERE submissionBox.id = :submissionBoxId
+    """)
+    Optional<SubmissionBoxJpaEntity> findByIdForUpdate(
             @Param("submissionBoxId") Long submissionBoxId
     );
 

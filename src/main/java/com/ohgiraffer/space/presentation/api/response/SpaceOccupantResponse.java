@@ -7,6 +7,7 @@ public record SpaceOccupantResponse(
         Long userId,
         String userName,
         Role role,
+        String profileImgUrl,
         boolean mine
 ) {
 
@@ -17,6 +18,7 @@ public record SpaceOccupantResponse(
                 result.userId(),
                 result.userName(),
                 result.role(),
+                result.profileImgUrl(),
                 result.mine()
         );
     }

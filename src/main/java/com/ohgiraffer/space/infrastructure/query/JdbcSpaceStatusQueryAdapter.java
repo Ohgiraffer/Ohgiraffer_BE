@@ -33,7 +33,8 @@ public class JdbcSpaceStatusQueryAdapter
                     s.max_capacity,
                     u.user_id,
                     u.name AS user_name,
-                    u.role AS user_role
+                    u.role AS user_role,
+                    u.profile_img AS profile_img_key
                 FROM space_reservation s
                 LEFT JOIN trainee_location tl
                     ON tl.space_id = s.space_id
@@ -104,6 +105,9 @@ public class JdbcSpaceStatusQueryAdapter
                                             resultSet.getString(
                                                     "user_role"
                                             )
+                                    ),
+                                    resultSet.getString(
+                                            "profile_img_key"
                                     )
                             )
                     );

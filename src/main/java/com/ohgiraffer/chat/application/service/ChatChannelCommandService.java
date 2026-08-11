@@ -62,6 +62,9 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
                 .distinct()
                 .toList();
 
+        // 이름 미입력(null/빈 문자열/공백)은 전부 null로 통일해서 저장 - 조회 시점에 DM이면 상대방 이름으로 채워짐
+        String normalizedName = (command.name() == null || command.name().isBlank()) ? null : command.name();
+
         String sendbirdChannelUrl = sendbirdApiPort.createChannel(allMemberIds, command.name());
 
         // Sendbird가 is_distinct=true로 기존 채널 URL을 재사용해서 돌려준 경우,
