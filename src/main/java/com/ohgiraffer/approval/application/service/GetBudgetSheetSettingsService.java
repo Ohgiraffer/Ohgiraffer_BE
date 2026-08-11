@@ -53,10 +53,31 @@ public class GetBudgetSheetSettingsService implements GetBudgetSheetSettingsUseC
         }
 
         try {
-            return objectMapper.readValue(
+            BudgetColumnMapping parsedColumnMapping = objectMapper.readValue(
                     columnMapping,
                     BudgetColumnMapping.class
             );
+
+            if (parsedColumnMapping == null
+                    || isBlank(
+                    parsedColumnMapping.category()
+            )
+                    || isBlank(
+                    parsedColumnMapping.totalAmount()
+            )
+                    || isBlank(
+                    parsedColumnMapping.usedAmount()
+            )
+                    || isBlank(
+                    parsedColumnMapping.remainingAmount()
+            )) {
+                throw new BusinessException(
+                        ErrorCode.INTERNAL_SERVER_ERROR,
+                        "저장된 예산 컬럼 매핑 정보가 올바르지 않습니다."
+                );
+            }
+
+            return parsedColumnMapping;
 
         } catch (JsonProcessingException exception) {
             throw new BusinessException(
@@ -64,5 +85,11 @@ public class GetBudgetSheetSettingsService implements GetBudgetSheetSettingsUseC
                     exception
             );
         }
+    }
+
+    private boolean isBlank(
+            String value
+    ) {
+        return value == null || value.isBlank();
     }
 }
