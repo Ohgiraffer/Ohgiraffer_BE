@@ -2,6 +2,7 @@ package com.ohgiraffer.global.admin;
 
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.HikariPoolMXBean;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * AIOps 중계서버(aiops-relay)가 호출하는 관리용 엔드포인트 모음.
@@ -29,10 +31,29 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AdminController {
 
+    // 실수로 이 값 그대로 배포되는 걸 막기 위한 명시적 차단 목록
+    private static final Set<String> FORBIDDEN_TOKEN_VALUES = Set.of("changeme", "");
+
     private final HikariDataSource hikariDataSource;
 
-    @Value("${admin.internal-token}")
+    @Value("${admin.internal-token:}")
     private String internalToken;
+
+    /**
+     * 애플리케이션 기동 시점에 내부 토큰이 비어있거나 예측 가능한 기본값(changeme)이면
+     * 즉시 기동을 실패시킨다. 이 검증이 없으면, 누군가 환경변수 설정을 깜빡한 채로
+     * 배포했을 때 "누구나 아는 기본값"으로 관리 엔드포인트가 열려버리는 상태를
+     * 아무도 눈치채지 못한 채 운영될 위험이 있다.
+     */
+    @PostConstruct
+    public void validateInternalToken() {
+        if (internalToken == null || FORBIDDEN_TOKEN_VALUES.contains(internalToken)) {
+            throw new IllegalStateException(
+                    "admin.internal-token(ADMIN_INTERNAL_TOKEN)이 설정되지 않았거나 기본값(changeme)입니다. " +
+                            "`openssl rand -hex 32` 등으로 생성한 값을 환경변수로 설정하세요."
+            );
+        }
+    }
 
     /**
      * HikariCP 커넥션 풀의 유휴 커넥션들을 안전하게 회수(evict)한다.

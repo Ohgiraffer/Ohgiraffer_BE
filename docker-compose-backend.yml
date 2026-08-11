@@ -23,7 +23,7 @@ services:
       GOOGLE_FORMS_OAUTH_CREDENTIALS_LOCATION: file:/app/secrets/ohgiraffer-forms-oauth-client.json
       GOOGLE_FORMS_TOKEN_DIRECTORY: /app/secrets/forms-tokens
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
-      ADMIN_INTERNAL_TOKEN: ${ADMIN_INTERNAL_TOKEN}
+      ADMIN_INTERNAL_TOKEN: ${ADMIN_INTERNAL_TOKEN:?ADMIN_INTERNAL_TOKEN 환경변수가 반드시 설정되어야 합니다}
     volumes:
       - app-logs:/var/log/campflow
       - type: bind

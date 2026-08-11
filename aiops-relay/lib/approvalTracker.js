@@ -1,5 +1,11 @@
-const approvals = new Map();
-const rejections = new Map();
+/**
+ * 고위험(TEAM_APPROVAL) 알럿의 다중 승인 현황을 추적한다.
+ * 데모/개발 단계라 인메모리로 관리 (서버 재시작하면 초기화됨).
+ * 나중에 운영 단계로 가면 Redis 등 영속 저장소로 옮기면 됨.
+ */
+
+const approvals = new Map(); // instanceId -> Set<approverId>
+const rejections = new Map(); // instanceId -> Set<approverId>
 
 function addApproval(instanceId, approverId) {
   if (!approvals.has(instanceId)) approvals.set(instanceId, new Set());
@@ -26,6 +32,7 @@ function hasRejected(instanceId, approverId) {
 }
 
 function isFinalized(instanceId) {
+  // 이미 실행되었거나 거부되어 더 이상 반응할 필요 없는 상태인지
   return approvals.get(instanceId)?.finalized === true;
 }
 
