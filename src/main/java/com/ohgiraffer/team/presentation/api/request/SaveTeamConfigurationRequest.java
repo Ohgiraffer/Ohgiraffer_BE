@@ -17,7 +17,11 @@ public record SaveTeamConfigurationRequest(
 
         List<@Positive(message = "팀 ID가 올바르지 않습니다.") Long> deletedTeamIds,
 
-        List<@Positive(message = "사용자 ID가 올바르지 않습니다.") Long> unassignedUserIds
+        List<@Positive(message = "사용자 ID가 올바르지 않습니다.") Long> unassignedUserIds,
+
+        Boolean createChatChannel,
+
+        Boolean createNotionPage
 ) {
 
     public SaveTeamConfigurationCommand toCommand(
@@ -30,7 +34,13 @@ public record SaveTeamConfigurationRequest(
                         .map(TeamConfigurationRequest::toCommand)
                         .toList(),
                 deletedTeamIds,
-                unassignedUserIds
+                unassignedUserIds,
+                Boolean.TRUE.equals(
+                        createChatChannel
+                ),
+                Boolean.TRUE.equals(
+                        createNotionPage
+                )
         );
     }
 }

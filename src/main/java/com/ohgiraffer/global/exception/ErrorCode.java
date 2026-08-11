@@ -147,6 +147,20 @@ public enum ErrorCode {
     NOTICE_IMAGE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "NOTICE_010", "본문에 넣을 수 없는 이미지 형식입니다."),
     NOTICE_ATTACHMENT_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "NOTICE_011", "첨부할 수 없는 파일 형식입니다."),
 
+    CONSULTATION_NOT_FOUND(HttpStatus.NOT_FOUND, "CONSULTATION_001", "존재하지 않는 상담입니다."),
+    CONSULTATION_ALREADY_BOOKED(HttpStatus.CONFLICT, "CONSULTATION_002", "이미 예약된 시간입니다."),
+    CONSULTATION_ALREADY_CLOSED(HttpStatus.CONFLICT, "CONSULTATION_003", "이미 종료되었거나 취소된 상담입니다."),
+    CONSULTATION_TIME_IN_USE(HttpStatus.CONFLICT, "CONSULTATION_004", "이미 예약이 잡힌 시간은 가능 시간에서 해제할 수 없습니다."),
+    CONSULTATION_TIME_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "CONSULTATION_005","등록되지 않은 상담 가능 시간입니다."),
+    CONSULTATION_RECORD_DEADLINE_PASSED(HttpStatus.BAD_REQUEST, "CONSULTATION_006","메모 작성 가능 기한(상담일+1일)이 지났습니다."),
+    CONSULTATION_AVAILABLE_DATE_CONFLICT(HttpStatus.CONFLICT, "CONSULTATION_007", "동시 요청으로 처리에 실패했습니다. 다시 시도해주세요."),
+    CONSULTATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CONSULTATION_008", "해당 상담에 접근할 권한이 없습니다."),
+
+    EVALUATION_SHEET_LINK_NOT_FOUND(HttpStatus.NOT_FOUND, "EVALUATION_001", "연동된 평가 시트가 없습니다."),
+    EVALUATION_SHEET_COLUMN_NOT_FOUND(HttpStatus.BAD_REQUEST, "EVALUATION_002", "시트에서 지정한 컬럼을 찾을 수 없습니다."),
+    EVALUATION_SHEET_TAB_NOT_FOUND(HttpStatus.BAD_REQUEST, "EVALUATION_003", "시트에서 지정한 탭을 찾을 수 없습니다."),
+    EVALUATION_SYNC_LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "EVALUATION_004", "존재하지 않는 동기화 이력입니다."),
+
     CALENDAR_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CALENDAR_001", "존재하지 않는 일정입니다."),
     CALENDAR_EVENT_NOT_CREATOR(HttpStatus.FORBIDDEN, "CALENDAR_002", "일정을 등록한 사람만 삭제할 수 있습니다."),
     AI_API_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI_001", "AI API 호출 중 오류가 발생했습니다."),
