@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 @Getter
@@ -51,6 +52,9 @@ public class CounselorAvailableDate {
     }
 
     private static void validateTimes(List<LocalTime> times) {
+        if (times.size() != new HashSet<>(times).size()) {
+            throw new IllegalArgumentException("중복된 시간이 있습니다.");
+        }
         for (LocalTime time : times) {
             if (time.isBefore(SLOT_START) || time.isAfter(SLOT_END)) {
                 throw new IllegalArgumentException("상담 가능 시간 범위(09:00~19:00)를 벗어났습니다: " + time);

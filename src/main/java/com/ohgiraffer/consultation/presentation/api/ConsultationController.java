@@ -3,10 +3,9 @@ package com.ohgiraffer.consultation.presentation.api;
 import com.ohgiraffer.consultation.application.command.RegisterAvailableTimeCommand;
 import com.ohgiraffer.consultation.application.command.RequestConsultationCommand;
 import com.ohgiraffer.consultation.application.command.SaveRecordCommand;
-import com.ohgiraffer.consultation.domain.model.HistoryQuery;
+import com.ohgiraffer.consultation.domain.model.ConsultationDetail;
 import com.ohgiraffer.consultation.application.usecase.ConsultationCommandUsecase;
 import com.ohgiraffer.consultation.application.usecase.ConsultationQueryUsecase;
-import com.ohgiraffer.consultation.domain.model.ConsultationStatus;
 import com.ohgiraffer.consultation.presentation.api.request.RegisterAvailableTimeRequest;
 import com.ohgiraffer.consultation.presentation.api.request.RequestConsultationRequest;
 import com.ohgiraffer.consultation.presentation.api.request.SaveConsultationRecordRequest;
@@ -25,7 +24,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -131,12 +129,18 @@ public class ConsultationController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 상담"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/{consultationId}")
-    public ResponseEntity<ConsultationDetailResponse> getDetail(@PathVariable Long consultationId) {
-        return ResponseEntity.ok(ConsultationDetailResponse.from(consultationQueryUsecase.getDetail(consultationId)));
+    public ResponseEntity<ConsultationDetailResponse> getDetail(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable Long consultationId
+    ) {
+        ConsultationDetail detail = consultationQueryUsecase.getDetail(
+                consultationId, principal.getId(), principal.getRole().name());
+        return ResponseEntity.ok(ConsultationDetailResponse.from(detail));
     }
 
     @Operation(summary = "다가오는 상담 조회", description = "운영진/강사가 예정된 상담 상위 3건을 조회합니다.")
@@ -182,11 +186,12 @@ public class ConsultationController {
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     @PatchMapping("/{consultationId}/record")
     public ResponseEntity<Void> saveRecord(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
             @PathVariable Long consultationId,
             @Valid @RequestBody SaveConsultationRecordRequest request
     ) {
         consultationCommandUsecase.saveRecord(
-                new SaveRecordCommand(consultationId, request.counselorNote()));
+                new SaveRecordCommand(consultationId, principal.getId(), request.counselorNote()));
         return ResponseEntity.ok().build();
     }
 

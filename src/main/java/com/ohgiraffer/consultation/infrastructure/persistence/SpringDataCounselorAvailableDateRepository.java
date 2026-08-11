@@ -1,6 +1,8 @@
 package com.ohgiraffer.consultation.infrastructure.persistence;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -11,6 +13,14 @@ import java.util.Optional;
 public interface SpringDataCounselorAvailableDateRepository extends JpaRepository<CounselorAvailableDateJpaEntity, Long> {
 
     Optional<CounselorAvailableDateJpaEntity> findByCounselorIdAndAvailableDate(Long counselorId, LocalDate availableDate);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT d FROM CounselorAvailableDateJpaEntity d
+            WHERE d.counselorId = :counselorId AND d.availableDate = :date
+            """)
+    Optional<CounselorAvailableDateJpaEntity> findByCounselorIdAndAvailableDateForUpdate(
+            @Param("counselorId") Long counselorId, @Param("date") LocalDate date);
 
     List<CounselorAvailableDateJpaEntity> findByCounselorIdAndAvailableDateBetween(
             Long counselorId, LocalDate from, LocalDate to);

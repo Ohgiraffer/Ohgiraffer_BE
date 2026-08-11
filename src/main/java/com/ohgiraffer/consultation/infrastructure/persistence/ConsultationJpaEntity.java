@@ -48,16 +48,9 @@ public class ConsultationJpaEntity {
     @Column(name = "external_ref_id")
     private String externalRefId;
 
-    @Column(name = "cancelled_by")
-    private String cancelledBy;
-
-    @Column(name = "cancel_reason")
-    private String cancelReason;
-
     private ConsultationJpaEntity(Long id, Long counselorId, Long requesterId, String topic, String content,
                                   String counselorNote, String aiBrief, ConsultationStatus status,
-                                  LocalDateTime scheduledAt, String externalRefId,
-                                  String cancelledBy, String cancelReason) {
+                                  LocalDateTime scheduledAt, String externalRefId) {
         this.id = id;
         this.counselorId = counselorId;
         this.requesterId = requesterId;
@@ -68,8 +61,6 @@ public class ConsultationJpaEntity {
         this.status = status;
         this.scheduledAt = scheduledAt;
         this.externalRefId = externalRefId;
-        this.cancelledBy = cancelledBy;
-        this.cancelReason = cancelReason;
     }
 
     public static ConsultationJpaEntity fromDomain(Consultation domain) {
@@ -83,9 +74,7 @@ public class ConsultationJpaEntity {
                 domain.getAiBrief(),
                 domain.getStatus(),
                 domain.getScheduledAt(),
-                domain.getExternalRefId(),
-                domain.getCancelledBy(),
-                domain.getCancelReason()
+                domain.getExternalRefId()
         );
     }
 
@@ -101,8 +90,6 @@ public class ConsultationJpaEntity {
                 .status(status)
                 .scheduledAt(scheduledAt)
                 .externalRefId(externalRefId)
-                .cancelledBy(cancelledBy)
-                .cancelReason(cancelReason)
                 .build();
     }
 }

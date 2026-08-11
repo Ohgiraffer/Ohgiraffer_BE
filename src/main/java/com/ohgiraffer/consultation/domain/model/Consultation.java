@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Getter
@@ -23,13 +24,13 @@ public class Consultation {
     private ConsultationStatus status;
     private LocalDateTime scheduledAt;
     private String externalRefId;
-    private String cancelledBy;
-    private String cancelReason;
+
+    private static final Duration RECORD_DEADLINE = Duration.ofDays(1);
 
     @Builder
     private Consultation(Long id, Long counselorId, Long requesterId, String topic, String content,
                          String counselorNote, String aiBrief, ConsultationStatus status,
-                         LocalDateTime scheduledAt, String externalRefId, String cancelledBy, String cancelReason) {
+                         LocalDateTime scheduledAt, String externalRefId) {
         this.id = id;
         this.counselorId = counselorId;
         this.requesterId = requesterId;
@@ -40,8 +41,6 @@ public class Consultation {
         this.status = status;
         this.scheduledAt = scheduledAt;
         this.externalRefId = externalRefId;
-        this.cancelledBy = cancelledBy;
-        this.cancelReason = cancelReason;
     }
 
     public static Consultation request(Long counselorId, Long requesterId, String topic,
@@ -56,29 +55,29 @@ public class Consultation {
                 .build();
     }
 
-    public void approve() {
-        validateNotClosed();
-        this.status = ConsultationStatus.APPROVED;
-    }
-
     public void completeWithRecord(String counselorNote) {
-        if (this.status == ConsultationStatus.CANCELLED) {
+        if (this.status != ConsultationStatus.PENDING) {
             throw new BusinessException(ErrorCode.CONSULTATION_ALREADY_CLOSED);
+        }
+        if (LocalDateTime.now().isAfter(this.scheduledAt.plus(RECORD_DEADLINE))) {
+            throw new BusinessException(ErrorCode.CONSULTATION_RECORD_DEADLINE_PASSED);
         }
         this.counselorNote = counselorNote;
         this.status = ConsultationStatus.COMPLETED;
     }
 
-    public void cancel(String cancelledBy, String cancelReason) {
-        validateNotClosed();
+    public void expire() {
+        if (this.status != ConsultationStatus.PENDING) {
+            return;
+        }
         this.status = ConsultationStatus.CANCELLED;
-        this.cancelledBy = cancelledBy;
-        this.cancelReason = cancelReason;
     }
 
-    private void validateNotClosed() {
-        if (this.status == ConsultationStatus.CANCELLED || this.status == ConsultationStatus.COMPLETED) {
-            throw new BusinessException(ErrorCode.CONSULTATION_ALREADY_CLOSED);
-        }
+    public boolean isRequestedBy(Long userId) {
+        return this.requesterId.equals(userId);
+    }
+
+    public boolean isCounseledBy(Long userId) {
+        return this.counselorId != null && this.counselorId.equals(userId);
     }
 }

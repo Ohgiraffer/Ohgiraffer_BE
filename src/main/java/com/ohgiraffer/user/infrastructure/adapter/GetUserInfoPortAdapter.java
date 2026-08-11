@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -31,5 +33,15 @@ public class GetUserInfoPortAdapter implements GetUserInfoPort {
         return springDataUserRepository.findAllByRoleIn(roleEnums).stream()
                 .map(u -> new UserSummary(u.getId(), u.getName(), u.getRole().name()))
                 .toList();
+    }
+
+    @Override
+    public Map<Long, String> getNames(List<Long> userIds) {
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return springDataUserRepository.findByIdIn(userIds).stream()
+                .collect(Collectors.toMap(UserJpaEntity::getId, UserJpaEntity::getName));
     }
 }

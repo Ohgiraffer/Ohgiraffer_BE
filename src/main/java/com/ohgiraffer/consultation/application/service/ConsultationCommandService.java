@@ -13,6 +13,7 @@ import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,8 +34,17 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
 
     @Override
     public Long requestConsultation(RequestConsultationCommand command) {
-        if (consultationRepository.existsByCounselorIdAndScheduledAt(
-                command.counselorId(), command.scheduledAt())) {
+        boolean isAvailable = availableDateRepository
+                .findByCounselorIdAndAvailableDate(command.counselorId(), command.scheduledAt().toLocalDate())
+                .map(date -> date.getTimes().contains(command.scheduledAt().toLocalTime()))
+                .orElse(false);
+
+        if (!isAvailable) {
+            throw new BusinessException(ErrorCode.CONSULTATION_TIME_NOT_AVAILABLE);
+        }
+
+        if (consultationRepository.existsByCounselorIdAndScheduledAtAndStatusNot(
+                command.counselorId(), command.scheduledAt(), ConsultationStatus.CANCELLED)) {
             throw new BusinessException(ErrorCode.CONSULTATION_ALREADY_BOOKED);
         }
 
@@ -46,7 +56,11 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
                 command.scheduledAt()
         );
 
-        return consultationRepository.save(consultation).getId();
+        try {
+            return consultationRepository.save(consultation).getId();
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.CONSULTATION_ALREADY_BOOKED);
+        }
     }
 
     @Override
@@ -54,8 +68,11 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
         Consultation consultation = consultationRepository.findById(command.consultationId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CONSULTATION_NOT_FOUND));
 
+        if (!consultation.isCounseledBy(command.callerId())) {
+            throw new BusinessException(ErrorCode.CONSULTATION_ACCESS_DENIED);
+        }
+
         consultation.completeWithRecord(command.counselorNote());
-        consultationRepository.save(consultation);
     }
 
     @Override
@@ -63,7 +80,7 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
         validateNoBookedTimeRemoved(command);
 
         Optional<CounselorAvailableDate> existing = availableDateRepository
-                .findByCounselorIdAndAvailableDate(command.counselorId(), command.date());
+                .findByCounselorIdAndAvailableDateForUpdate(command.counselorId(), command.date());
 
         CounselorAvailableDate availableDate;
         if (existing.isPresent()) {
@@ -73,7 +90,11 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
             availableDate = CounselorAvailableDate.of(command.counselorId(), command.date(), command.times());
         }
 
-        availableDateRepository.save(availableDate);
+        try {
+            availableDateRepository.save(availableDate);
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.CONSULTATION_AVAILABLE_DATE_CONFLICT);
+        }
     }
 
     private void validateNoBookedTimeRemoved(RegisterAvailableTimeCommand command) {
@@ -81,8 +102,9 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
         LocalDateTime dayEnd = command.date().plusDays(1).atStartOfDay();
 
         Set<LocalTime> bookedTimes = consultationRepository
-                .findByCounselorIdAndScheduledAtBetween(command.counselorId(), dayStart, dayEnd).stream()
-                .filter(c -> c.getStatus() != ConsultationStatus.CANCELLED)
+                .findByCounselorIdAndScheduledAtBetweenAndStatusNot(
+                        command.counselorId(), dayStart, dayEnd, ConsultationStatus.CANCELLED)
+                .stream()
                 .map(c -> c.getScheduledAt().toLocalTime())
                 .collect(Collectors.toSet());
 

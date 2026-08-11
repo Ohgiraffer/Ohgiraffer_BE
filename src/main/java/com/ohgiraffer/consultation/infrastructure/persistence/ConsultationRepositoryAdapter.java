@@ -4,7 +4,6 @@ import com.ohgiraffer.consultation.domain.model.Consultation;
 import com.ohgiraffer.consultation.domain.model.ConsultationStatus;
 import com.ohgiraffer.consultation.domain.repository.ConsultationRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -43,22 +42,33 @@ public class ConsultationRepositoryAdapter implements ConsultationRepository {
        }
 
         @Override
-        public List<Consultation> findByCounselorIdAndScheduledAtBetween(
-                Long counselorId, LocalDateTime from, LocalDateTime to) {
-            return springDataRepository.findByCounselorIdAndScheduledAtBetween(counselorId, from, to).stream()
-                    .map(ConsultationJpaEntity::toDomain)
-                    .toList();
-        }
-
-        @Override
         public List<Consultation> findAll() {
             return springDataRepository.findAll().stream()
                     .map(ConsultationJpaEntity::toDomain)
                     .toList();
         }
 
-        @Override
-        public boolean existsByCounselorIdAndScheduledAt(Long counselorId, LocalDateTime scheduledAt) {
-            return springDataRepository.existsByCounselorIdAndScheduledAt(counselorId, scheduledAt);
-        }
+    @Override
+    public boolean existsByCounselorIdAndScheduledAtAndStatusNot(
+            Long counselorId, LocalDateTime scheduledAt, ConsultationStatus excludedStatus) {
+        return springDataRepository.existsByCounselorIdAndScheduledAtAndStatusNot(
+                counselorId, scheduledAt, excludedStatus);
+    }
+
+    @Override
+    public List<Consultation> findByCounselorIdAndScheduledAtBetweenAndStatusNot(
+            Long counselorId, LocalDateTime from, LocalDateTime to, ConsultationStatus excludedStatus) {
+        return springDataRepository.findByCounselorIdAndScheduledAtBetweenAndStatusNot(
+                        counselorId, from, to, excludedStatus).stream()
+                .map(ConsultationJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Consultation> findByStatusAndScheduledAtBefore(
+            ConsultationStatus status, LocalDateTime dateTime) {
+        return springDataRepository.findByStatusAndScheduledAtBefore(status, dateTime).stream()
+                .map(ConsultationJpaEntity::toDomain)
+                .toList();
+    }
 }

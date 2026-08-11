@@ -148,6 +148,10 @@ public enum ErrorCode {
     CONSULTATION_ALREADY_BOOKED(HttpStatus.CONFLICT, "CONSULTATION_002", "이미 예약된 시간입니다."),
     CONSULTATION_ALREADY_CLOSED(HttpStatus.CONFLICT, "CONSULTATION_003", "이미 종료되었거나 취소된 상담입니다."),
     CONSULTATION_TIME_IN_USE(HttpStatus.CONFLICT, "CONSULTATION_004", "이미 예약이 잡힌 시간은 가능 시간에서 해제할 수 없습니다."),
+    CONSULTATION_TIME_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "CONSULTATION_005","등록되지 않은 상담 가능 시간입니다."),
+    CONSULTATION_RECORD_DEADLINE_PASSED(HttpStatus.BAD_REQUEST, "CONSULTATION_006","메모 작성 가능 기한(상담일+1일)이 지났습니다."),
+    CONSULTATION_AVAILABLE_DATE_CONFLICT(HttpStatus.CONFLICT, "CONSULTATION_007", "동시 요청으로 처리에 실패했습니다. 다시 시도해주세요."),
+    CONSULTATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CONSULTATION_008", "해당 상담에 접근할 권한이 없습니다."),
 
     CALENDAR_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CALENDAR_001", "존재하지 않는 일정입니다."),
     CALENDAR_EVENT_NOT_CREATOR(HttpStatus.FORBIDDEN, "CALENDAR_002", "일정을 등록한 사람만 삭제할 수 있습니다."),

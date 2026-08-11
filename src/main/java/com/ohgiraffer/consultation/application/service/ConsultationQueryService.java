@@ -16,10 +16,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -57,16 +54,20 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
             return List.of();
         }
 
+        LocalDateTime now = LocalDateTime.now();
         LocalDateTime dayStart = date.atStartOfDay();
         LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
 
         Set<LocalTime> booked = consultationRepository
-                .findByCounselorIdAndScheduledAtBetween(counselorId, dayStart, dayEnd).stream()
-                .filter(c -> c.getStatus() != ConsultationStatus.CANCELLED)
+                .findByCounselorIdAndScheduledAtBetweenAndStatusNot(
+                        counselorId, dayStart, dayEnd, ConsultationStatus.CANCELLED)
+                .stream()
                 .map(c -> c.getScheduledAt().toLocalTime())
                 .collect(Collectors.toSet());
 
         return registered.stream()
+                .filter(t -> date.isAfter(now.toLocalDate())
+                        || (date.isEqual(now.toLocalDate()) && t.isAfter(now.toLocalTime())))
                 .map(t -> new AvailableTimeSlot(t, booked.contains(t)))
                 .toList();
     }
@@ -80,23 +81,36 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
 
     @Override
     public List<ConsultationSummary> getMyConsultations(Long userId) {
-        return consultationRepository.findByRequesterId(userId).stream()
+        List<Consultation> consultations = consultationRepository.findByRequesterId(userId);
+
+        List<Long> counselorIds = consultations.stream()
+                .map(Consultation::getCounselorId)
+                .distinct()
+                .toList();
+        Map<Long, String> nameMap = getUserInfoPort.getNames(counselorIds);
+
+        return consultations.stream()
                 .sorted(Comparator.comparing(Consultation::getScheduledAt,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(c -> new ConsultationSummary(
                         c.getId(),
                         c.getTopic(),
                         c.getScheduledAt(),
-                        resolveName(c.getCounselorId()),
+                        nameMap.getOrDefault(c.getCounselorId(), "알 수 없음"),
                         c.getStatus()
                 ))
                 .toList();
     }
 
     @Override
-    public ConsultationDetail getDetail(Long consultationId) {
+    public ConsultationDetail getDetail(Long consultationId, Long callerId, String callerRole) {
         Consultation c = consultationRepository.findById(consultationId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CONSULTATION_NOT_FOUND));
+
+        boolean allowed = c.isRequestedBy(callerId) || c.isCounseledBy(callerId) || "MANAGER".equals(callerRole);
+        if (!allowed) {
+            throw new BusinessException(ErrorCode.CONSULTATION_ACCESS_DENIED);
+        }
 
         return new ConsultationDetail(
                 c.getId(),

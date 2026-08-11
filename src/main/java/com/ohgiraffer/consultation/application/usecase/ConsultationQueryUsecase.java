@@ -20,11 +20,9 @@ public interface ConsultationQueryUsecase {
 
     List<ConsultationSummary> getMyConsultations(Long userId);
 
-    ConsultationDetail getDetail(Long consultationId);
+    ConsultationDetail getDetail(Long consultationId, Long callerId, String callerRole);
 
     List<ConsultationListItem> getUpcoming();
 
     List<ConsultationListItem> getHistory();
-
-    record CounselorInfo(Long counselorId, String name, String role) {}
 }

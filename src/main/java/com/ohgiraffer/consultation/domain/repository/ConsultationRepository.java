@@ -17,9 +17,14 @@ public interface ConsultationRepository {
 
     List<Consultation> findUpcoming(LocalDateTime from);
 
-    List<Consultation> findByCounselorIdAndScheduledAtBetween(Long counselorId, LocalDateTime from, LocalDateTime to);
-
-    boolean existsByCounselorIdAndScheduledAt(Long counselorId, LocalDateTime scheduledAt);
-
     List<Consultation> findAll();
+
+    boolean existsByCounselorIdAndScheduledAtAndStatusNot(
+            Long counselorId, LocalDateTime scheduledAt, ConsultationStatus excludedStatus);
+
+    List<Consultation> findByCounselorIdAndScheduledAtBetweenAndStatusNot(
+            Long counselorId, LocalDateTime from, LocalDateTime to, ConsultationStatus excludedStatus);
+
+    List<Consultation> findByStatusAndScheduledAtBefore(
+            ConsultationStatus status, LocalDateTime dateTime);
 }
