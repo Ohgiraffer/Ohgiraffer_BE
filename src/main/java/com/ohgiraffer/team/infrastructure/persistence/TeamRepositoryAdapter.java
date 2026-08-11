@@ -266,6 +266,7 @@ public class TeamRepositoryAdapter
                 projection.getUserId(),
                 projection.getUserName(),
                 projection.getEmail(),
+                projection.getProfileImg(),
                 projection.getJoinedAt(),
                 projection.getLeftAt()
         );
@@ -277,7 +278,8 @@ public class TeamRepositoryAdapter
         return UnassignedStudent.restore(
                 projection.getUserId(),
                 projection.getName(),
-                projection.getEmail()
+                projection.getEmail(),
+                projection.getProfileImg()
         );
     }
 

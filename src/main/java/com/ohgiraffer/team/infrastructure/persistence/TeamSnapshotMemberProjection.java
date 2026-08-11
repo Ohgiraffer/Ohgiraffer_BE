@@ -9,4 +9,6 @@ public interface TeamSnapshotMemberProjection {
     Long getUserId();
 
     String getUserName();
+
+    String getProfileImg();
 }

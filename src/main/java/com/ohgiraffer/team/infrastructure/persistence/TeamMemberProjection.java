@@ -14,6 +14,8 @@ public interface TeamMemberProjection {
 
     String getEmail();
 
+    String getProfileImg();
+
     LocalDateTime getJoinedAt();
 
     LocalDateTime getLeftAt();

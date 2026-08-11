@@ -10,6 +10,7 @@ public record TeamMemberResponse(
         Long userId,
         String userName,
         String email,
+        String profileImgUrl,
         LocalDateTime joinedAt
 ) {
 
@@ -25,6 +26,7 @@ public record TeamMemberResponse(
                         result.email(),
                         requesterRole
                 ),
+                result.profileImgUrl(),
                 result.joinedAt()
         );
     }

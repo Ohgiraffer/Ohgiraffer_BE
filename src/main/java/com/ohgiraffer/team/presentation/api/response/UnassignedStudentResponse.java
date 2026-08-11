@@ -5,7 +5,8 @@ import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
 public record UnassignedStudentResponse(
         Long userId,
         String name,
-        String email
+        String email,
+        String profileImgUrl
 ) {
 
     public static UnassignedStudentResponse from(
@@ -14,7 +15,8 @@ public record UnassignedStudentResponse(
         return new UnassignedStudentResponse(
                 result.userId(),
                 result.name(),
-                result.email()
+                result.email(),
+                result.profileImgUrl()
         );
     }
 }

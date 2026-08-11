@@ -9,6 +9,7 @@ public class TeamMemberHistory {
     private final String teamName;
     private final Long userId;
     private final String userName;
+    private final String profileImg;
     private final LocalDateTime joinedAt;
     private final LocalDateTime leftAt;
 
@@ -18,6 +19,7 @@ public class TeamMemberHistory {
             String teamName,
             Long userId,
             String userName,
+            String profileImg,
             LocalDateTime joinedAt,
             LocalDateTime leftAt
     ) {
@@ -26,6 +28,7 @@ public class TeamMemberHistory {
         this.teamName = teamName;
         this.userId = userId;
         this.userName = userName;
+        this.profileImg = profileImg;
         this.joinedAt = joinedAt;
         this.leftAt = leftAt;
     }
@@ -36,6 +39,7 @@ public class TeamMemberHistory {
             String teamName,
             Long userId,
             String userName,
+            String profileImg,
             LocalDateTime joinedAt,
             LocalDateTime leftAt
     ) {
@@ -45,6 +49,7 @@ public class TeamMemberHistory {
                 teamName,
                 userId,
                 userName,
+                profileImg,
                 joinedAt,
                 leftAt
         );
@@ -68,6 +73,10 @@ public class TeamMemberHistory {
 
     public String getUserName() {
         return userName;
+    }
+
+    public String getProfileImg() {
+        return profileImg;
     }
 
     public LocalDateTime getJoinedAt() {

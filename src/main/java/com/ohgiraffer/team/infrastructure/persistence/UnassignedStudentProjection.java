@@ -7,4 +7,6 @@ public interface UnassignedStudentProjection {
     String getName();
 
     String getEmail();
+
+    String getProfileImg();
 }
