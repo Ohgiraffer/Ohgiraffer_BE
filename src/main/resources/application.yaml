@@ -153,3 +153,10 @@ management:
       # → RED 방법론의 Duration(응답시간) 지표를 나중에 바로 쓸 수 있음
       percentiles-histogram:
         http.server.requests: true
+
+# ===== NOTION =====
+notion:
+  api-token: ${NOTION_API_TOKEN}
+  data-source-id: ${NOTION_DATA_SOURCE_ID}
+  template-id: ${NOTION_TEMPLATE_ID}
+  api-version: ${NOTION_API_VERSION:2026-03-11}

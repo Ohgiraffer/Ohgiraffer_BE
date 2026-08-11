@@ -6,17 +6,24 @@ import java.util.Map;
 
 public record TeamConfigurationSavedEvent(
         List<TeamChannelSyncTarget> channelSyncTargets,
-        boolean createChatChannel
+        List<TeamWorkspaceSyncTarget> workspaceSyncTargets,
+        boolean createChatChannel,
+        boolean createNotionPage
 ) {
 
     public TeamConfigurationSavedEvent {
         channelSyncTargets =
-                mergeTargetsByTeamId(
+                mergeChannelTargetsByTeamId(
                         channelSyncTargets
+                );
+
+        workspaceSyncTargets =
+                mergeWorkspaceTargetsByTeamId(
+                        workspaceSyncTargets
                 );
     }
 
-    private static List<TeamChannelSyncTarget> mergeTargetsByTeamId(
+    private static List<TeamChannelSyncTarget> mergeChannelTargetsByTeamId(
             List<TeamChannelSyncTarget> targets
     ) {
         if (targets == null
@@ -25,6 +32,29 @@ public record TeamConfigurationSavedEvent(
         }
 
         Map<Long, TeamChannelSyncTarget> targetByTeamId =
+                new LinkedHashMap<>();
+
+        targets.forEach(target ->
+                targetByTeamId.put(
+                        target.teamId(),
+                        target
+                )
+        );
+
+        return List.copyOf(
+                targetByTeamId.values()
+        );
+    }
+
+    private static List<TeamWorkspaceSyncTarget> mergeWorkspaceTargetsByTeamId(
+            List<TeamWorkspaceSyncTarget> targets
+    ) {
+        if (targets == null
+                || targets.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, TeamWorkspaceSyncTarget> targetByTeamId =
                 new LinkedHashMap<>();
 
         targets.forEach(target ->
