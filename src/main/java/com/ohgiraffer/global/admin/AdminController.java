@@ -86,7 +86,7 @@ public class AdminController {
         } catch (Exception e) {
             log.error("[AdminController] 커넥션 풀 리셋 중 오류 발생", e);
             return ResponseEntity.internalServerError()
-                    .body(Map.of("success", false, "message", "리셋 중 오류: " + e.getMessage()));
+                    .body(Map.of("success", false, "message", "리셋 중 오류가 발생했습니다. 서버 로그를 확인하세요."));
         }
     }
 }
