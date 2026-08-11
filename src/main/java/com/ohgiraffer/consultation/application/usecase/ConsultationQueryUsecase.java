@@ -22,7 +22,7 @@ public interface ConsultationQueryUsecase {
 
     ConsultationDetail getDetail(Long consultationId, Long callerId, String callerRole);
 
-    List<ConsultationListItem> getUpcoming();
+    List<ConsultationListItem> getUpcoming(Long callerId);
 
     List<ConsultationListItem> getHistory();
 }
