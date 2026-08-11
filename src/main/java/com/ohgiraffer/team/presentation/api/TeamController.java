@@ -3,6 +3,7 @@ package com.ohgiraffer.team.presentation.api;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import com.ohgiraffer.team.application.command.CreateTeamPeriodCommand;
 import com.ohgiraffer.team.application.command.SaveTeamConfigurationCommand;
+import com.ohgiraffer.team.application.command.UpdateTeamPeriodCommand;
 import com.ohgiraffer.team.application.usecase.CreateTeamPeriodUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamHistoryUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamListUseCase;
@@ -13,13 +14,16 @@ import com.ohgiraffer.team.application.usecase.TeamHistoryResult;
 import com.ohgiraffer.team.application.usecase.TeamListResult;
 import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
 import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
+import com.ohgiraffer.team.application.usecase.UpdateTeamPeriodUseCase;
 import com.ohgiraffer.team.presentation.api.request.CreateTeamPeriodRequest;
 import com.ohgiraffer.team.presentation.api.request.SaveTeamConfigurationRequest;
+import com.ohgiraffer.team.presentation.api.request.UpdateTeamPeriodRequest;
 import com.ohgiraffer.team.presentation.api.response.CreateTeamPeriodResponse;
 import com.ohgiraffer.team.presentation.api.response.TeamHistoryResponse;
 import com.ohgiraffer.team.presentation.api.response.TeamListResponse;
 import com.ohgiraffer.team.presentation.api.response.TeamPeriodListResponse;
 import com.ohgiraffer.team.presentation.api.response.UnassignedStudentListResponse;
+import com.ohgiraffer.team.presentation.api.response.UpdateTeamPeriodResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -29,6 +33,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,6 +53,7 @@ public class TeamController {
     private final GetTeamHistoryUseCase getTeamHistoryUseCase;
     private final GetTeamPeriodListUseCase getTeamPeriodListUseCase;
     private final CreateTeamPeriodUseCase createTeamPeriodUseCase;
+    private final UpdateTeamPeriodUseCase updateTeamPeriodUseCase;
     private final SaveTeamConfigurationUseCase saveTeamConfigurationUseCase;
 
     @GetMapping("/periods")
@@ -94,6 +100,32 @@ public class TeamController {
                                 result
                         )
                 );
+    }
+
+    @PatchMapping("/periods/{periodId:\\d+}")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<UpdateTeamPeriodResponse> updateTeamPeriod(
+            @PathVariable Long periodId,
+            @Valid @RequestBody UpdateTeamPeriodRequest request,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        UpdateTeamPeriodCommand command =
+                request.toCommand(
+                        principal.getId(),
+                        periodId
+                );
+
+        TeamPeriodResult result =
+                updateTeamPeriodUseCase.updateTeamPeriod(
+                        command,
+                        principal.getRole()
+                );
+
+        return ResponseEntity.ok(
+                UpdateTeamPeriodResponse.from(
+                        result
+                )
+        );
     }
 
     @GetMapping
