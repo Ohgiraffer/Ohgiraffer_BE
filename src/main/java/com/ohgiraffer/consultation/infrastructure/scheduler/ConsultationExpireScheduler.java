@@ -26,7 +26,10 @@ public class ConsultationExpireScheduler {
         List<Consultation> targets = consultationRepository
                 .findByStatusAndScheduledAtBefore(ConsultationStatus.PENDING, deadline);
 
-        targets.forEach(Consultation::expire);
+        targets.forEach(c -> {
+            c.expire();
+            consultationRepository.save(c);
+        });
 
         log.info("[상담 자동취소] {}건 처리", targets.size());
     }

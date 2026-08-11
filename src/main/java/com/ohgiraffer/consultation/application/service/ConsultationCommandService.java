@@ -35,7 +35,7 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
     @Override
     public Long requestConsultation(RequestConsultationCommand command) {
         boolean isAvailable = availableDateRepository
-                .findByCounselorIdAndAvailableDate(command.counselorId(), command.scheduledAt().toLocalDate())
+                .findByCounselorIdAndAvailableDateForUpdate(command.counselorId(), command.scheduledAt().toLocalDate())
                 .map(date -> date.getTimes().contains(command.scheduledAt().toLocalTime()))
                 .orElse(false);
 
@@ -73,14 +73,15 @@ public class ConsultationCommandService implements ConsultationCommandUsecase {
         }
 
         consultation.completeWithRecord(command.counselorNote());
+        consultationRepository.save(consultation);
     }
 
     @Override
     public void registerAvailableTime(RegisterAvailableTimeCommand command) {
-        validateNoBookedTimeRemoved(command);
-
         Optional<CounselorAvailableDate> existing = availableDateRepository
                 .findByCounselorIdAndAvailableDateForUpdate(command.counselorId(), command.date());
+
+        validateNoBookedTimeRemoved(command);
 
         CounselorAvailableDate availableDate;
         if (existing.isPresent()) {

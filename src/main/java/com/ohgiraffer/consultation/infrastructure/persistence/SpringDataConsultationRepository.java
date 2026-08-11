@@ -15,8 +15,18 @@ public interface SpringDataConsultationRepository extends JpaRepository<Consulta
     boolean existsByCounselorIdAndScheduledAtAndStatusNot(
             Long counselorId, LocalDateTime scheduledAt, ConsultationStatus excludedStatus);
 
+    @Query("""
+    SELECT c FROM ConsultationJpaEntity c
+    WHERE c.counselorId = :counselorId
+      AND c.scheduledAt >= :from
+      AND c.scheduledAt < :to
+      AND c.status <> :excludedStatus
+    """)
     List<ConsultationJpaEntity> findByCounselorIdAndScheduledAtBetweenAndStatusNot(
-            Long counselorId, LocalDateTime from, LocalDateTime to, ConsultationStatus excludedStatus);
+            @Param("counselorId") Long counselorId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            @Param("excludedStatus") ConsultationStatus excludedStatus);
 
     List<ConsultationJpaEntity> findByStatusAndScheduledAtBefore(
             ConsultationStatus status, LocalDateTime dateTime);
