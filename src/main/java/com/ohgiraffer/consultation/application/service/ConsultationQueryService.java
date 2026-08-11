@@ -131,7 +131,7 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
 
     @Override
     public List<ConsultationListItem> getUpcoming(Long callerId) {
-        return consultationRepository.findUpcoming(callerId, LocalDateTime.now()).stream()
+        return consultationRepository.findUpcoming(callerId, LocalDateTime.now(), ConsultationStatus.PENDING).stream()
                 .map(this::toListItem)
                 .toList();
     }
