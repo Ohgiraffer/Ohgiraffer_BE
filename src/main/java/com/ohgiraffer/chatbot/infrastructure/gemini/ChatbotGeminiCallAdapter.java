@@ -15,7 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/* comment.
+/*
+ * comment.
  *  챗봇 전용 Gemini 호출 어댑터
  *  - GeminiClient.generateWithTools()를 감싸서 서킷 브레이커(geminiApiChatbot 인스턴스) 적용
  *  - raw 응답을 parts 순회하며 functionCall/text로 분리해 ChatbotGeminiTurnResult로 변환
@@ -43,7 +44,14 @@ public class ChatbotGeminiCallAdapter {
         }
 
         Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
+        if (content == null) {
+            throw new BusinessException(ErrorCode.AI_API_CALL_FAILED);
+        }
+
         List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
+        if (parts == null) {
+            throw new BusinessException(ErrorCode.AI_API_CALL_FAILED);
+        }
 
         List<ChatbotGeminiFunctionCall> functionCalls = new ArrayList<>();
         StringBuilder textBuilder = new StringBuilder();

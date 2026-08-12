@@ -4,7 +4,8 @@ import com.ohgiraffer.chatbot.domain.model.ChatbotSessionTurn;
 
 import java.util.List;
 
-/* comment.
+/*
+ * comment.
  *  챗봇 세션(대화 히스토리) 캐시 포트
  *  - RedisBriefingCacheAdapter와 유사한 성격이나, 단일 값이 아닌 히스토리 배열을 다룸
  */

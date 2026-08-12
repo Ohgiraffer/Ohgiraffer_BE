@@ -10,10 +10,12 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-/* comment.
+/*
+ * comment.
  *  챗봇 세션 read-modify-write 구간에 분산락 적용
  *  - BriefingLockedGenerator와 동일 패턴(@DistributedLock) 재사용
- *  - waitTime/leaseTime은 브리핑(50/100초)보다 짧게 - 세션 갱신은 훨씬 빈번하고 가벼운 작업이라 조정함
+ *  - leaseTime은 ChatbotOrchestrator의 MAX_HOPS(5) x Gemini 호출 최대 소요시간을
+ *    여유 있게 덮어야 함 - 그렇지 않으면 처리 도중 락이 풀려 동시 갱신에 의한 히스토리 유실 위험이 있음
  */
 
 @Component
@@ -25,7 +27,7 @@ public class ChatbotSessionLockedUpdater {
     @DistributedLock(
             key = "'ai:chatbot:session:lock:' + #userId",
             waitTime = 10,
-            leaseTime = 20,
+            leaseTime = 480,
             timeUnit = TimeUnit.SECONDS
     )
     public List<ChatbotSessionTurn> updateHistory(Long userId, Function<List<ChatbotSessionTurn>, List<ChatbotSessionTurn>> mutator) {

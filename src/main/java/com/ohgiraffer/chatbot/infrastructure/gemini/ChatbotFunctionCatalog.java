@@ -9,7 +9,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/* comment.
+/*
+ * comment.
  *  챗봇이 노출 가능한 전체 Function Declaration 카탈로그
  *  - 조회 계열(TodoPort 6종+알림+캘린더+팀) + 액션 계열(결재 승인/반려/확인/휴가신청)
  *  - buildToolsForRole()이 role별로 필터링된 tools 배열(Gemini 요청 규격)을 만들어줌

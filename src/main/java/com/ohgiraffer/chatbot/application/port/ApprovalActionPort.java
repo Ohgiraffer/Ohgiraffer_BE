@@ -5,7 +5,8 @@ import com.ohgiraffer.user.domain.model.Role;
 
 import java.time.LocalDate;
 
-/* comment.
+/*
+ * comment.
  *  AI비서(챗봇) 도메인이 정의하는 결재 액션 포트
  *  - 전자결재 담당 도메인의 Command UseCase 4종(승인/반려/확인/휴가신청)을 감싸는 계약
  *  - TodoPort들과 동일한 패턴: 챗봇은 이 인터페이스만 알고, 구현은 전자결재 도메인 쪽 Adapter가 채움

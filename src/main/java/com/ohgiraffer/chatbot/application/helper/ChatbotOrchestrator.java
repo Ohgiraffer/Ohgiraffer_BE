@@ -128,6 +128,11 @@ public class ChatbotOrchestrator {
         } catch (BusinessException e) {
             log.warn("[ChatbotOrchestration] 함수 실행 실패 | function={}, userId={}, code={}", call.name(), userId, e.getErrorCode().getCode());
             return Map.of("error", "조회/처리에 실패했습니다.");
+        } catch (RuntimeException e) {
+            // 잘못된 Gemini 인자(형식 오류 등) 같이 BusinessException이 아닌 실행 실패도
+            // 대화 전체를 중단시키지 않고 functionResponse에 에러로만 담아 넘김
+            log.warn("[ChatbotOrchestration] 함수 실행 중 예상치 못한 오류 | function={}, userId={}", call.name(), userId, e);
+            return Map.of("error", "조회/처리에 실패했습니다.");
         }
     }
 

@@ -10,7 +10,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 
-/* comment.
+/*
+ * comment.
  *  ApprovalActionPort 실구현체
  *  - 전자결재 담당 도메인의 기존 UseCase 4종을 그대로 주입받아 위임만 함
  *  - 이 어댑터는 전자결재 도메인 코드를 전혀 건드리지 않고, 챗봇 쪽에서만 신규로 추가되는 파일임
@@ -34,7 +35,7 @@ public class ApprovalActionAdapter implements ApprovalActionPort {
 
     @Override
     public CreateApprovalResult reject(Long userId, Role role, Long approvalId, String reason) {
-        log.info("[ChatbotApprovalAction] 반려 처리 요청 | userId={}, approvalId={}, reason={}", userId, approvalId, reason);
+        log.info("[ChatbotApprovalAction] 반려 처리 요청 | userId={}, approvalId={}", userId, approvalId);
         return rejectApprovalUseCase.reject(userId, role, approvalId, reason);
     }
 

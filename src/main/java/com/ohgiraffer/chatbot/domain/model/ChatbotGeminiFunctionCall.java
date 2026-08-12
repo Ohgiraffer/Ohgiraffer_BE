@@ -2,7 +2,8 @@ package com.ohgiraffer.chatbot.domain.model;
 
 import java.util.Map;
 
-/* comment.
+/*
+ * comment.
  *  Gemini가 요청한 단일 함수 호출 정보 (functionCall 파트 파싱 결과)
  *  - id: Gemini 3.x부터 응답에 포함되는 호출 식별자. functionResponse를 돌려줄 때
  *    이 id를 그대로 echo해야 모델이 어느 호출에 대한 응답인지 매칭할 수 있음 (3.x 필수 요구사항)

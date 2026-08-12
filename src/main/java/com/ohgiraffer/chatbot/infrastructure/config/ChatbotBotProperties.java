@@ -3,7 +3,8 @@ package com.ohgiraffer.chatbot.infrastructure.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-/* comment.
+/*
+ * comment.
  *  AI비서 봇 계정 설정
  *  - botUserId: registerBot() 최초 1회 실행 시 사용한 값과 동일하게 고정 유지
  */

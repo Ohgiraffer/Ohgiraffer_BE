@@ -12,7 +12,8 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 
-/* comment.
+/*
+ * comment.
  *  ChatbotSessionPort 실구현체
  *  - 키 패턴: ai:chatbot:session:{userId} (ai:briefing:{userId} 네임스페이스 컨벤션과 동일선상)
  *  - TTL: 30분 sliding (매 저장마다 갱신) - 조회 조회만으로는 TTL 갱신 안 함(대화 진행 시에만 연장)

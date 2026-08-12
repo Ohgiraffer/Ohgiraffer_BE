@@ -16,7 +16,8 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.util.Map;
 
-/* comment.
+/*
+ * comment.
  *  Gemini가 요청한 functionCall.name을 실제 Port 메서드 호출로 매핑하는 디스패처
  *  - 존재하지 않는 함수명 요청 시 CHATBOT_UNKNOWN_FUNCTION 방어 (ErrorCode 신규 추가 필요 - 아직 미확인)
  *  - role 필터링은 1차로 ChatbotFunctionCatalog(tools 노출 단계)에서 이미 걸러지지만,
@@ -60,7 +61,7 @@ public class ChatbotFunctionDispatcher {
             case "getTeamPeriods" -> teamQueryPort.getTeamPeriods(userId, role);
             case "getTeamHistory" -> teamQueryPort.getTeamHistory(
                     userId, role,
-                    ((Number) args.get("teamPeriodId")).longValue(),
+                    longArg(args, "teamPeriodId"),
                     parseDateOrNull(args.get("startDate")),
                     parseDateOrNull(args.get("endDate"))
             );
@@ -100,7 +101,11 @@ public class ChatbotFunctionDispatcher {
     }
 
     private Long longArg(Map<String, Object> args, String key) {
-        return ((Number) args.get(key)).longValue();
+        Object raw = args.get(key);
+        if (!(raw instanceof Number number)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, key + " 값이 누락되었거나 숫자 형식이 아닙니다.");
+        }
+        return number.longValue();
     }
 
     private LocalDate parseDateOrNull(Object raw) {

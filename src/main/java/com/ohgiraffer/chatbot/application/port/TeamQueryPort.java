@@ -9,7 +9,8 @@ import com.ohgiraffer.user.domain.model.Role;
 import java.time.LocalDate;
 import java.util.List;
 
-/* comment.
+/*
+ * comment.
  *  AI비서(챗봇) 도메인이 정의하는 팀 조회 포트
  *  - getCurrentTeamList: teamPeriodId를 Gemini에 노출하지 않고 서버가 자동으로 "오늘 포함 기간"을 판단(하이브리드 설계)
  *  - getTeamPeriods/getTeamHistory: 과거 기간 조회 등 명시적 teamPeriodId가 필요한 경우에만 사용
