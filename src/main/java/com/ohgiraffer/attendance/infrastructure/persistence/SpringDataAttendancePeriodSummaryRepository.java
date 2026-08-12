@@ -1,6 +1,6 @@
 package com.ohgiraffer.attendance.infrastructure.persistence;
 
-import com.ohgiraffer.attendance.domain.model.StudentAttendanceCountsView;
+import com.ohgiraffer.attendance.domain.dto.StudentAttendanceCountsView;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,7 +10,7 @@ import java.util.List;
 public interface SpringDataAttendancePeriodSummaryRepository extends JpaRepository<AttendancePeriodSummaryJpaEntity, Long> {
 
     @Query("""
-    SELECT new com.ohgiraffer.attendance.domain.model.StudentAttendanceCountsView(
+    SELECT new com.ohgiraffer.attendance.domain.dto.StudentAttendanceCountsView(
         s.userId,
         COALESCE(SUM(s.presentDays), 0),
         COALESCE(SUM(s.lateCount), 0),

@@ -1,13 +1,12 @@
 package com.ohgiraffer.attendance.application.cache;
 
 import com.ohgiraffer.attendance.application.helper.StudentAttendanceRateResolver;
-import com.ohgiraffer.attendance.domain.model.StudentAttendanceRateResult;
+import com.ohgiraffer.attendance.domain.dto.StudentAttendanceRateResult;
 import com.ohgiraffer.attendance.presentation.api.response.AttendanceDashboardSummaryResponse;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import com.ohgiraffer.user.domain.model.StudentStatusView;
 import com.ohgiraffer.user.domain.model.UserStatus;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
