@@ -109,4 +109,10 @@ public class UserRepositoryAdapter implements UserRepository {
                 .toList();
     }
 
+    @Override
+    public Optional<Long> findAnyBootcampIdByStatus(UserStatus status) {
+        return springDataUserRepository.findFirstByStatusAndBootcampIdIsNotNull(status)
+                .map(UserJpaEntity::getBootcampId);
+    }
+
 }

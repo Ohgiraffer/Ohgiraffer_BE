@@ -1,6 +1,6 @@
 package com.ohgiraffer.attendance.domain.repository;
 
-import com.ohgiraffer.attendance.domain.model.StudentAttendanceCountsView;
+import com.ohgiraffer.attendance.domain.dto.StudentAttendanceCountsView;
 
 import java.util.List;
 

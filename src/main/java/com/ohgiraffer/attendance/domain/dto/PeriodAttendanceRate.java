@@ -1,4 +1,4 @@
-package com.ohgiraffer.attendance.domain.model;
+package com.ohgiraffer.attendance.domain.dto;
 
 import java.math.BigDecimal;
 

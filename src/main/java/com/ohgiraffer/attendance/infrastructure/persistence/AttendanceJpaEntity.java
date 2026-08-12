@@ -37,17 +37,26 @@ public class AttendanceJpaEntity {
     @Column(name = "check_out_time")
     private LocalTime checkOutTime;
 
+    @Column(name = "outing_time")
+    private LocalTime outingTime;
+
+    @Column(name = "return_time")
+    private LocalTime returnTime;
+
     @Column(name = "external_ref_id")
     private String externalRefId;
 
     private AttendanceJpaEntity(Long id, Long userId, LocalDate attendanceDate, AttendanceStatus status,
-                                LocalTime checkInTime, LocalTime checkOutTime, String externalRefId) {
+                                LocalTime checkInTime, LocalTime checkOutTime,
+                                LocalTime outingTime, LocalTime returnTime, String externalRefId) {
         this.id = id;
         this.userId = userId;
         this.attendanceDate = attendanceDate;
         this.status = status;
         this.checkInTime = checkInTime;
         this.checkOutTime = checkOutTime;
+        this.outingTime = outingTime;
+        this.returnTime = returnTime;
         this.externalRefId = externalRefId;
     }
 
@@ -59,13 +68,15 @@ public class AttendanceJpaEntity {
                 attendance.getStatus(),
                 attendance.getCheckInTime(),
                 attendance.getCheckOutTime(),
+                attendance.getOutingTime(),
+                attendance.getReturnTime(),
                 attendance.getExternalRefId()
         );
     }
 
     public Attendance toDomain() {
         return Attendance.reconstitute(
-                id, userId, attendanceDate, status, checkInTime, checkOutTime, externalRefId
+                id, userId, attendanceDate, status, checkInTime, checkOutTime, outingTime, returnTime, externalRefId
         );
     }
 }
