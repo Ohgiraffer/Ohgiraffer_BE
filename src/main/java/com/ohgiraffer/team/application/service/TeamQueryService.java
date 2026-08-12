@@ -6,10 +6,12 @@ import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.team.application.usecase.GetTeamListUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamPeriodListUseCase;
 import com.ohgiraffer.team.application.usecase.GetUnassignedStudentUseCase;
+import com.ohgiraffer.team.application.usecase.GetUserTeamHistoryUseCase;
 import com.ohgiraffer.team.application.usecase.TeamListResult;
 import com.ohgiraffer.team.application.usecase.TeamMemberResult;
 import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
 import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
+import com.ohgiraffer.team.application.usecase.UserTeamHistoryResult;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
 import com.ohgiraffer.team.domain.model.UnassignedStudent;
@@ -30,7 +32,8 @@ import java.util.stream.Collectors;
 public class TeamQueryService
         implements GetTeamListUseCase,
         GetUnassignedStudentUseCase,
-        GetTeamPeriodListUseCase {
+        GetTeamPeriodListUseCase,
+        GetUserTeamHistoryUseCase {
 
     private final TeamRepository teamRepository;
     private final TeamPeriodRepository teamPeriodRepository;
@@ -134,6 +137,30 @@ public class TeamQueryService
                 .toList();
     }
 
+    @Override
+    public List<UserTeamHistoryResult> getUserTeamHistories(
+            Long requesterId,
+            Role requesterRole,
+            Long userId
+    ) {
+        validateRequester(
+                requesterId,
+                requesterRole
+        );
+
+        validateManagerAccess(
+                requesterRole
+        );
+
+        validateUserId(
+                userId
+        );
+
+        return teamRepository.findUserTeamHistories(
+                userId
+        );
+    }
+
     private TeamMemberResult toTeamMemberResult(
             TeamMember member
     ) {
@@ -207,6 +234,18 @@ public class TeamQueryService
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "팀 기간 ID가 올바르지 않습니다."
+            );
+        }
+    }
+
+    private void validateUserId(
+            Long userId
+    ) {
+        if (userId == null
+                || userId <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "사용자 ID가 올바르지 않습니다."
             );
         }
     }
