@@ -377,9 +377,11 @@ public class GoogleFormsAdapter implements GoogleFormPort {
             return responses;
 
         } catch (GoogleJsonResponseException exception) {
+            exception.printStackTrace();
             throw convertGoogleException(exception);
 
         } catch (IOException exception) {
+            exception.printStackTrace();
             throw new BusinessException(
                     ErrorCode.GOOGLE_FORM_API_ERROR
             );
