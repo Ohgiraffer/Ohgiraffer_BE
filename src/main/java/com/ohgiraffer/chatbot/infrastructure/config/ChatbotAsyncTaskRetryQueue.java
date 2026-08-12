@@ -21,6 +21,9 @@ import java.util.concurrent.RejectedExecutionException;
  *    완전한 영구 보존(진짜 durable)은 DB 기반 outbox가 필요하고, 이는 별도 스코프로 보류된 상태 -
  *    이 클래스는 그 사이의 임시 안전판(순간적인 포화만 커버) 역할임
  *  - ObjectProvider로 실제 사용 시점까지 조회를 늦춰서 순환을 끊음 (@Lazy 매개변수 방식은 IDE/컴파일 에러 발생해서 미사용)
+ *  - execute()가 attempt 증가와 MAX_ATTEMPTS 강제를 담당하는 단일 경로임.
+ *    최초 진입(RejectedExecutionHandler -> offer)과 재시도(drain) 양쪽 다 이 메서드를 거치므로
+ *    attempt=0으로 재적재해서 한도를 무력화하는 경로가 생기지 않음.
  */
 
 @Slf4j
@@ -38,37 +41,44 @@ public class ChatbotAsyncTaskRetryQueue {
         this.chatbotTaskExecutorProvider = chatbotTaskExecutorProvider;
     }
 
-    // executor가 작업을 거부하면 즉시 버리지 않고 여기로 적재 (RejectedExecutionHandler에서 호출됨)
+    // executor가 작업을 거부하면 여기로 넘어옴 (RejectedExecutionHandler에서 호출됨)
+    // 실행 자체를 시도하지 않고 바로 대기열에만 적재 - 최초 시도는 attempt=0
     public void offer(Runnable task) {
-        boolean added = pending.offer(new RetryEntry(task, 0));
-        if (!added) {
-            // 재시도 대기열 자체도 가득 찬 극단적 상황 - 더 이상 손쓸 방법 없이 소실됨, 즉시 확인 필요
-            log.error("[ChatbotAsync] 재시도 대기열도 가득 차서 작업이 완전히 소실됨 - 즉시 확인 필요");
-        } else {
-            log.warn("[ChatbotAsync] 실행기 포화로 작업 거부됨 - 재시도 대기열에 적재");
-        }
+        enqueue(new RetryEntry(task, 0));
     }
 
-    // 주기적으로 대기열을 비우며 재제출 시도. 여전히 포화 상태면 시도 횟수를 늘려 다시 대기, 한도 초과 시 포기
+    // 주기적으로 대기열을 비우며 재실행 시도. 실패하면 execute()가 attempt를 증가시켜 재적재하거나 포기함
     @Scheduled(fixedDelay = 5000)
     public void drain() {
         RetryEntry entry;
         while ((entry = pending.poll()) != null) {
-            try {
-                chatbotTaskExecutorProvider.getObject().execute(entry.task());
-            } catch (RejectedExecutionException e) {
-                int nextAttempt = entry.attempt() + 1;
-                if (nextAttempt < MAX_ATTEMPTS) {
-                    boolean reAdded = pending.offer(new RetryEntry(entry.task(), nextAttempt));
-                    if (!reAdded) {
-                        // 재대기 시점에 큐가 이미 가득 찬 경우 - 조용히 넘어가면 offer()와 동일한 소실이
-                        // 여기서도 재발하므로 반드시 로그로 남김
-                        log.error("[ChatbotAsync] 재시도 대기열이 가득 차서 재적재 실패 - 작업 소실, 즉시 확인 필요");
-                    }
-                } else {
-                    log.error("[ChatbotAsync] 재시도 {}회 모두 실패 - 작업 소실, 수동 확인 필요", MAX_ATTEMPTS);
-                }
+            execute(entry);
+        }
+    }
+
+    // 실행 실패(RejectedExecutionException) 처리를 담당하는 단일 진입점
+    // - 기존 entry의 attempt를 그대로 이어받아 1만 증가시킴 (attempt=0으로 되돌리는 경로 없음)
+    // - MAX_ATTEMPTS 도달 시 더 이상 큐에 넣지 않고 포기
+    private void execute(RetryEntry entry) {
+        try {
+            chatbotTaskExecutorProvider.getObject().execute(entry.task());
+        } catch (RejectedExecutionException e) {
+            int nextAttempt = entry.attempt() + 1;
+            if (nextAttempt >= MAX_ATTEMPTS) {
+                log.error("[ChatbotAsync] 재시도 {}회 모두 실패 - 작업 소실, 수동 확인 필요", MAX_ATTEMPTS);
+                return;
             }
+            enqueue(new RetryEntry(entry.task(), nextAttempt));
+        }
+    }
+
+    // 대기열 적재 공통 처리 - 대기열마저 가득 차서 적재 자체가 실패하면 조용히 넘어가지 않고 반드시 에러로 남김
+    private void enqueue(RetryEntry entry) {
+        boolean added = pending.offer(entry);
+        if (!added) {
+            log.error("[ChatbotAsync] 재시도 대기열이 가득 차서 작업이 완전히 소실됨 - 즉시 확인 필요 | attempt={}", entry.attempt());
+        } else if (entry.attempt() == 0) {
+            log.warn("[ChatbotAsync] 실행기 포화로 작업 거부됨 - 재시도 대기열에 적재");
         }
     }
 
