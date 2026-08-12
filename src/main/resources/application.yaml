@@ -172,6 +172,20 @@ resilience4j:
         record-exceptions:
           - org.springframework.web.client.RestClientException
           - com.ohgiraffer.global.exception.BusinessException
+      # Notion Circuit Breaker
+      teamNotion:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 10s
+        slow-call-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - org.springframework.web.client.RestClientException
+          - com.ohgiraffer.global.exception.BusinessException
 
 admin:
   internal-token: ${ADMIN_INTERNAL_TOKEN:changeme}
