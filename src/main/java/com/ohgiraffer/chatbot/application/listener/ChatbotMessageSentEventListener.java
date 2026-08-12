@@ -5,6 +5,7 @@ import com.ohgiraffer.chatbot.application.helper.ChatbotOrchestrator;
 import com.ohgiraffer.chatbot.application.port.ChatbotChannelPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -17,7 +18,10 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *    이벤트로 받은 channelId가 AI비서 채널이면 챗봇 대화 로직을 직접 트리거함
  *  - 여기서 예외가 발생해도 이미 커밋된 메시지 전송 트랜잭션에는 영향 없음.
  *    재시도 큐 없이 로그만 남기고 종료함 (사용자는 챗봇 무응답을 그대로 겪을 수 있음 - 확인된 설계임)
+ *  - @Async(ChatbotAsyncConfig의 chatbotTaskExecutor)로 별도 스레드에서 실행 -
+ *    Gemini/Sendbird 왕복 지연이 원래 요청(sendMessage)의 HTTP 응답을 블로킹하지 않게 함
  */
+
 
 @Slf4j
 @Component
@@ -28,6 +32,7 @@ public class ChatbotMessageSentEventListener {
     private final ChatbotOrchestrator chatbotOrchestrator;
 
     // 커밋 이후에만 실행 - 메시지 저장 트랜잭션과 완전히 분리됨
+    @Async("chatbotTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleChatMessageSent(ChatMessageSentEvent event) {
         // AI비서 채널이 아니면 조용히 무시

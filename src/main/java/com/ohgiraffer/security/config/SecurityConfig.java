@@ -92,6 +92,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/metrics", "/actuator/metrics/**", "/actuator/prometheus").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/chat/webhooks/sendbird").permitAll()
+                        .requestMatchers("/webhooks/sendbird").permitAll()
                         .requestMatchers("/webhooks/sendbird/bot").permitAll()
                         .requestMatchers("/admin/**").permitAll()
 
