@@ -32,7 +32,17 @@ public class AttendanceStatusResolver {
 
         long totalMinutes = Duration.between(checkInTime, checkOutTime).toMinutes();
 
-        if (outingTime != null && returnTime != null && returnTime.isAfter(outingTime)) {
+        if (outingTime != null && returnTime != null) {
+            boolean validRange = !checkInTime.isAfter(outingTime)
+                    && outingTime.isBefore(returnTime)
+                    && !returnTime.isAfter(checkOutTime);
+
+            if (!validRange) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE,
+                        "외출/복귀 시각이 근무 시간 범위를 벗어났습니다: 입실=" + checkInTime
+                                + ", 외출=" + outingTime + ", 복귀=" + returnTime + ", 퇴실=" + checkOutTime);
+            }
+
             totalMinutes -= Duration.between(outingTime, returnTime).toMinutes();
         }
 

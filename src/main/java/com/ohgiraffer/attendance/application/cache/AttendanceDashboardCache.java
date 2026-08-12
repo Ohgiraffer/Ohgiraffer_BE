@@ -39,7 +39,8 @@ public class AttendanceDashboardCache {
     private final Map<String, ReentrantLock> lockMap = new ConcurrentHashMap<>();
 
     public AttendanceDashboardSummaryResponse getCachedDashboardSummary(Long bootcampId) {
-        String key = CACHE_PREFIX + bootcampId + "-" + LocalDate.now();
+        LocalDate today = LocalDate.now();
+        String key = CACHE_PREFIX + bootcampId + "-" + today;
 
         AttendanceDashboardSummaryResponse cached =
                 (AttendanceDashboardSummaryResponse) redisTemplate.opsForValue().get(key);
@@ -55,7 +56,7 @@ public class AttendanceDashboardCache {
                 return cached;
             }
 
-            AttendanceDashboardSummaryResponse result = loadFromDb(bootcampId);
+            AttendanceDashboardSummaryResponse result = loadFromDb(bootcampId, today);
             redisTemplate.opsForValue().set(key, result, TTL);
             return result;
         } finally {
@@ -64,7 +65,7 @@ public class AttendanceDashboardCache {
         }
     }
 
-    private AttendanceDashboardSummaryResponse loadFromDb(Long bootcampId) {
+    private AttendanceDashboardSummaryResponse loadFromDb(Long bootcampId, LocalDate today) {
         List<StudentStatusView> statuses = userQueryUsecase.getStudentStatusesByBootcampId(bootcampId);
 
         int totalStudents = statuses.size();
@@ -80,7 +81,7 @@ public class AttendanceDashboardCache {
                 .count();
 
         // 구글 시트 동기화로 실제 출근 처리된 당일 데이터
-        int attendedTodayCount = (int) attendanceRepository.countCheckedInByUserIdsAndDate(activeIds, LocalDate.now());
+        int attendedTodayCount = (int) attendanceRepository.countCheckedInByUserIdsAndDate(activeIds, today);
 
         // 기간 누적 데이터
         Map<Long, StudentAttendanceRateResult> rateByUserId = studentAttendanceRateResolver.resolve(bootcampId, activeIds);
