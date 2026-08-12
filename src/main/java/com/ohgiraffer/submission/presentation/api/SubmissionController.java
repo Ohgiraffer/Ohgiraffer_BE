@@ -14,6 +14,9 @@ import com.ohgiraffer.submission.application.usecase.DownloadSubmissionFileUseCa
 import com.ohgiraffer.submission.application.usecase.PreviewSubmissionFileResult;
 import com.ohgiraffer.submission.application.usecase.PreviewSubmissionFileUseCase;
 import com.ohgiraffer.submission.presentation.api.response.PreviewSubmissionFileResponse;
+import com.ohgiraffer.submission.application.usecase.GetStudentSubmissionHistoryUseCase;
+import com.ohgiraffer.submission.application.usecase.StudentSubmissionHistoryResult;
+import com.ohgiraffer.submission.presentation.api.response.StudentSubmissionHistoryResponse;
 import org.springframework.http.CacheControl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +47,7 @@ public class SubmissionController {
     private final UpdateSubmissionUseCase updateSubmissionUseCase;
     private final DownloadSubmissionFileUseCase downloadSubmissionFileUseCase;
     private final PreviewSubmissionFileUseCase previewSubmissionFileUseCase;
+    private final GetStudentSubmissionHistoryUseCase getStudentSubmissionHistoryUseCase;
 
     @PostMapping(
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
@@ -182,5 +186,30 @@ public class SubmissionController {
                                 result
                         )
                 );
+    }
+
+    @GetMapping("/students/{studentId}/history")
+    @PreAuthorize(
+            "hasAnyRole('MANAGER', 'INSTRUCTOR')"
+    )
+    public ResponseEntity<StudentSubmissionHistoryResponse>
+    getStudentSubmissionHistory(
+            @PathVariable Long studentId,
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal
+    ) {
+        StudentSubmissionHistoryResult result =
+                getStudentSubmissionHistoryUseCase
+                        .getHistory(
+                                studentId,
+                                principal.getId(),
+                                principal.getRole()
+                        );
+
+        return ResponseEntity.ok(
+                StudentSubmissionHistoryResponse.from(
+                        result
+                )
+        );
     }
 }
