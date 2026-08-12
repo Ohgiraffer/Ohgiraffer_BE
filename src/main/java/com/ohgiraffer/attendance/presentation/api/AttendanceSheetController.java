@@ -4,6 +4,7 @@ import com.ohgiraffer.attendance.application.command.SaveAttendanceExternalSheet
 import com.ohgiraffer.attendance.application.command.SyncAttendanceSheetCommand;
 import com.ohgiraffer.attendance.application.usecase.AttendanceSheetCommandUsecase;
 import com.ohgiraffer.attendance.application.usecase.AttendanceSheetQueryUsecase;
+import com.ohgiraffer.attendance.domain.dto.AttendanceExternalSheetLinkView;
 import com.ohgiraffer.attendance.domain.dto.AttendanceSheetSyncLogView;
 import com.ohgiraffer.attendance.domain.dto.SyncAttendanceSheetResult;
 import com.ohgiraffer.attendance.domain.model.SyncTriggerType;
@@ -34,15 +35,14 @@ public class AttendanceSheetController {
     @Operation(summary = "출결 시트 연동 설정 저장", description = "관리자가 시트 URL, 탭명, 날짜 선택 셀, 컬럼매핑을 저장합니다. 이미 저장된 설정이 있으면 덮어씁니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "저장 성공"),
-            @ApiResponse(responseCode = "400", description = "요청값이 올바르지 않음(필수값 누락 등)"),
+            @ApiResponse(responseCode = "400", description = "요청값이 올바르지 않음"),
             @ApiResponse(responseCode = "401", description = "인증되지 않음"),
             @ApiResponse(responseCode = "403", description = "권한 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     @PostMapping("/sheet-link")
-    public ResponseEntity<Void> saveLink(
-            @Valid @RequestBody SaveAttendanceSheetLinkRequest request) {
+    public ResponseEntity<Void> saveLink(@Valid @RequestBody SaveAttendanceSheetLinkRequest request) {
         attendanceSheetCommandUsecase.save(
                 new SaveAttendanceExternalSheetLinkCommand(
                         request.sheetUrl(),
@@ -53,6 +53,21 @@ public class AttendanceSheetController {
         );
         return ResponseEntity.ok().build();
     }
+
+    @Operation(summary = "출결 시트 연동 설정 조회", description = "현재 저장된 시트 연동 설정을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "등록된 시트 연동 설정이 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    @GetMapping("/sheet-link")
+    public ResponseEntity<AttendanceExternalSheetLinkView> getSheetLink() {
+        return ResponseEntity.ok(attendanceSheetQueryUsecase.getSheetLink());
+    }
+
 
     @Operation(summary = "출결 시트 동기화 (관리자용)", description = "저장된 시트 연동 설정을 사용해 오늘 날짜의 출결 데이터를 동기화합니다.")
     @ApiResponses({

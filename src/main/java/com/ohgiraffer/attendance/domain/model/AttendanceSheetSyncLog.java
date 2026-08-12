@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 public class AttendanceSheetSyncLog {
@@ -12,6 +13,7 @@ public class AttendanceSheetSyncLog {
     private final Long attendanceSheetLinkId;
     private final String changedRange;
     private final String diffSummary;
+    private final List<FailedRowDetail> failedRowDetails;
     private final LocalDateTime syncedAt;
     private final Long executorId;
     private final String executorName;
@@ -23,6 +25,7 @@ public class AttendanceSheetSyncLog {
             Long attendanceSheetLinkId,
             String changedRange,
             String diffSummary,
+            List<FailedRowDetail> failedRowDetails,
             LocalDateTime syncedAt,
             Long executorId,
             String executorName,
@@ -32,6 +35,7 @@ public class AttendanceSheetSyncLog {
         this.attendanceSheetLinkId = attendanceSheetLinkId;
         this.changedRange = changedRange;
         this.diffSummary = diffSummary;
+        this.failedRowDetails = failedRowDetails;
         this.syncedAt = syncedAt;
         this.executorId = executorId;
         this.executorName = executorName;

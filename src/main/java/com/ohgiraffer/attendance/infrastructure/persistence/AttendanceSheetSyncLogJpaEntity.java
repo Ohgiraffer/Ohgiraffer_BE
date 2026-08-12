@@ -1,5 +1,6 @@
 package com.ohgiraffer.attendance.infrastructure.persistence;
 
+import com.ohgiraffer.attendance.domain.model.FailedRowDetail;
 import com.ohgiraffer.attendance.domain.model.SyncResult;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -7,8 +8,11 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "sheet_sync_log")
@@ -30,6 +34,10 @@ public class AttendanceSheetSyncLogJpaEntity {
     @Column(name = "diff_summary", columnDefinition = "TEXT")
     private String diffSummary;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "failed_row_details")
+    private List<FailedRowDetail> failedRowDetails;
+
     @CreationTimestamp
     @Column(name = "synced_at", nullable = false, updatable = false)
     private LocalDateTime syncedAt;
@@ -49,6 +57,7 @@ public class AttendanceSheetSyncLogJpaEntity {
             Long attendanceSheetLinkId,
             String changedRange,
             String diffSummary,
+            List<FailedRowDetail> failedRowDetails,
             Long executorId,
             String executorName,
             SyncResult result
@@ -56,6 +65,7 @@ public class AttendanceSheetSyncLogJpaEntity {
         this.attendanceSheetLinkId = attendanceSheetLinkId;
         this.changedRange = changedRange;
         this.diffSummary = diffSummary;
+        this.failedRowDetails = failedRowDetails;
         this.executorId = executorId;
         this.executorName = executorName;
         this.result = result;

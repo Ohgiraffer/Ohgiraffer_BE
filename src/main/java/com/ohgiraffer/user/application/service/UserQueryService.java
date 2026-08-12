@@ -10,6 +10,7 @@ import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.domain.model.StudentStatusView;
 import com.ohgiraffer.user.domain.model.User;
+import com.ohgiraffer.user.domain.model.UserStatus;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import com.ohgiraffer.user.presentation.api.response.UserListResponse;
 import com.ohgiraffer.user.presentation.api.response.UserResponse;
@@ -23,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -111,5 +113,21 @@ public class UserQueryService implements UserQueryUsecase {
                     return UserListResponse.of(user, teamNames.get(user.getId()), profileImgUrl);
                 })
                 .toList();
+    }
+
+    @Override
+    public Map<String, Long> getStudentNameToIdMapByBootcampId(Long bootcampId) {
+        return userRepository.findAllByBootcampId(bootcampId).stream()
+                .collect(Collectors.toMap(
+                        User::getName,
+                        User::getId,
+                        (a, b) -> a
+                ));
+    }
+
+    @Override
+    public Long getAnyActiveBootcampId() {
+        return userRepository.findAnyBootcampIdByStatus(UserStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
     }
 }
