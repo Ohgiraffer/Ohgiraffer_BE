@@ -362,7 +362,7 @@ public class QuerySubmissionStatusService
             return findIndividualTargets();
         }
 
-        return findTeamTargets();
+        return findTeamTargets(submissionBox);
     }
 
     private List<SubmissionTarget> findIndividualTargets() {
@@ -381,9 +381,23 @@ public class QuerySubmissionStatusService
                 .toList();
     }
 
-    private List<SubmissionTarget> findTeamTargets() {
+    private List<SubmissionTarget> findTeamTargets(
+            SubmissionBox submissionBox
+    ) {
+        /*
+         * 제출함 시작일이 포함된 팀 운영 기간을 기준으로 조회합니다.
+         *
+         * 예:
+         * 제출함 시작일 2025-08-10
+         * → 2025-08-01 ~ 2025-08-31 팀 기간
+         * → 해당 team_period_id를 가진 팀만 반환
+         */
         return submissionTeamTargetPort
-                .findActiveTeams()
+                .findTeamsByTargetDate(
+                        submissionBox
+                                .getStartAt()
+                                .toLocalDate()
+                )
                 .stream()
                 .map(team ->
                         new SubmissionTarget(

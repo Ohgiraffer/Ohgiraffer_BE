@@ -158,14 +158,6 @@ public class QuerySubmissionBoxService
                                 Collectors.toUnmodifiableSet()
                         );
 
-        Set<Long> activeTeamIds =
-                submissionTeamTargetPort
-                        .findActiveTeams()
-                        .stream()
-                        .map(team -> team.teamId())
-                        .collect(
-                                Collectors.toUnmodifiableSet()
-                        );
 
         return submissionBoxes.stream()
                 .map(submissionBox -> {
@@ -175,7 +167,7 @@ public class QuerySubmissionBoxService
 
                     Set<Long> activeTargetIds =
                             teamSubmission
-                                    ? activeTeamIds
+                                    ? findTeamTargetIds(submissionBox)
                                     : activeStudentIds;
 
                     List<SubmissionListEntry> entries =
@@ -204,6 +196,28 @@ public class QuerySubmissionBoxService
                             );
                 })
                 .toList();
+    }
+
+    /**
+     * 제출함 시작일이 포함된 팀 운영 기간의 팀 ID를 조회합니다.
+     *
+     * 제출함마다 시작일이 다를 수 있으므로 하나의 팀 목록을
+     * 전체 제출함에 공통으로 사용하면 안 됩니다.
+     */
+    private Set<Long> findTeamTargetIds(
+            SubmissionBox submissionBox
+    ) {
+        return submissionTeamTargetPort
+                .findTeamsByTargetDate(
+                        submissionBox
+                                .getStartAt()
+                                .toLocalDate()
+                )
+                .stream()
+                .map(team -> team.teamId())
+                .collect(
+                        Collectors.toUnmodifiableSet()
+                );
     }
 
     private int calculateSubmittedCount(

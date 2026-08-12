@@ -6,7 +6,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.sql.Date;
-import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -15,12 +14,12 @@ public class JdbcSubmissionTeamTargetAdapter
         implements SubmissionTeamTargetPort {
 
     /**
-     * 운영진 제출 현황의 전체 대상 팀을 조회합니다.
+     * 제출함 시작일이 포함된 팀 운영 기간의 팀을 조회합니다.
      *
-     * 삭제·해산·보관 팀과 종료된 팀 기간의 팀은
-     * 현재 제출 대상에서 제외합니다.
+     * 팀 자체의 임의 날짜가 아니라 팀 관리 도메인의
+     * team_period.start_date, team_period.end_date를 기준으로 합니다.
      */
-    private static final String FIND_ACTIVE_TEAMS_SQL = """
+    private static final String FIND_TEAMS_BY_TARGET_DATE_SQL = """
             SELECT
                 t.team_id,
                 t.name
@@ -37,38 +36,36 @@ public class JdbcSubmissionTeamTargetAdapter
             """;
 
     private final JdbcTemplate jdbcTemplate;
-    private final Clock clock;
 
     public JdbcSubmissionTeamTargetAdapter(
-            JdbcTemplate jdbcTemplate,
-            Clock clock
+            JdbcTemplate jdbcTemplate
     ) {
         this.jdbcTemplate = jdbcTemplate;
-        this.clock = clock;
     }
 
     @Override
-    public List<TeamSubmissionTarget> findActiveTeams() {
-        LocalDate currentDate =
-                LocalDate.now(clock);
+    public List<TeamSubmissionTarget> findTeamsByTargetDate(
+            LocalDate targetDate
+    ) {
+        if (targetDate == null) {
+            throw new IllegalArgumentException(
+                    "팀 제출 대상 조회 기준 날짜는 필수입니다."
+            );
+        }
 
         return jdbcTemplate.query(
-                FIND_ACTIVE_TEAMS_SQL,
+                FIND_TEAMS_BY_TARGET_DATE_SQL,
                 preparedStatement ->
                         preparedStatement.setDate(
                                 1,
-                                Date.valueOf(currentDate)
+                                Date.valueOf(targetDate)
                         ),
                 (resultSet, rowNumber) -> {
                     Long teamId =
-                            resultSet.getLong(
-                                    "team_id"
-                            );
+                            resultSet.getLong("team_id");
 
                     String teamName =
-                            resultSet.getString(
-                                    "name"
-                            );
+                            resultSet.getString("name");
 
                     if (teamName == null
                             || teamName.isBlank()) {
