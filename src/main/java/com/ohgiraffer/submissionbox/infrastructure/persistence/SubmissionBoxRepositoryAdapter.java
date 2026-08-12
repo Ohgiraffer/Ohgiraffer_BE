@@ -129,4 +129,17 @@ public class SubmissionBoxRepositoryAdapter implements SubmissionBoxRepository {
         repository.deleteById(submissionBoxId);
         repository.flush();
     }
+
+    @Override
+    public List<SubmissionBox> findAllByBootcampId(
+            Long bootcampId
+    ) {
+        return repository
+                .findAllByBootcampIdOrderByDueAtDesc(
+                        bootcampId
+                )
+                .stream()
+                .map(SubmissionBoxJpaEntity::toDomain)
+                .toList();
+    }
 }

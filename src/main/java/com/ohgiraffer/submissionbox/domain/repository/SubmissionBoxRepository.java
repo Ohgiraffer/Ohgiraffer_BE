@@ -17,6 +17,10 @@ public interface SubmissionBoxRepository {
 
     List<SubmissionBox> findAll();
 
+    List<SubmissionBox> findAllByBootcampId(
+            Long bootcampId
+    );
+
     Optional<SubmissionBox> findById(
             Long submissionBoxId
     );
