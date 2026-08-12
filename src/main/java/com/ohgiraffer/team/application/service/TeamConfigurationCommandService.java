@@ -10,6 +10,7 @@ import com.ohgiraffer.team.application.event.TeamWorkspaceSyncTarget;
 import com.ohgiraffer.team.application.usecase.SaveTeamConfigurationUseCase;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
+import com.ohgiraffer.team.domain.model.TeamOutbox;
 import com.ohgiraffer.team.domain.model.TeamPeriod;
 import com.ohgiraffer.team.domain.repository.TeamPeriodRepository;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
@@ -41,6 +42,7 @@ public class TeamConfigurationCommandService
     private final TeamRepository teamRepository;
     private final TeamPeriodRepository teamPeriodRepository;
     private final UserRepository userRepository;
+    private final TeamOutboxService teamOutboxService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -463,12 +465,29 @@ public class TeamConfigurationCommandService
                         .map(TeamWorkspaceSyncTarget::new)
                         .toList();
 
+        List<Long> sendbirdOutboxIds =
+                channelSyncTargets.stream()
+                        .map(target ->
+                                teamOutboxService.saveSendbirdChannelSync(
+                                        target,
+                                        createChatChannel
+                                )
+                        )
+                        .map(TeamOutbox::getId)
+                        .toList();
+
+        List<Long> notionOutboxIds =
+                createNotionPage
+                        ? workspaceSyncTargets.stream()
+                        .map(teamOutboxService::saveNotionWorkspaceSync)
+                        .map(TeamOutbox::getId)
+                        .toList()
+                        : List.of();
+
         eventPublisher.publishEvent(
                 new TeamConfigurationSavedEvent(
-                        channelSyncTargets,
-                        workspaceSyncTargets,
-                        createChatChannel,
-                        createNotionPage
+                        sendbirdOutboxIds,
+                        notionOutboxIds
                 )
         );
     }
@@ -539,7 +558,9 @@ public class TeamConfigurationCommandService
                         team.teamId()
                 );
 
-                if (!teamIds.add(team.teamId())) {
+                if (!teamIds.add(
+                        team.teamId()
+                )) {
                     throw new BusinessException(
                             ErrorCode.INVALID_INPUT_VALUE,
                             "중복된 팀이 포함되어 있습니다."
@@ -548,7 +569,10 @@ public class TeamConfigurationCommandService
             }
 
             if (team.name() != null
-                    && !teamNames.add(team.name().trim())) {
+                    && !teamNames.add(
+                    team.name()
+                            .trim()
+            )) {
                 throw new BusinessException(
                         ErrorCode.TEAM_DUPLICATE_NAME
                 );
@@ -595,7 +619,9 @@ public class TeamConfigurationCommandService
                     teamId
             );
 
-            if (!teamIds.add(teamId)) {
+            if (!teamIds.add(
+                    teamId
+            )) {
                 throw new BusinessException(
                         ErrorCode.INVALID_INPUT_VALUE,
                         "중복된 삭제 팀이 포함되어 있습니다."
@@ -631,7 +657,9 @@ public class TeamConfigurationCommandService
             Map<Long, Team> visibleTeamById
     ) {
         for (Long teamId : deletedTeamIds) {
-            if (!visibleTeamById.containsKey(teamId)) {
+            if (!visibleTeamById.containsKey(
+                    teamId
+            )) {
                 throw new BusinessException(
                         ErrorCode.TEAM_NOT_FOUND
                 );
@@ -647,7 +675,9 @@ public class TeamConfigurationCommandService
 
         for (TeamConfigurationCommand team : command.teams()) {
             for (Long userId : team.userIds()) {
-                if (!userIds.add(userId)) {
+                if (!userIds.add(
+                        userId
+                )) {
                     throw new BusinessException(
                             ErrorCode.INVALID_INPUT_VALUE,
                             "중복된 훈련생이 포함되어 있습니다."
@@ -657,7 +687,9 @@ public class TeamConfigurationCommandService
         }
 
         for (Long userId : command.unassignedUserIds()) {
-            if (!userIds.add(userId)) {
+            if (!userIds.add(
+                    userId
+            )) {
                 throw new BusinessException(
                         ErrorCode.INVALID_INPUT_VALUE,
                         "중복된 훈련생이 포함되어 있습니다."
