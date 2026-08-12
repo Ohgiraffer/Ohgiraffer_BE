@@ -51,5 +51,18 @@ public class SurveyFormRepositoryAdapter implements SurveyFormRepository {
         repository.flush();
     }
 
+    @Override
+    public List<SurveyForm> findAllByBootcampId(
+            Long bootcampId
+    ) {
+        return repository
+                .findAllByBootcampIdOrderByCreatedAtDesc(
+                        bootcampId
+                )
+                .stream()
+                .map(SurveyFormJpaEntity::toDomain)
+                .toList();
+    }
+
 
 }

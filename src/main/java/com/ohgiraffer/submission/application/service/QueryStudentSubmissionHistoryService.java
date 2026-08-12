@@ -23,7 +23,7 @@ import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class QueryStudentSubmissionHistoryService
@@ -54,7 +55,6 @@ public class QueryStudentSubmissionHistoryService
     private final GoogleFormPort googleFormPort;
 
     @Override
-    @Transactional(readOnly = true)
     public StudentSubmissionHistoryResult getHistory(
             Long studentId,
             Long requesterId,
@@ -77,18 +77,50 @@ public class QueryStudentSubmissionHistoryService
                 student
         );
 
+        Long bootcampId = student.getBootcampId();
+
+        if (bootcampId == null) {
+            throw new BusinessException(
+                    ErrorCode.BOOTCAMP_ACCESS_DENIED
+            );
+        }
+
+        /*
+         * 먼저 현재 부트캠프에 해당하는 DB 데이터를 모두 조회합니다.
+         * 이 시점에는 아직 Google Forms API를 호출하지 않습니다.
+         */
+        List<SubmissionBox> submissionBoxes =
+                submissionBoxRepository
+                        .findAllByBootcampId(
+                                bootcampId
+                        );
+
+        List<SurveyForm> surveyForms =
+                surveyFormRepository
+                        .findAllByBootcampId(
+                                bootcampId
+                        );
+
         List<StudentSubmissionHistoryItemResult> items =
                 new ArrayList<>();
 
+        /*
+         * 제출 이력에 필요한 DB 조회를 먼저 처리합니다.
+         */
         items.addAll(
                 getSubmissionHistoryItems(
-                        studentId
+                        studentId,
+                        submissionBoxes
                 )
         );
 
+        /*
+         * DB 관련 조회가 끝난 뒤 Google Forms 응답을 조회합니다.
+         */
         items.addAll(
                 getSurveyHistoryItems(
-                        student.getEmail()
+                        student.getEmail(),
+                        surveyForms
                 )
         );
 
@@ -192,10 +224,10 @@ public class QueryStudentSubmissionHistoryService
 
     private List<StudentSubmissionHistoryItemResult>
     getSubmissionHistoryItems(
-            Long studentId
+            Long studentId,
+            List<SubmissionBox> submissionBoxes
     ) {
-        return submissionBoxRepository
-                .findAll()
+        return submissionBoxes
                 .stream()
                 .map(submissionBox ->
                         toSubmissionHistoryItem(
@@ -203,10 +235,6 @@ public class QueryStudentSubmissionHistoryService
                                 studentId
                         )
                 )
-                /*
-                 * 팀 제출함 시작일시에 학생이 어떤 팀에도 속하지 않았다면
-                 * 해당 제출함은 학생의 제출 대상이 아니므로 제외합니다.
-                 */
                 .flatMap(Optional::stream)
                 .toList();
     }
@@ -275,29 +303,85 @@ public class QueryStudentSubmissionHistoryService
 
     private List<StudentSubmissionHistoryItemResult>
     getSurveyHistoryItems(
-            String studentEmail
+            String studentEmail,
+            List<SurveyForm> surveyForms
     ) {
         String normalizedStudentEmail =
                 normalizeEmail(studentEmail);
 
-        return surveyFormRepository
-                .findAll()
+        return surveyForms
                 .stream()
-                /*
-                 * DRAFT는 학생에게 공개되지 않은 설문이므로
-                 * 개인 응답 이력에서 제외합니다.
-                 */
                 .filter(surveyForm ->
                         surveyForm.getStatus()
                                 != SurveyFormStatus.DRAFT
                 )
                 .map(surveyForm ->
-                        toSurveyHistoryItem(
+                        toSurveyHistoryItemSafely(
                                 surveyForm,
                                 normalizedStudentEmail
                         )
                 )
                 .toList();
+    }
+
+    private StudentSubmissionHistoryItemResult
+    toSurveyHistoryItemSafely(
+            SurveyForm surveyForm,
+            String normalizedStudentEmail
+    ) {
+        try {
+            return toSurveyHistoryItem(
+                    surveyForm,
+                    normalizedStudentEmail
+            );
+
+        } catch (BusinessException exception) {
+            if (!isGoogleFormsFailure(
+                    exception.getErrorCode()
+            )) {
+                /*
+                 * Google Forms 장애가 아닌 내부 비즈니스 오류는
+                 * 숨기지 않고 기존 방식대로 상위로 전달합니다.
+                 */
+                throw exception;
+            }
+
+            log.warn(
+                    "Google Forms 응답 조회 실패. "
+                            + "surveyFormId={}, googleFormId={}, errorCode={}",
+                    surveyForm.getId(),
+                    surveyForm.getGoogleFormId(),
+                    exception.getErrorCode().getCode(),
+                    exception
+            );
+
+            return new StudentSubmissionHistoryItemResult(
+                    StudentSubmissionHistorySourceType
+                            .SURVEY_FORM,
+                    surveyForm.getId(),
+                    surveyForm.getTitle(),
+                    null,
+                    StudentSubmissionHistoryStatus
+                            .RESPONSE_CHECK_FAILED,
+                    false,
+                    null,
+                    surveyForm.getDueAt(),
+                    false
+            );
+        }
+    }
+
+    private boolean isGoogleFormsFailure(
+            ErrorCode errorCode
+    ) {
+        return errorCode
+                == ErrorCode.GOOGLE_FORM_ACCESS_DENIED
+                || errorCode
+                == ErrorCode.GOOGLE_FORM_NOT_FOUND
+                || errorCode
+                == ErrorCode.GOOGLE_FORM_RATE_LIMIT_EXCEEDED
+                || errorCode
+                == ErrorCode.GOOGLE_FORM_API_ERROR;
     }
 
     private StudentSubmissionHistoryItemResult
