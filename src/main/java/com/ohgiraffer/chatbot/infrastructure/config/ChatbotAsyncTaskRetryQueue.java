@@ -47,11 +47,16 @@ public class ChatbotAsyncTaskRetryQueue {
         enqueue(new RetryEntry(task, 0));
     }
 
-    // 주기적으로 대기열을 비우며 재실행 시도. 실패하면 execute()가 attempt를 증가시켜 재적재하거나 포기함
+    // 호출 시작 시점의 대기열 크기만큼만 처리 - execute()에서 재적재된 항목은 batchSize에 포함되지 않아
+    // 같은 호출 안에서 즉시 재폴링되지 않고 다음 5초 스케줄로 넘어감 (딜레이 없는 즉시 반복 제출 방지)
     @Scheduled(fixedDelay = 5000)
     public void drain() {
-        RetryEntry entry;
-        while ((entry = pending.poll()) != null) {
+        int batchSize = pending.size();
+        for (int i = 0; i < batchSize; i++) {
+            RetryEntry entry = pending.poll();
+            if (entry == null) {
+                break;
+            }
             execute(entry);
         }
     }
