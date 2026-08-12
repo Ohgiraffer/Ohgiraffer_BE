@@ -1,4 +1,4 @@
-package com.ohgiraffer.todo.infrastructure.adapter;
+package com.ohgiraffer.approval.infrastructure.adapter;
 
 import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;

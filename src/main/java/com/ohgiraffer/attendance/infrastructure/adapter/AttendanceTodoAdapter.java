@@ -1,4 +1,4 @@
-package com.ohgiraffer.todo.infrastructure.adapter;
+package com.ohgiraffer.attendance.infrastructure.adapter;
 
 import com.ohgiraffer.attendance.domain.model.AttendanceSummaryView;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;

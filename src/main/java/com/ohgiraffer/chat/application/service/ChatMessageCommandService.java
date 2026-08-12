@@ -5,6 +5,7 @@ import com.ohgiraffer.chat.application.port.SendbirdApiPort;
 import com.ohgiraffer.chat.application.result.SendbirdMessageResult;
 import com.ohgiraffer.chat.application.usecase.ChatMessageCommandUseCase;
 import com.ohgiraffer.chat.application.usecase.ChatMessageMirrorCommandUseCase;
+import com.ohgiraffer.chat.domain.event.ChatMessageSentEvent;
 import com.ohgiraffer.chat.domain.model.ChatChannel;
 import com.ohgiraffer.chat.domain.model.ChatMessageMirror;
 import com.ohgiraffer.chat.domain.repository.ChatChannelMemberRepository;
@@ -15,6 +16,7 @@ import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,9 @@ import java.util.List;
  *  ChatMessageCommandUseCase 구현체
  *  Sendbird에 먼저 반영 성공 후, 웹훅을 기다리지 않고 이 자리에서 바로 미러링 처리(ChatReplyCommandService와 동일 패턴)
  *  수정/삭제는 본인이 작성한 메시지인지 chat_message_mirror 기준으로 검증 후 처리
+ *  메시지 전송 성공 시 ChatMessageSentEvent를 발행함 - AI비서 채널 여부 판단 및
+ *  Sendbird 웹훅(bot_callback_url) 미수신 문제로 인한 챗봇 직접 트리거는
+ *  전부 chatbot 패키지의 리스너 책임으로 위임함 (chat은 chatbot의 존재를 모름 - 단방향 의존)
  */
 
 @Slf4j
@@ -42,7 +47,8 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
     private final ChatChannelMemberRepository chatChannelMemberRepository;
     // mentionedUserIds 실존 검증용
     private final UserRepository userRepository;
-
+    // 메시지 전송 완료 이벤트 발행용 - chatbot 등 후속 처리는 리스너가 각자 구독해서 담당
+    private final ApplicationEventPublisher eventPublisher;
 
     // 메시지 전송 - Sendbird 반영 성공 후 즉시 미러링 저장 (parentMessageId=null이라 일반 메시지로 저장됨)
     @Override
@@ -69,6 +75,12 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
         chatMessageMirrorCommandUseCase.mirrorCreated(new MirrorMessageCreatedCommand(
                 command.channelId(), result.sendbirdMessageId(), null, command.senderId(),
                 command.content(), result.attachmentUrl(), null, result.sentAt()
+        ));
+
+        // 조건 없이 무조건 발행 - AI비서 채널인지 판단은 이 서비스가 아니라 chatbot 리스너가 함
+        // AFTER_COMMIT 리스너에서 처리되므로 이 트랜잭션 커밋 이후에만 실제로 소비됨
+        eventPublisher.publishEvent(new ChatMessageSentEvent(
+                command.channelId(), command.senderId(), command.content()
         ));
 
         log.info("[Chat] 메시지 전송 완료 | channelId={}, messageId={}", command.channelId(), result.sendbirdMessageId());

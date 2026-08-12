@@ -1,4 +1,4 @@
-package com.ohgiraffer.todo.infrastructure.adapter;
+package com.ohgiraffer.submission.infrastructure.adapter;
 
 import com.ohgiraffer.submission.domain.repository.StudentTeamRepository;
 import com.ohgiraffer.submission.domain.repository.SubmissionRepository;

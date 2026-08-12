@@ -1,4 +1,4 @@
-package com.ohgiraffer.todo.infrastructure.adapter;
+package com.ohgiraffer.consultation.infrastructure.adapter;
 
 import com.ohgiraffer.todo.application.port.ConsultationTodoPort;
 import com.ohgiraffer.todo.domain.model.TodoItemResponse;
