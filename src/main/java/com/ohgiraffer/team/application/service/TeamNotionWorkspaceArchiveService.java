@@ -26,8 +26,9 @@ public class TeamNotionWorkspaceArchiveService {
     public void archive(
             String notionPageId
     ) {
-        if (notionPageId == null
-                || notionPageId.isBlank()) {
+        if (isBlank(
+                notionPageId
+        )) {
             return;
         }
 
@@ -40,6 +41,12 @@ public class TeamNotionWorkspaceArchiveService {
             String notionPageId,
             Throwable throwable
     ) {
+        if (isBlank(
+                notionPageId
+        )) {
+            return;
+        }
+
         if (isNotionApiFailure(
                 throwable
         )) {
@@ -62,6 +69,13 @@ public class TeamNotionWorkspaceArchiveService {
                 ErrorCode.INTERNAL_SERVER_ERROR,
                 throwable
         );
+    }
+
+    private boolean isBlank(
+            String value
+    ) {
+        return value == null
+                || value.isBlank();
     }
 
     private boolean isNotionApiFailure(
