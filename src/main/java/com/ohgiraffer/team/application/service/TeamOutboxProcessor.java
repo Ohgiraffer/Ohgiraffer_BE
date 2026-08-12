@@ -2,8 +2,6 @@ package com.ohgiraffer.team.application.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ohgiraffer.global.exception.BusinessException;
-import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.team.application.event.TeamChannelSyncTarget;
 import com.ohgiraffer.team.application.outbox.ExternalResourceDeletePayload;
 import com.ohgiraffer.team.application.outbox.NotionWorkspaceSyncPayload;
@@ -14,8 +12,10 @@ import com.ohgiraffer.team.domain.repository.TeamOutboxRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -26,7 +26,7 @@ import java.util.Optional;
 public class TeamOutboxProcessor {
 
     private static final int RETRY_BATCH_SIZE = 20;
-    private static final long PROCESSING_TIMEOUT_MINUTES = 10L;
+    private static final Duration PROCESSING_TIMEOUT = Duration.ofMinutes(10);
 
     private final TeamOutboxRepository teamOutboxRepository;
     private final TeamOutboxService teamOutboxService;
@@ -76,20 +76,23 @@ public class TeamOutboxProcessor {
             );
 
             log.error(
-                    "[TeamOutbox] 외부 동기화 작업 실패 | outboxId={}",
+                    "팀 아웃박스 처리에 실패했습니다. outboxId={}",
                     outboxId,
                     exception
             );
         }
     }
 
+    @Transactional
     public void processRetryTargets() {
         LocalDateTime now =
-                now();
+                LocalDateTime.now(
+                        clock
+                );
 
         LocalDateTime processingTimeoutAt =
-                now.minusMinutes(
-                        PROCESSING_TIMEOUT_MINUTES
+                now.minus(
+                        PROCESSING_TIMEOUT
                 );
 
         List<TeamOutbox> retryTargets =
@@ -109,6 +112,15 @@ public class TeamOutboxProcessor {
                         outbox.getId()
                 )
         );
+    }
+
+    private LocalDateTime processingTimeoutAt() {
+        return LocalDateTime.now(
+                        clock
+                )
+                .minus(
+                        PROCESSING_TIMEOUT
+                );
     }
 
     private void processOutbox(
@@ -133,7 +145,7 @@ public class TeamOutboxProcessor {
     private void processSendbirdChannelSync(
             String payload
     ) {
-        SendbirdChannelSyncPayload syncPayload =
+        SendbirdChannelSyncPayload sendbirdPayload =
                 deserialize(
                         payload,
                         SendbirdChannelSyncPayload.class
@@ -141,24 +153,24 @@ public class TeamOutboxProcessor {
 
         teamSendbirdChannelSyncService.sync(
                 new TeamChannelSyncTarget(
-                        syncPayload.teamId(),
-                        syncPayload.memberUserIds()
+                        sendbirdPayload.teamId(),
+                        sendbirdPayload.memberUserIds()
                 ),
-                syncPayload.createChatChannel()
+                sendbirdPayload.createChatChannel()
         );
     }
 
     private void processNotionWorkspaceSync(
             String payload
     ) {
-        NotionWorkspaceSyncPayload syncPayload =
+        NotionWorkspaceSyncPayload notionPayload =
                 deserialize(
                         payload,
                         NotionWorkspaceSyncPayload.class
                 );
 
         teamNotionWorkspaceService.syncTeamWorkspace(
-                syncPayload.teamId()
+                notionPayload.teamId()
         );
     }
 
@@ -198,22 +210,10 @@ public class TeamOutboxProcessor {
                     payloadType
             );
         } catch (JsonProcessingException exception) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "Outbox payload 역직렬화에 실패했습니다."
+            throw new IllegalStateException(
+                    "팀 아웃박스 payload 역직렬화에 실패했습니다.",
+                    exception
             );
         }
-    }
-
-    private LocalDateTime processingTimeoutAt() {
-        return now().minusMinutes(
-                PROCESSING_TIMEOUT_MINUTES
-        );
-    }
-
-    private LocalDateTime now() {
-        return LocalDateTime.now(
-                clock
-        );
     }
 }
