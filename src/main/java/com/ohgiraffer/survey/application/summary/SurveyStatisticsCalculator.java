@@ -10,6 +10,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Component
@@ -31,9 +32,7 @@ public class SurveyStatisticsCalculator {
     private static final int MAX_TEXT_LENGTH = 500;
 
     public SurveyStatisticsResult calculate(
-            SurveyResponseDataset dataset,
-            String respondentColumn,
-            String submittedAtColumn
+            SurveyResponseDataset dataset
     ) {
         if (dataset == null) {
             throw new IllegalArgumentException(
@@ -53,11 +52,9 @@ public class SurveyStatisticsCalculator {
             String header =
                     dataset.headers().get(columnIndex);
 
-            if (isExcludedColumn(
-                    header,
-                    respondentColumn,
-                    submittedAtColumn
-            )) {
+            if (header == null
+                    || header.isBlank()
+                    || isSensitiveMetadataColumn(header)) {
                 continue;
             }
 
@@ -333,22 +330,19 @@ public class SurveyStatisticsCalculator {
                 && distinctCount <= relativeLimit;
     }
 
-    private boolean isExcludedColumn(
-            String header,
-            String respondentColumn,
-            String submittedAtColumn
+    private boolean isSensitiveMetadataColumn(
+            String header
     ) {
-        if (header == null || header.isBlank()) {
-            return true;
-        }
+        String normalized =
+                header.trim()
+                        .toLowerCase(Locale.ROOT)
+                        .replaceAll("[\\s_-]", "");
 
-        if (respondentColumn != null
-                && header.equals(respondentColumn)) {
-            return true;
-        }
-
-        return submittedAtColumn != null
-                && header.equals(submittedAtColumn);
+        return normalized.equals("이메일")
+                || normalized.equals("이메일주소")
+                || normalized.equals("email")
+                || normalized.equals("emailaddress")
+                || normalized.equals("응답자이메일");
     }
 
     private boolean isNumber(

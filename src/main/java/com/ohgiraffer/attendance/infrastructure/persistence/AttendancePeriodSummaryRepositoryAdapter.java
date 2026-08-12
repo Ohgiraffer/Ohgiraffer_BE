@@ -1,6 +1,6 @@
 package com.ohgiraffer.attendance.infrastructure.persistence;
 
-import com.ohgiraffer.attendance.domain.model.StudentAttendanceCountsView;
+import com.ohgiraffer.attendance.domain.dto.StudentAttendanceCountsView;
 import com.ohgiraffer.attendance.domain.repository.AttendancePeriodSummaryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;

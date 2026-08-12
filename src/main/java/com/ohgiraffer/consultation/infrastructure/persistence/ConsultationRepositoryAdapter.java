@@ -35,11 +35,11 @@ public class ConsultationRepositoryAdapter implements ConsultationRepository {
         }
 
         @Override
-        public List<Consultation> findUpcoming(LocalDateTime from) {
-            return springDataRepository.findUpcoming(from).stream()
-                   .map(ConsultationJpaEntity::toDomain)
-                   .toList();
-       }
+        public List<Consultation> findUpcoming(Long counselorId, LocalDateTime from, ConsultationStatus status) {
+            return springDataRepository.findUpcoming(counselorId, from, status).stream()
+                    .map(ConsultationJpaEntity::toDomain)
+                    .toList();
+        }
 
         @Override
         public List<Consultation> findAll() {

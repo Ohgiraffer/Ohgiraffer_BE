@@ -1,4 +1,4 @@
-package com.ohgiraffer.attendance.domain.model;
+package com.ohgiraffer.attendance.domain.dto;
 
 public record AttendanceSummaryView(
         long presentDays,

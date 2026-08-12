@@ -2,6 +2,7 @@ package com.ohgiraffer.team.infrastructure.persistence;
 
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.team.application.usecase.UserTeamHistoryResult;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
 import com.ohgiraffer.team.domain.model.UnassignedStudent;
@@ -254,6 +255,25 @@ public class TeamRepositoryAdapter
         return springDataTeamMemberRepository.findUnassignedStudents()
                 .stream()
                 .map(this::toUnassignedStudent)
+                .toList();
+    }
+
+    @Override
+    public List<UserTeamHistoryResult> findUserTeamHistories(
+            Long userId
+    ) {
+        return springDataTeamMemberRepository.findUserTeamHistories(
+                        userId
+                )
+                .stream()
+                .map(projection ->
+                        new UserTeamHistoryResult(
+                                projection.getTeamId(),
+                                projection.getTeamName(),
+                                projection.getStartDate(),
+                                projection.getEndDate()
+                        )
+                )
                 .toList();
     }
 

@@ -127,6 +127,8 @@ public enum ErrorCode {
     LEAVE_BALANCE_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_002", "해당 기간의 휴가 잔여일수 정보를 찾을 수 없습니다."),
     SICK_BALANCE_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_003", "해당 기간의 병결 잔여일수 정보를 찾을 수 없습니다."),
     ATTENDANCE_APPROVAL_CONFLICT(HttpStatus.CONFLICT, "ATTENDANCE_004", "다른 승인 건으로 이미 처리된 날짜입니다."),
+    ATTENDANCE_SHEET_LINK_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_005", "등록된 출결 시트 연동 설정이 없습니다."),
+    ATTENDANCE_SHEET_SYNC_LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_006", "존재하지 않는 동기화 이력입니다."),
 
     BOOTCAMP_NOT_FOUND(HttpStatus.NOT_FOUND, "BOOTCAMP_001", "부트캠프를 찾을 수 없습니다."),
     INVALID_PERIOD_RANGE(HttpStatus.BAD_REQUEST, "BOOTCAMP_002", "단위기간 시작일이 종료일보다 늦을 수 없습니다."),
@@ -147,6 +149,8 @@ public enum ErrorCode {
     NOTICE_ATTACHMENT_TOO_LARGE(HttpStatus.BAD_REQUEST, "NOTICE_009", "첨부파일 크기가 허용 범위를 넘었습니다."),
     NOTICE_IMAGE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "NOTICE_010", "본문에 넣을 수 없는 이미지 형식입니다."),
     NOTICE_ATTACHMENT_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "NOTICE_011", "첨부할 수 없는 파일 형식입니다."),
+    NOTICE_SCHEDULE_EXTRACTION_FAILED(HttpStatus.BAD_GATEWAY, "NOTICE_012", "공지에서 일정을 추출하지 못했습니다. 잠시 후 다시 시도해주세요."),
+    NOTICE_CALENDAR_ALREADY_REGISTERED(HttpStatus.CONFLICT, "NOTICE_013", "이미 이 공지로 캘린더에 일정을 등록했습니다."),
 
     CONSULTATION_NOT_FOUND(HttpStatus.NOT_FOUND, "CONSULTATION_001", "존재하지 않는 상담입니다."),
     CONSULTATION_ALREADY_BOOKED(HttpStatus.CONFLICT, "CONSULTATION_002", "이미 예약된 시간입니다."),
@@ -166,6 +170,7 @@ public enum ErrorCode {
     CALENDAR_EVENT_NOT_CREATOR(HttpStatus.FORBIDDEN, "CALENDAR_002", "일정을 등록한 사람만 삭제할 수 있습니다."),
     AI_API_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI_001", "AI API 호출 중 오류가 발생했습니다."),
 
+    AI_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI_002", "AI 비서 서비스가 일시적으로 원활하지 않습니다. 잠시 후 다시 시도해주세요."),
     LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "LOCK_001", "다른 요청이 처리 중입니다. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus status;

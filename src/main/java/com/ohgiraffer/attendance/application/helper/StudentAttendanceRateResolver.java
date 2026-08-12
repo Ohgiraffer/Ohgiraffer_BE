@@ -1,7 +1,7 @@
 package com.ohgiraffer.attendance.application.helper;
 import com.ohgiraffer.attendance.domain.model.AttendanceRiskLevel;
-import com.ohgiraffer.attendance.domain.model.StudentAttendanceCountsView;
-import com.ohgiraffer.attendance.domain.model.StudentAttendanceRateResult;
+import com.ohgiraffer.attendance.domain.dto.StudentAttendanceCountsView;
+import com.ohgiraffer.attendance.domain.dto.StudentAttendanceRateResult;
 import com.ohgiraffer.attendance.domain.policy.AttendanceMetricsCalculator;
 import com.ohgiraffer.attendance.domain.repository.AttendancePeriodSummaryRepository;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
@@ -23,8 +23,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StudentAttendanceRateResolver {
 
-
-    private static final int LATE_EARLY_OUTING_CONVERSION_COUNT = 3;
 
     private final AttendancePeriodSummaryRepository attendancePeriodSummaryRepository;
     private final BootcampQueryUsecase bootcampQueryUsecase;
@@ -51,8 +49,7 @@ public class StudentAttendanceRateResolver {
 
             BigDecimal rate = AttendanceMetricsCalculator.calculateAttendanceRate(
                     bootcampPeriod.startDate(), end,
-                    counts.absentDays(), counts.lateCount(), counts.earlyLeaveCount(), counts.outingCount(),
-                    LATE_EARLY_OUTING_CONVERSION_COUNT
+                    counts.absentDays(), counts.lateCount(), counts.earlyLeaveCount(), counts.outingCount()
             );
             AttendanceRiskLevel riskLevel = AttendanceMetricsCalculator.calculateRiskLevel(rate, policy);
 

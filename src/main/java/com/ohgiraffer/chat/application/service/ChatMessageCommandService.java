@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 /*
@@ -139,8 +140,10 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
 
         sendbirdApiPort.updateMessage(command.channelId(), command.sendbirdMessageId(), messageType, normalizedContent, effectiveUrl);
 
+        // 사용자 직접 수정은 Sendbird API 호출이 성공한 이 시점 자체가 "이벤트 발생 시각"임 -
+        // 어떤 지연된 웹훅보다도 항상 최신으로 취급되어야 하므로 Instant.now() 사용
         chatMessageMirrorCommandUseCase.mirrorUpdated(
-                new MirrorMessageUpdatedCommand(command.sendbirdMessageId(), normalizedContent, effectiveUrl)
+                new MirrorMessageUpdatedCommand(command.sendbirdMessageId(), normalizedContent, effectiveUrl, Instant.now())
         );
 
         log.info("[Chat] 메시지 수정 완료 | channelId={}, messageId={}", command.channelId(), command.sendbirdMessageId());
@@ -180,7 +183,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
         sendbirdApiPort.deleteMessage(command.channelId(), command.sendbirdMessageId());
 
         chatMessageMirrorCommandUseCase.mirrorDeleted(
-                new MirrorMessageDeletedCommand(command.sendbirdMessageId())
+                new MirrorMessageDeletedCommand(command.sendbirdMessageId(), Instant.now())
         );
 
         log.info("[Chat] 메시지 삭제 완료 | channelId={}, messageId={}", command.channelId(), command.sendbirdMessageId());

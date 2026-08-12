@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
+
 /*
  * comment.
  *  Sendbird Platform API 호출용 RestClient Bean 등록
@@ -17,20 +19,44 @@ import org.springframework.web.client.RestClient;
 @EnableConfigurationProperties(SendbirdProperties.class)
 public class SendbirdConfig {
 
-    @Bean
-    public RestClient sendbirdRestClient(SendbirdProperties properties) {
-        String baseUrl = "https://api-" + properties.appId() + ".sendbird.com/v3";
+    private static final Duration CONNECT_TIMEOUT =
+            Duration.ofSeconds(3);
 
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(3000); // 3초
-        requestFactory.setReadTimeout(5000);    // 5초
+    private static final Duration READ_TIMEOUT =
+            Duration.ofSeconds(5);
+
+    @Bean
+    public RestClient sendbirdRestClient(
+            SendbirdProperties properties
+    ) {
+        String baseUrl =
+                "https://api-" + properties.appId() + ".sendbird.com/v3";
+
+        SimpleClientHttpRequestFactory requestFactory =
+                new SimpleClientHttpRequestFactory();
+
+        requestFactory.setConnectTimeout(
+                CONNECT_TIMEOUT
+        );
+        requestFactory.setReadTimeout(
+                READ_TIMEOUT
+        );
 
         return RestClient.builder()
-                .baseUrl(baseUrl)
-                .requestFactory(requestFactory)
-                .defaultHeader("Api-Token", properties.apiToken())
-                .defaultHeader("Content-Type", "application/json")
+                .baseUrl(
+                        baseUrl
+                )
+                .requestFactory(
+                        requestFactory
+                )
+                .defaultHeader(
+                        "Api-Token",
+                        properties.apiToken()
+                )
+                .defaultHeader(
+                        "Content-Type",
+                        "application/json"
+                )
                 .build();
     }
-
 }

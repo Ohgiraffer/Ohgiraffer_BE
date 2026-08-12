@@ -115,6 +115,7 @@ public class UpdateSubmissionService
 
         validateOwnership(
                 existingSubmission,
+                submissionBox,
                 command.requestedBy()
         );
 
@@ -247,6 +248,7 @@ public class UpdateSubmissionService
 
     private void validateOwnership(
             Submission submission,
+            SubmissionBox submissionBox,
             Long requestedBy
     ) {
         if (submission.getOwnerUserId() != null) {
@@ -266,20 +268,19 @@ public class UpdateSubmissionService
 
         if (submissionTeamId == null) {
             throw new BusinessException(
-                    ErrorCode
-                            .SUBMISSION_TEAM_DATA_INCONSISTENT
+                    ErrorCode.SUBMISSION_TEAM_DATA_INCONSISTENT
             );
         }
 
         Long requesterTeamId =
                 studentTeamRepository
-                        .findActiveTeamIdByStudentId(
-                                requestedBy
+                        .findTeamIdByStudentIdAndDateTime(
+                                requestedBy,
+                                submissionBox.getStartAt()
                         )
                         .orElseThrow(() ->
                                 new BusinessException(
-                                        ErrorCode
-                                                .SUBMISSION_TEAM_NOT_FOUND
+                                        ErrorCode.SUBMISSION_TEAM_NOT_FOUND
                                 )
                         );
 

@@ -101,6 +101,10 @@ logging:
 #    org.hibernate.orm.jdbc.bind: TRACE
     org.springframework.data.redis: DEBUG
     org.flywaydb: INFO
+  file:
+    name: /var/log/campflow/app.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
 campflow:
   logging:
@@ -152,9 +156,35 @@ management:
       percentiles-histogram:
         http.server.requests: true
 
+resilience4j:
+  circuitbreaker:
+    instances:
+      geminiApi:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 30s
+        slow-call-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - org.springframework.web.client.RestClientException
+          - com.ohgiraffer.global.exception.BusinessException
+
+admin:
+  internal-token: ${ADMIN_INTERNAL_TOKEN:changeme}
+
 # ===== NOTION =====
 notion:
   api-token: ${NOTION_API_TOKEN}
   data-source-id: ${NOTION_DATA_SOURCE_ID}
   template-id: ${NOTION_TEMPLATE_ID}
   api-version: ${NOTION_API_VERSION:2026-03-11}
+
+# ===== OUTBOX =====
+team:
+  outbox:
+    retry-fixed-delay-ms: 60000
+    retry-initial-delay-ms: 30000

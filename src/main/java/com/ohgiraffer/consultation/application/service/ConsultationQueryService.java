@@ -107,7 +107,9 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
         Consultation c = consultationRepository.findById(consultationId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CONSULTATION_NOT_FOUND));
 
-        boolean allowed = c.isRequestedBy(callerId) || c.isCounseledBy(callerId) || "MANAGER".equals(callerRole);
+        boolean allowed = c.isRequestedBy(callerId)
+                || "INSTRUCTOR".equals(callerRole)
+                || "MANAGER".equals(callerRole);
         if (!allowed) {
             throw new BusinessException(ErrorCode.CONSULTATION_ACCESS_DENIED);
         }
@@ -128,8 +130,8 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
     }
 
     @Override
-    public List<ConsultationListItem> getUpcoming() {
-        return consultationRepository.findUpcoming(LocalDateTime.now()).stream()
+    public List<ConsultationListItem> getUpcoming(Long callerId) {
+        return consultationRepository.findUpcoming(callerId, LocalDateTime.now(), ConsultationStatus.PENDING).stream()
                 .map(this::toListItem)
                 .toList();
     }

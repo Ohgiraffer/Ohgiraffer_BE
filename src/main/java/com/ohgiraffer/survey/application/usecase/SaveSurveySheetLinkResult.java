@@ -11,8 +11,6 @@ public record SaveSurveySheetLinkResult(
         String spreadsheetTitle,
         String sheetName,
         Long sheetGid,
-        String respondentColumn,
-        String submittedAtColumn,
         boolean connected,
         Instant linkedAt
 ) {
@@ -27,8 +25,6 @@ public record SaveSurveySheetLinkResult(
                 surveySheetLink.getSpreadsheetTitle(),
                 surveySheetLink.getSheetName(),
                 surveySheetLink.getSheetGid(),
-                surveySheetLink.getRespondentColumn(),
-                surveySheetLink.getSubmittedAtColumn(),
                 true,
                 surveySheetLink.getUpdatedAt()
         );

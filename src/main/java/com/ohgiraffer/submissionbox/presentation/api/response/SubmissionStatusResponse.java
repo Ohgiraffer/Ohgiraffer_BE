@@ -8,6 +8,7 @@ import java.util.List;
 public record SubmissionStatusResponse(
         Long targetId,
         String targetName,
+        String targetEmail,
         Long submissionId,
         boolean submitted,
         boolean mine,
@@ -34,6 +35,7 @@ public record SubmissionStatusResponse(
         return new SubmissionStatusResponse(
                 result.targetId(),
                 result.targetName(),
+                result.targetEmail(),
                 result.submissionId(),
                 result.submitted(),
                 result.mine(),

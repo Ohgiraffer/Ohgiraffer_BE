@@ -15,9 +15,7 @@ public class SurveySheetLinkJpaEntity
         extends BaseTimeEntity {
 
     @Id
-    @GeneratedValue(
-            strategy = GenerationType.IDENTITY
-    )
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "survey_sheet_link_id")
     private Long id;
 
@@ -63,20 +61,6 @@ public class SurveySheetLinkJpaEntity
     private String sheetName;
 
     @Column(
-            name = "respondent_column",
-            nullable = false,
-            length = 255
-    )
-    private String respondentColumn;
-
-    @Column(
-            name = "submitted_at_column",
-            nullable = false,
-            length = 255
-    )
-    private String submittedAtColumn;
-
-    @Column(
             name = "linked_by",
             nullable = false
     )
@@ -93,8 +77,6 @@ public class SurveySheetLinkJpaEntity
             String spreadsheetTitle,
             Long sheetGid,
             String sheetName,
-            String respondentColumn,
-            String submittedAtColumn,
             Long linkedBy
     ) {
         this.id = id;
@@ -104,8 +86,6 @@ public class SurveySheetLinkJpaEntity
         this.spreadsheetTitle = spreadsheetTitle;
         this.sheetGid = sheetGid;
         this.sheetName = sheetName;
-        this.respondentColumn = respondentColumn;
-        this.submittedAtColumn = submittedAtColumn;
         this.linkedBy = linkedBy;
     }
 
@@ -120,8 +100,6 @@ public class SurveySheetLinkJpaEntity
                 surveySheetLink.getSpreadsheetTitle(),
                 surveySheetLink.getSheetGid(),
                 surveySheetLink.getSheetName(),
-                surveySheetLink.getRespondentColumn(),
-                surveySheetLink.getSubmittedAtColumn(),
                 surveySheetLink.getLinkedBy()
         );
     }
@@ -135,8 +113,6 @@ public class SurveySheetLinkJpaEntity
                 spreadsheetTitle,
                 sheetGid,
                 sheetName,
-                respondentColumn,
-                submittedAtColumn,
                 linkedBy,
                 getCreatedAt(),
                 getUpdatedAt()

@@ -99,6 +99,12 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.testcontainers:junit-jupiter:1.20.4'
     testImplementation 'org.testcontainers:testcontainers:1.20.4'
+
+    implementation 'io.github.resilience4j:resilience4j-spring-boot4:2.4.0'
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.4.0'
+    implementation 'io.github.resilience4j:resilience4j-spring6:2.4.0'
+    implementation 'org.springframework.boot:spring-boot-starter-aspectj'
+
 }
 
 def querydslDir = "$buildDir/generated/querydsl"

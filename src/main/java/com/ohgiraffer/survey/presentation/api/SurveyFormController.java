@@ -296,9 +296,8 @@ public class SurveyFormController {
                 new SaveSurveySheetLinkCommand(
                         surveyFormId,
                         request.spreadsheetUrl(),
-                        request.sheetName(),
-                        request.respondentColumn(),
-                        request.submittedAtColumn()
+                        request.sheetName()
+
                 );
 
         SaveSurveySheetLinkResult result =

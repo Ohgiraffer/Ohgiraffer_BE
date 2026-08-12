@@ -478,6 +478,7 @@ class NoticeQueryServiceTest {
                 "<p>본문입니다.</p>",
                 pinned,
                 visibleToTrainee,
+                false,
                 CREATED_AT,
                 CREATED_AT
         );

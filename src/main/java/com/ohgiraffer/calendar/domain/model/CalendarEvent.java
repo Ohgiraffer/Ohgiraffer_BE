@@ -88,6 +88,46 @@ public class CalendarEvent {
     }
 
     /**
+     * 공지 본문에서 AI 가 뽑아낸 일정을 만든다.
+     *
+     * <p>{@link #create} 와 검증은 같고 {@code aiExtracted} 만 다르다. 화면이 사람이 넣은
+     * 일정과 구분해 표시할 수 있어야 하고, 나중에 "AI 가 넣은 일정이 얼마나 쓰였나" 를
+     * 되짚을 때도 이 값이 있어야 한다.
+     *
+     * <p>{@code autoRegistered} 는 켜지 않는다. 그 값은 사람 손을 거치지 않고 들어온
+     * 일정을 뜻하는데, 이 일정은 운영진이 모달에서 확인하고 고른 것이다. 그래서 등록한
+     * 사람이 캘린더에서 지울 수 있어야 한다.
+     */
+    public static CalendarEvent createFromAiExtraction(
+            String title,
+            EventType eventType,
+            Instant startTime,
+            Instant endTime,
+            boolean allDay,
+            String location,
+            Long createdBy
+    ) {
+        validateTitle(title);
+        validateEventType(eventType);
+        validatePeriod(startTime, endTime);
+        validateLocation(location);
+        validateCreatedBy(createdBy);
+
+        return new CalendarEvent(
+                null,
+                title.trim(),
+                eventType,
+                startTime,
+                endTime,
+                allDay,
+                trimToNull(location),
+                createdBy,
+                false,
+                true
+        );
+    }
+
+    /**
      * 저장소에서 읽어온 값으로 복원한다. 검증을 다시 수행하지 않는다.
      */
     public static CalendarEvent restore(

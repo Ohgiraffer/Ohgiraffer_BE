@@ -1,7 +1,7 @@
 package com.ohgiraffer.attendance.presentation.api.response;
 
 import com.ohgiraffer.attendance.domain.model.AttendanceRiskLevel;
-import com.ohgiraffer.attendance.domain.model.StudentAttendanceCountsView;
+import com.ohgiraffer.attendance.domain.dto.StudentAttendanceCountsView;
 
 import java.math.BigDecimal;
 
