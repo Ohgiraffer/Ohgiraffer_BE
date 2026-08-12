@@ -97,7 +97,7 @@ public class UserSheetValidationPolicy {
     }
 
     private boolean isValidEmail(String email) {
-        return email.matches("^[\\w.+-]+@[a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*\\.[a-zA-Z]{2,}$");
+        return email.matches("^[\\w.+-]+@([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$");
     }
 
     private boolean isValidPhone(String phone) {
