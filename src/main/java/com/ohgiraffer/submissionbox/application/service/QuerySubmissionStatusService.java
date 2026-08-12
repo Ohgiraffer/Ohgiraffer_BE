@@ -290,11 +290,16 @@ public class QuerySubmissionStatusService
                 result.targetName() == null
                         ? ""
                         : result.targetName()
-                        .toLowerCase(
-                                Locale.ROOT
-                        );
+                        .toLowerCase(Locale.ROOT);
 
-        return targetName.contains(keyword);
+        String targetEmail =
+                result.targetEmail() == null
+                        ? ""
+                        : result.targetEmail()
+                        .toLowerCase(Locale.ROOT);
+
+        return targetName.contains(keyword)
+                || targetEmail.contains(keyword);
     }
 
     private boolean matchesStatus(
@@ -375,7 +380,8 @@ public class QuerySubmissionStatusService
                 .map(user ->
                         new SubmissionTarget(
                                 user.getId(),
-                                resolveStudentName(user)
+                                resolveStudentName(user),
+                                resolveStudentEmail(user)
                         )
                 )
                 .toList();
@@ -402,7 +408,8 @@ public class QuerySubmissionStatusService
                 .map(team ->
                         new SubmissionTarget(
                                 team.teamId(),
-                                team.teamName()
+                                team.teamName(),
+                                null
                         )
                 )
                 .toList();
@@ -417,6 +424,17 @@ public class QuerySubmissionStatusService
         }
 
         return user.getName().trim();
+    }
+
+    private String resolveStudentEmail(
+            User user
+    ) {
+        if (user.getEmail() == null
+                || user.getEmail().isBlank()) {
+            return null;
+        }
+
+        return user.getEmail().trim();
     }
 
     private Map<Long, Submission> mapSubmissionsByTargetId(
@@ -478,6 +496,7 @@ public class QuerySubmissionStatusService
             return SubmissionStatusResult.notSubmitted(
                     target.targetId(),
                     target.targetName(),
+                    target.targetEmail(),
                     false,
                     false
             );
@@ -486,6 +505,7 @@ public class QuerySubmissionStatusService
         return SubmissionStatusResult.submitted(
                 submission,
                 target.targetName(),
+                target.targetEmail(),
                 false,
                 false
         );
@@ -493,7 +513,8 @@ public class QuerySubmissionStatusService
 
     private record SubmissionTarget(
             Long targetId,
-            String targetName
+            String targetName,
+            String targetEmail
     ) {
     }
 }

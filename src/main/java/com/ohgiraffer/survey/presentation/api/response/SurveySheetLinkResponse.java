@@ -11,8 +11,6 @@ public record SurveySheetLinkResponse(
         String spreadsheetTitle,
         Long sheetGid,
         String sheetName,
-        String respondentColumn,
-        String submittedAtColumn,
         Instant linkedAt
 ) {
 
@@ -30,8 +28,6 @@ public record SurveySheetLinkResponse(
                 result.spreadsheetTitle(),
                 result.sheetGid(),
                 result.sheetName(),
-                result.respondentColumn(),
-                result.submittedAtColumn(),
                 result.linkedAt()
         );
     }

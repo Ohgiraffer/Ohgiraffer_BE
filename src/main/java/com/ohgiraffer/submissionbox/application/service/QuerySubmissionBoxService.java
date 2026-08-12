@@ -13,6 +13,7 @@ import com.ohgiraffer.submission.domain.repository.StudentTeamRepository;
 import com.ohgiraffer.submission.domain.repository.SubmissionRepository;
 import com.ohgiraffer.submissionbox.domain.model.SubmissionTargetScope;
 import com.ohgiraffer.submissionbox.application.port.SubmissionTeamTargetPort;
+import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.model.UserStatus;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import com.ohgiraffer.user.domain.model.Role;
@@ -355,13 +356,17 @@ public class QuerySubmissionBoxService
                         submission.getId();
             }
 
+            TargetDisplayInfo targetDisplayInfo =
+                    createTargetDisplayInfo(
+                            submissionBox,
+                            submission
+                    );
+
             submissionStatuses.add(
                     SubmissionStatusResult.submitted(
                             submission,
-                            createTemporaryTargetName(
-                                    submissionBox,
-                                    submission
-                            ),
+                            targetDisplayInfo.name(),
+                            targetDisplayInfo.email(),
                             mine,
                             editable
                     )
@@ -466,16 +471,21 @@ public class QuerySubmissionBoxService
                 .orElse(false);
     }
 
-    private String createTemporaryTargetName(
+    private TargetDisplayInfo createTargetDisplayInfo(
             SubmissionBox submissionBox,
             Submission submission
     ) {
         if (submissionBox.getTargetScope()
                 == SubmissionTargetScope.TEAM) {
-            return "팀 " + submission.getTeamId();
+            return new TargetDisplayInfo(
+                    "팀 " + submission.getTeamId(),
+                    null
+            );
         }
 
-        return "훈련생 " + submission.getOwnerUserId();
+        return findIndividualTargetDisplayInfo(
+                submission.getOwnerUserId()
+        );
     }
 
     private SubmissionStatusResult createMyNotSubmittedStatus(
@@ -486,9 +496,15 @@ public class QuerySubmissionBoxService
     ) {
         if (submissionBox.getTargetScope()
                 == SubmissionTargetScope.INDIVIDUAL) {
+            TargetDisplayInfo targetDisplayInfo =
+                    findIndividualTargetDisplayInfo(
+                            requesterId
+                    );
+
             return SubmissionStatusResult.notSubmitted(
                     requesterId,
-                    "훈련생 " + requesterId,
+                    targetDisplayInfo.name(),
+                    targetDisplayInfo.email(),
                     true,
                     acceptingSubmissions
             );
@@ -504,6 +520,7 @@ public class QuerySubmissionBoxService
         return SubmissionStatusResult.notSubmitted(
                 teamId,
                 "팀 " + teamId,
+                null,
                 true,
                 acceptingSubmissions
         );
@@ -521,6 +538,41 @@ public class QuerySubmissionBoxService
 
         return !now.isAfter(
                 submissionBox.getDueAt()
+        );
+    }
+
+    private record TargetDisplayInfo(
+            String name,
+            String email
+    ) {
+    }
+
+    private TargetDisplayInfo findIndividualTargetDisplayInfo(
+            Long userId
+    ) {
+        User user =
+                userRepository.findById(userId)
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.USER_NOT_FOUND
+                                )
+                        );
+
+        String name =
+                user.getName() == null
+                        || user.getName().isBlank()
+                        ? "훈련생 " + userId
+                        : user.getName().trim();
+
+        String email =
+                user.getEmail() == null
+                        || user.getEmail().isBlank()
+                        ? null
+                        : user.getEmail().trim();
+
+        return new TargetDisplayInfo(
+                name,
+                email
         );
     }
 
