@@ -274,11 +274,9 @@ public class UpdateSubmissionService
 
         Long requesterTeamId =
                 studentTeamRepository
-                        .findTeamIdByStudentIdAndDate(
+                        .findTeamIdByStudentIdAndDateTime(
                                 requestedBy,
-                                submissionBox
-                                        .getStartAt()
-                                        .toLocalDate()
+                                submissionBox.getStartAt()
                         )
                         .orElseThrow(() ->
                                 new BusinessException(

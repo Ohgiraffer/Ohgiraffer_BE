@@ -436,11 +436,9 @@ public class QuerySubmissionBoxService
         }
 
         return studentTeamRepository
-                .findTeamIdByStudentIdAndDate(
+                .findTeamIdByStudentIdAndDateTime(
                         requesterId,
-                        submissionBox
-                                .getStartAt()
-                                .toLocalDate()
+                        submissionBox.getStartAt()
                 );
     }
 

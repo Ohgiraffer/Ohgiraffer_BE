@@ -82,10 +82,9 @@ public class SubmissionTodoAdapter implements SubmissionTodoPort {
          */
         Optional<Long> teamId =
                 studentTeamRepository
-                        .findTeamIdByStudentIdAndDate(
+                        .findTeamIdByStudentIdAndDateTime(
                                 userId,
                                 box.getStartAt()
-                                        .toLocalDate()
                         );
 
         return teamId.isPresent()

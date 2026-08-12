@@ -6,7 +6,7 @@ import com.ohgiraffer.submission.domain.repository.StudentTeamRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,25 +18,25 @@ public class StudentTeamRepositoryAdapter
     private final SpringDataStudentTeamRepository repository;
 
     @Override
-    public Optional<Long> findTeamIdByStudentIdAndDate(
+    public Optional<Long> findTeamIdByStudentIdAndDateTime(
             Long studentId,
-            LocalDate targetDate
+            LocalDateTime targetAt
     ) {
         if (studentId == null
                 || studentId <= 0
-                || targetDate == null) {
+                || targetAt == null) {
             return Optional.empty();
         }
 
         List<Long> teamIds =
-                repository.findTeamIdsByUserIdAndDate(
+                repository.findTeamIdsByUserIdAndDateTime(
                         studentId,
-                        targetDate
+                        targetAt
                 );
 
         /*
-         * 한 훈련생이 동일한 팀 운영 기간에 여러 팀에 소속되어 있다면
-         * 임의의 팀을 선택하지 않고 데이터 불일치로 처리합니다.
+         * 동일한 기준 일시에 여러 팀에 소속된 결과가 나온다면
+         * 임의로 하나를 선택하지 않고 데이터 불일치로 처리합니다.
          */
         if (teamIds.size() > 1) {
             throw new BusinessException(

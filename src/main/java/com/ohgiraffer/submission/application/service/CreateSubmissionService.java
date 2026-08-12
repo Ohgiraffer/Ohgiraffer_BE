@@ -409,11 +409,9 @@ public class CreateSubmissionService
         }
 
         Long teamId = studentTeamRepository
-                .findTeamIdByStudentIdAndDate(
+                .findTeamIdByStudentIdAndDateTime(
                         submittedBy,
-                        submissionBox
-                                .getStartAt()
-                                .toLocalDate()
+                        submissionBox.getStartAt()
                 )
                 .orElseThrow(() ->
                         new BusinessException(
