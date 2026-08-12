@@ -160,3 +160,9 @@ notion:
   data-source-id: ${NOTION_DATA_SOURCE_ID}
   template-id: ${NOTION_TEMPLATE_ID}
   api-version: ${NOTION_API_VERSION:2026-03-11}
+
+# ===== OUTBOX =====
+team:
+  outbox:
+    retry-fixed-delay-ms: 60000
+    retry-initial-delay-ms: 30000
