@@ -79,9 +79,19 @@ public class AttendanceSheetCommandService implements AttendanceSheetCommandUsec
         if (command.trigger() == SyncTriggerType.SCHEDULED && !targetDate.equals(LocalDate.now())) {
             String reason = "시트에 선택된 날짜(" + targetDate + ")가 오늘과 달라 자동 동기화를 건너뜀";
             log.warn("[sync] {}", reason);
-            attendanceSheetSyncLogRecorder.record(new RecordAttendanceSheetSyncLogCommand(
-                    link.getAttendanceSheetLinkId(), null, reason, List.of(), null, "스케줄러", SyncResult.FAIL
-            ));
+
+            // 시트를 읽지 못했으므로 "동기화 시도"로 보지 않음 -> lastSyncedAt 갱신 없이 로그만 남김
+            AttendanceSheetSyncLog skippedLog = AttendanceSheetSyncLog.builder()
+                    .attendanceSheetLinkId(link.getAttendanceSheetLinkId())
+                    .changedRange(null)
+                    .diffSummary("0")
+                    .failedRowDetails(List.of())
+                    .executorId(null)
+                    .executorName("스케줄러")
+                    .result(SyncResult.FAIL)
+                    .build();
+            attendanceSheetSyncLogRepository.save(skippedLog);
+
             return SyncAttendanceSheetResult.of(0, 0, List.of());
         }
 

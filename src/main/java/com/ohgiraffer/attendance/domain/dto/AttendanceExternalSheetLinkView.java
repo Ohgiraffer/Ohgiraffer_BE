@@ -9,6 +9,7 @@ public record AttendanceExternalSheetLinkView(
         Long attendanceSheetLinkId,
         String sheetUrl,
         String tabName,
+        String dateCellRange,
         Map<String, String> columnMapping,
         LocalDateTime lastSyncedAt
 ) {
@@ -17,6 +18,7 @@ public record AttendanceExternalSheetLinkView(
                 link.getAttendanceSheetLinkId(),
                 link.getSheetUrl(),
                 link.getTabName(),
+                link.getDateCellRange(),
                 link.getColumnMapping(),
                 link.getLastSyncedAt()
         );

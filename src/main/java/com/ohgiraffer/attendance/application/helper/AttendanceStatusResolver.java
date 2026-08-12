@@ -1,6 +1,8 @@
 package com.ohgiraffer.attendance.application.helper;
 
 import com.ohgiraffer.attendance.domain.model.AttendanceStatus;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -21,6 +23,11 @@ public class AttendanceStatusResolver {
     ) {
         if (checkOutTime == null || checkInTime == null) {
             return AttendanceStatus.ABSENT;
+        }
+
+        if (checkOutTime.isBefore(checkInTime)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE,
+                    "퇴실 시간이 입실 시간보다 빠릅니다: 입실=" + checkInTime + ", 퇴실=" + checkOutTime);
         }
 
         long totalMinutes = Duration.between(checkInTime, checkOutTime).toMinutes();

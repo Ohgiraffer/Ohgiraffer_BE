@@ -22,6 +22,7 @@ public class AttendanceSheetRowSyncer {
     private final AttendanceRepository attendanceRepository;
     private final AttendanceStatusResolver attendanceStatusResolver;
     private final AttendanceSheetRowParser attendanceSheetRowParser;
+    private final AttendanceConflictRetrySaver attendanceConflictRetrySaver;
 
     public AttendanceSyncOutcome syncOneRow(
             Long userId, LocalDate targetDate, List<Object> row,
@@ -61,20 +62,20 @@ public class AttendanceSheetRowSyncer {
             return AttendanceSyncOutcome.UNCHANGED;
         }
 
+        String existingExternalRefId = existing.map(Attendance::getExternalRefId).orElse(null);
+
         Attendance attendance = existing.isPresent()
                 ? Attendance.reconstitute(existing.get().getId(), userId, targetDate, status,
-                checkInTime, checkOutTime, outingTime, returnTime, null)
+                checkInTime, checkOutTime, outingTime, returnTime, existingExternalRefId)
                 : Attendance.create(userId, targetDate, status,
                 checkInTime, checkOutTime, outingTime, returnTime, null);
 
         try {
             attendanceRepository.save(attendance);
         } catch (DataIntegrityViolationException e) {
-            Attendance reloaded = attendanceRepository.findByUserIdAndDate(userId, targetDate)
-                    .orElseThrow(() -> e);
-            Attendance retry = Attendance.reconstitute(reloaded.getId(), userId, targetDate, status,
-                    checkInTime, checkOutTime, outingTime, returnTime, null);
-            attendanceRepository.save(retry);
+            attendanceConflictRetrySaver.retrySave(
+                    userId, targetDate, status, checkInTime, checkOutTime, outingTime, returnTime, existingExternalRefId
+            );
         }
 
         return AttendanceSyncOutcome.CHANGED;

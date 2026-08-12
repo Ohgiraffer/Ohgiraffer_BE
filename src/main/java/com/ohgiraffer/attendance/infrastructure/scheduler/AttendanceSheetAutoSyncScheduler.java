@@ -16,8 +16,8 @@ public class AttendanceSheetAutoSyncScheduler {
 
     private final AttendanceSheetCommandUsecase attendanceSheetCommandUsecase;
 
-    // 매일 09:20 ~ 09:40 1분 간격
-    @Scheduled(cron = "0 20-40 9 * * *")
+    // 평일(월~금) 09:20 ~ 09:40 1분 간격
+    @Scheduled(cron = "0 20-40 9 * * MON-FRI")
     public void syncMorning() {
         try {
             SyncAttendanceSheetResult result = attendanceSheetCommandUsecase.sync(
