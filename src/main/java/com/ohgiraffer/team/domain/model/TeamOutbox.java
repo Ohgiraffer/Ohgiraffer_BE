@@ -17,6 +17,7 @@ public class TeamOutbox {
     private final int retryCount;
     private final String lastErrorMessage;
     private final LocalDateTime nextRetryAt;
+    private final String processingToken;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
     private final Long version;
@@ -29,6 +30,7 @@ public class TeamOutbox {
             int retryCount,
             String lastErrorMessage,
             LocalDateTime nextRetryAt,
+            String processingToken,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
             Long version
@@ -40,6 +42,7 @@ public class TeamOutbox {
         this.retryCount = retryCount;
         this.lastErrorMessage = lastErrorMessage;
         this.nextRetryAt = nextRetryAt;
+        this.processingToken = processingToken;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.version = version;
@@ -73,6 +76,7 @@ public class TeamOutbox {
                 0,
                 null,
                 now,
+                null,
                 now,
                 now,
                 null
@@ -87,6 +91,7 @@ public class TeamOutbox {
             int retryCount,
             String lastErrorMessage,
             LocalDateTime nextRetryAt,
+            String processingToken,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
             Long version
@@ -99,6 +104,7 @@ public class TeamOutbox {
                 retryCount,
                 lastErrorMessage,
                 nextRetryAt,
+                processingToken,
                 createdAt,
                 updatedAt,
                 version
@@ -106,9 +112,18 @@ public class TeamOutbox {
     }
 
     public TeamOutbox markProcessing(
+            String processingToken,
             LocalDateTime now
     ) {
         validateId();
+
+        if (processingToken == null
+                || processingToken.isBlank()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "Outbox 처리 토큰이 올바르지 않습니다."
+            );
+        }
 
         return new TeamOutbox(
                 id,
@@ -118,6 +133,7 @@ public class TeamOutbox {
                 retryCount,
                 lastErrorMessage,
                 nextRetryAt,
+                processingToken,
                 createdAt,
                 now,
                 version
@@ -135,6 +151,7 @@ public class TeamOutbox {
                 TeamOutboxStatus.SUCCEEDED,
                 payload,
                 retryCount,
+                null,
                 null,
                 null,
                 createdAt,
@@ -170,6 +187,7 @@ public class TeamOutbox {
                         nextRetryCount,
                         now
                 ),
+                null,
                 createdAt,
                 now,
                 version
@@ -189,6 +207,16 @@ public class TeamOutbox {
                 && processingTimeoutAt != null
                 && !updatedAt.isAfter(
                 processingTimeoutAt
+        );
+    }
+
+    public boolean isProcessingTokenMatched(
+            String processingToken
+    ) {
+        return status == TeamOutboxStatus.PROCESSING
+                && this.processingToken != null
+                && this.processingToken.equals(
+                processingToken
         );
     }
 
@@ -291,6 +319,10 @@ public class TeamOutbox {
 
     public LocalDateTime getNextRetryAt() {
         return nextRetryAt;
+    }
+
+    public String getProcessingToken() {
+        return processingToken;
     }
 
     public LocalDateTime getCreatedAt() {

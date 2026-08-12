@@ -68,6 +68,12 @@ public class TeamOutboxJpaEntity {
     private LocalDateTime nextRetryAt;
 
     @Column(
+            name = "processing_token",
+            length = 36
+    )
+    private String processingToken;
+
+    @Column(
             name = "created_at",
             nullable = false
     )
@@ -94,6 +100,7 @@ public class TeamOutboxJpaEntity {
             int retryCount,
             String lastErrorMessage,
             LocalDateTime nextRetryAt,
+            String processingToken,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
             Long version
@@ -105,6 +112,7 @@ public class TeamOutboxJpaEntity {
         this.retryCount = retryCount;
         this.lastErrorMessage = lastErrorMessage;
         this.nextRetryAt = nextRetryAt;
+        this.processingToken = processingToken;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.version = version;
@@ -121,6 +129,7 @@ public class TeamOutboxJpaEntity {
                 outbox.getRetryCount(),
                 outbox.getLastErrorMessage(),
                 outbox.getNextRetryAt(),
+                outbox.getProcessingToken(),
                 outbox.getCreatedAt(),
                 outbox.getUpdatedAt(),
                 outbox.getVersion()
@@ -136,6 +145,7 @@ public class TeamOutboxJpaEntity {
                 retryCount,
                 lastErrorMessage,
                 nextRetryAt,
+                processingToken,
                 createdAt,
                 updatedAt,
                 version

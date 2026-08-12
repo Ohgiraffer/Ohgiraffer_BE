@@ -40,6 +40,9 @@ public class TeamOutboxProcessor {
     public void process(
             Long outboxId
     ) {
+        String processingToken =
+                null;
+
         try {
             Optional<TeamOutbox> processingOutbox =
                     teamOutboxService.markProcessing(
@@ -51,16 +54,24 @@ public class TeamOutboxProcessor {
                 return;
             }
 
+            TeamOutbox outbox =
+                    processingOutbox.get();
+
+            processingToken =
+                    outbox.getProcessingToken();
+
             processOutbox(
-                    processingOutbox.get()
+                    outbox
             );
 
             teamOutboxService.markSucceeded(
-                    outboxId
+                    outboxId,
+                    processingToken
             );
         } catch (Throwable exception) {
             teamOutboxService.markFailed(
                     outboxId,
+                    processingToken,
                     exception
             );
 

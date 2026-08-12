@@ -1,0 +1,3 @@
+ALTER TABLE team_outbox
+    ADD COLUMN processing_token VARCHAR(36) NULL,
+    ADD COLUMN version BIGINT NOT NULL DEFAULT 0;

@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -102,9 +103,14 @@ public class TeamOutboxService {
             return Optional.empty();
         }
 
+        String processingToken =
+                UUID.randomUUID()
+                        .toString();
+
         return Optional.of(
                 teamOutboxRepository.save(
                         outbox.markProcessing(
+                                processingToken,
                                 now()
                         )
                 )
@@ -115,12 +121,19 @@ public class TeamOutboxService {
             propagation = Propagation.REQUIRES_NEW
     )
     public void markSucceeded(
-            Long outboxId
+            Long outboxId,
+            String processingToken
     ) {
         TeamOutbox outbox =
                 findByIdForUpdate(
                         outboxId
                 );
+
+        if (!outbox.isProcessingTokenMatched(
+                processingToken
+        )) {
+            return;
+        }
 
         teamOutboxRepository.save(
                 outbox.markSucceeded(
@@ -134,12 +147,19 @@ public class TeamOutboxService {
     )
     public void markFailed(
             Long outboxId,
+            String processingToken,
             Throwable exception
     ) {
         TeamOutbox outbox =
                 findByIdForUpdate(
                         outboxId
                 );
+
+        if (!outbox.isProcessingTokenMatched(
+                processingToken
+        )) {
+            return;
+        }
 
         teamOutboxRepository.save(
                 outbox.markFailed(
