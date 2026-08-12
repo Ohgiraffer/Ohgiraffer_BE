@@ -31,6 +31,7 @@ public record NoticeDetailView(
         boolean visibleToTrainee,
         long confirmationCount,
         boolean confirmedByMe,
+        boolean calendarRegistered,
         List<NoticeAttachment> attachments,
         Instant createdAt,
         Instant updatedAt
@@ -56,6 +57,7 @@ public record NoticeDetailView(
                 notice.isVisibleToTrainee(),
                 confirmationCount,
                 confirmedByMe,
+                notice.isCalendarRegistered(),
                 attachments == null ? List.of() : attachments,
                 notice.getCreatedAt(),
                 notice.getUpdatedAt()

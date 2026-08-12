@@ -259,6 +259,7 @@ class NoticeControllerTest {
                 true,
                 0L,
                 false,
+                false,
                 List.of(),
                 now,
                 now
@@ -276,6 +277,7 @@ class NoticeControllerTest {
                 CONTENT,
                 false,
                 true,
+                false,
                 now,
                 now
         );

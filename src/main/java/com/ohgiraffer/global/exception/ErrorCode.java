@@ -147,6 +147,8 @@ public enum ErrorCode {
     NOTICE_ATTACHMENT_TOO_LARGE(HttpStatus.BAD_REQUEST, "NOTICE_009", "첨부파일 크기가 허용 범위를 넘었습니다."),
     NOTICE_IMAGE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "NOTICE_010", "본문에 넣을 수 없는 이미지 형식입니다."),
     NOTICE_ATTACHMENT_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "NOTICE_011", "첨부할 수 없는 파일 형식입니다."),
+    NOTICE_SCHEDULE_EXTRACTION_FAILED(HttpStatus.BAD_GATEWAY, "NOTICE_012", "공지에서 일정을 추출하지 못했습니다. 잠시 후 다시 시도해주세요."),
+    NOTICE_CALENDAR_ALREADY_REGISTERED(HttpStatus.CONFLICT, "NOTICE_013", "이미 이 공지로 캘린더에 일정을 등록했습니다."),
 
     CONSULTATION_NOT_FOUND(HttpStatus.NOT_FOUND, "CONSULTATION_001", "존재하지 않는 상담입니다."),
     CONSULTATION_ALREADY_BOOKED(HttpStatus.CONFLICT, "CONSULTATION_002", "이미 예약된 시간입니다."),
