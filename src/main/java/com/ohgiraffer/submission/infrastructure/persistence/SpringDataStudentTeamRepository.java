@@ -4,21 +4,18 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface SpringDataStudentTeamRepository
         extends JpaRepository<TeamMemberJpaEntity, Long> {
 
     /**
-     * 훈련생이 현재 소속된 활성 팀 ID를 조회합니다.
+     * 기준 일시에 학생이 실제로 소속되어 있던 팀을 조회합니다.
      *
-     * 활성 팀 조건:
-     * 1. 팀원 이탈 시간이 없어야 함
-     * 2. 팀이 해산되지 않아야 함
-     * 3. 팀이 보관되거나 삭제되지 않아야 함
-     * 4. 팀 운영 기간이 보관되거나 삭제되지 않아야 함
-     * 5. 애플리케이션 기준 오늘 날짜가 팀 운영 기간 안에 있어야 함
+     * 1. 기준 일자가 팀 운영 기간에 포함되어야 합니다.
+     * 2. 팀원이 기준 일시 이전에 가입했어야 합니다.
+     * 3. 기준 일시까지 탈퇴하지 않았어야 합니다.
      */
     @Query(
             value = """
@@ -29,19 +26,26 @@ public interface SpringDataStudentTeamRepository
                     JOIN team_period tp
                       ON tp.team_period_id = t.team_period_id
                     WHERE tm.user_id = :userId
-                      AND tm.left_at IS NULL
                       AND t.dissolved_at IS NULL
                       AND t.archived_at IS NULL
                       AND t.deleted_at IS NULL
                       AND tp.archived_at IS NULL
                       AND tp.deleted_at IS NULL
-                      AND :currentDate BETWEEN tp.start_date AND tp.end_date
-                    ORDER BY tm.joined_at DESC, tm.team_member_id DESC
+                      AND DATE(:targetAt)
+                          BETWEEN tp.start_date
+                              AND tp.end_date
+                      AND tm.joined_at <= :targetAt
+                      AND (
+                          tm.left_at IS NULL
+                          OR tm.left_at > :targetAt
+                      )
+                    ORDER BY tm.joined_at DESC,
+                             tm.team_member_id DESC
                     """,
             nativeQuery = true
     )
-    List<Long> findActiveTeamIdsByUserId(
+    List<Long> findTeamIdsByUserIdAndDateTime(
             @Param("userId") Long userId,
-            @Param("currentDate") LocalDate currentDate
+            @Param("targetAt") LocalDateTime targetAt
     );
 }

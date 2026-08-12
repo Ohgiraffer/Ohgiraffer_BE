@@ -11,8 +11,6 @@ public record SurveySheetLinkResult(
         String spreadsheetTitle,
         Long sheetGid,
         String sheetName,
-        String respondentColumn,
-        String submittedAtColumn,
         Instant linkedAt
 ) {
 
@@ -31,8 +29,6 @@ public record SurveySheetLinkResult(
                 sheetLink.getSpreadsheetTitle(),
                 sheetLink.getSheetGid(),
                 sheetLink.getSheetName(),
-                sheetLink.getRespondentColumn(),
-                sheetLink.getSubmittedAtColumn(),
                 linkedAt
         );
     }

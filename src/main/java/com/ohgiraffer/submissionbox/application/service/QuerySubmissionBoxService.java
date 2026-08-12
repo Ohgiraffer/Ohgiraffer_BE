@@ -13,6 +13,7 @@ import com.ohgiraffer.submission.domain.repository.StudentTeamRepository;
 import com.ohgiraffer.submission.domain.repository.SubmissionRepository;
 import com.ohgiraffer.submissionbox.domain.model.SubmissionTargetScope;
 import com.ohgiraffer.submissionbox.application.port.SubmissionTeamTargetPort;
+import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.model.UserStatus;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import com.ohgiraffer.user.domain.model.Role;
@@ -106,12 +107,6 @@ public class QuerySubmissionBoxService
             Long studentId,
             LocalDateTime now
     ) {
-        Optional<Long> activeTeamId =
-                studentTeamRepository
-                        .findActiveTeamIdByStudentId(
-                                studentId
-                        );
-
         return submissionBoxes.stream()
                 .map(submissionBox -> {
                     List<SubmissionListEntry> entries =
@@ -121,12 +116,22 @@ public class QuerySubmissionBoxService
                                             List.of()
                                     );
 
+                    /*
+                     * 제출함마다 시작일이 다를 수 있으므로
+                     * 각 제출함 시작일을 기준으로 소속 팀을 조회합니다.
+                     */
+                    Optional<Long> requesterTeamId =
+                            findRequesterTeamId(
+                                    submissionBox,
+                                    studentId
+                            );
+
                     Long submissionId =
                             findStudentSubmissionId(
                                     submissionBox,
                                     entries,
                                     studentId,
-                                    activeTeamId
+                                    requesterTeamId
                             );
 
                     return SubmissionBoxListResult
@@ -158,14 +163,6 @@ public class QuerySubmissionBoxService
                                 Collectors.toUnmodifiableSet()
                         );
 
-        Set<Long> activeTeamIds =
-                submissionTeamTargetPort
-                        .findActiveTeams()
-                        .stream()
-                        .map(team -> team.teamId())
-                        .collect(
-                                Collectors.toUnmodifiableSet()
-                        );
 
         return submissionBoxes.stream()
                 .map(submissionBox -> {
@@ -175,7 +172,7 @@ public class QuerySubmissionBoxService
 
                     Set<Long> activeTargetIds =
                             teamSubmission
-                                    ? activeTeamIds
+                                    ? findTeamTargetIds(submissionBox)
                                     : activeStudentIds;
 
                     List<SubmissionListEntry> entries =
@@ -204,6 +201,28 @@ public class QuerySubmissionBoxService
                             );
                 })
                 .toList();
+    }
+
+    /**
+     * 제출함 시작일이 포함된 팀 운영 기간의 팀 ID를 조회합니다.
+     *
+     * 제출함마다 시작일이 다를 수 있으므로 하나의 팀 목록을
+     * 전체 제출함에 공통으로 사용하면 안 됩니다.
+     */
+    private Set<Long> findTeamTargetIds(
+            SubmissionBox submissionBox
+    ) {
+        return submissionTeamTargetPort
+                .findTeamsByTargetDate(
+                        submissionBox
+                                .getStartAt()
+                                .toLocalDate()
+                )
+                .stream()
+                .map(team -> team.teamId())
+                .collect(
+                        Collectors.toUnmodifiableSet()
+                );
     }
 
     private int calculateSubmittedCount(
@@ -341,13 +360,17 @@ public class QuerySubmissionBoxService
                         submission.getId();
             }
 
+            TargetDisplayInfo targetDisplayInfo =
+                    createTargetDisplayInfo(
+                            submissionBox,
+                            submission
+                    );
+
             submissionStatuses.add(
                     SubmissionStatusResult.submitted(
                             submission,
-                            createTemporaryTargetName(
-                                    submissionBox,
-                                    submission
-                            ),
+                            targetDisplayInfo.name(),
+                            targetDisplayInfo.email(),
                             mine,
                             editable
                     )
@@ -413,8 +436,9 @@ public class QuerySubmissionBoxService
         }
 
         return studentTeamRepository
-                .findActiveTeamIdByStudentId(
-                        requesterId
+                .findTeamIdByStudentIdAndDateTime(
+                        requesterId,
+                        submissionBox.getStartAt()
                 );
     }
 
@@ -452,16 +476,21 @@ public class QuerySubmissionBoxService
                 .orElse(false);
     }
 
-    private String createTemporaryTargetName(
+    private TargetDisplayInfo createTargetDisplayInfo(
             SubmissionBox submissionBox,
             Submission submission
     ) {
         if (submissionBox.getTargetScope()
                 == SubmissionTargetScope.TEAM) {
-            return "팀 " + submission.getTeamId();
+            return new TargetDisplayInfo(
+                    "팀 " + submission.getTeamId(),
+                    null
+            );
         }
 
-        return "훈련생 " + submission.getOwnerUserId();
+        return findIndividualTargetDisplayInfo(
+                submission.getOwnerUserId()
+        );
     }
 
     private SubmissionStatusResult createMyNotSubmittedStatus(
@@ -472,9 +501,15 @@ public class QuerySubmissionBoxService
     ) {
         if (submissionBox.getTargetScope()
                 == SubmissionTargetScope.INDIVIDUAL) {
+            TargetDisplayInfo targetDisplayInfo =
+                    findIndividualTargetDisplayInfo(
+                            requesterId
+                    );
+
             return SubmissionStatusResult.notSubmitted(
                     requesterId,
-                    "훈련생 " + requesterId,
+                    targetDisplayInfo.name(),
+                    targetDisplayInfo.email(),
                     true,
                     acceptingSubmissions
             );
@@ -490,6 +525,7 @@ public class QuerySubmissionBoxService
         return SubmissionStatusResult.notSubmitted(
                 teamId,
                 "팀 " + teamId,
+                null,
                 true,
                 acceptingSubmissions
         );
@@ -507,6 +543,41 @@ public class QuerySubmissionBoxService
 
         return !now.isAfter(
                 submissionBox.getDueAt()
+        );
+    }
+
+    private record TargetDisplayInfo(
+            String name,
+            String email
+    ) {
+    }
+
+    private TargetDisplayInfo findIndividualTargetDisplayInfo(
+            Long userId
+    ) {
+        User user =
+                userRepository.findById(userId)
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.USER_NOT_FOUND
+                                )
+                        );
+
+        String name =
+                user.getName() == null
+                        || user.getName().isBlank()
+                        ? "훈련생 " + userId
+                        : user.getName().trim();
+
+        String email =
+                user.getEmail() == null
+                        || user.getEmail().isBlank()
+                        ? null
+                        : user.getEmail().trim();
+
+        return new TargetDisplayInfo(
+                name,
+                email
         );
     }
 

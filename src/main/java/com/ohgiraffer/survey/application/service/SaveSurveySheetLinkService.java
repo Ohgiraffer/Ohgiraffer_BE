@@ -13,7 +13,6 @@ import com.ohgiraffer.user.domain.model.Role;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DataIntegrityViolationException;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -63,35 +62,11 @@ public class SaveSurveySheetLinkService
                         command.sheetName()
                 );
 
-        String respondentColumn =
-                normalizeColumnName(
-                        command.respondentColumn(),
-                        "응답자 식별 컬럼"
-                );
-
-        String submittedAtColumn =
-                normalizeColumnName(
-                        command.submittedAtColumn(),
-                        "응답 일시 컬럼"
-                );
-
-        validateDifferentColumns(
-                respondentColumn,
-                submittedAtColumn
-        );
-
-        validateMappedColumnsExist(
-                connectionInfo.columns(),
-                respondentColumn,
-                submittedAtColumn
-        );
 
         SurveySheetLink savedSurveySheetLink =
                 saveConnection(
                         command,
                         connectionInfo,
-                        respondentColumn,
-                        submittedAtColumn,
                         requesterId
                 );
 
@@ -103,16 +78,12 @@ public class SaveSurveySheetLinkService
     private SurveySheetLink saveConnection(
             SaveSurveySheetLinkCommand command,
             SurveySheetConnectionInfo connectionInfo,
-            String respondentColumn,
-            String submittedAtColumn,
             Long requesterId
     ) {
         SurveySheetLink surveySheetLink =
                 createOrChangeConnection(
                         command,
                         connectionInfo,
-                        respondentColumn,
-                        submittedAtColumn,
                         requesterId
                 );
 
@@ -134,8 +105,6 @@ public class SaveSurveySheetLinkService
             return retryAsConnectionChange(
                     command,
                     connectionInfo,
-                    respondentColumn,
-                    submittedAtColumn,
                     requesterId,
                     exception
             );
@@ -145,8 +114,6 @@ public class SaveSurveySheetLinkService
     private SurveySheetLink retryAsConnectionChange(
             SaveSurveySheetLinkCommand command,
             SurveySheetConnectionInfo connectionInfo,
-            String respondentColumn,
-            String submittedAtColumn,
             Long requesterId,
             DataIntegrityViolationException originalException
     ) {
@@ -166,8 +133,6 @@ public class SaveSurveySheetLinkService
                         connectionInfo.spreadsheetTitle(),
                         connectionInfo.selectedSheetGid(),
                         connectionInfo.selectedSheetName(),
-                        respondentColumn,
-                        submittedAtColumn,
                         requesterId
                 );
 
@@ -179,8 +144,6 @@ public class SaveSurveySheetLinkService
     private SurveySheetLink createOrChangeConnection(
             SaveSurveySheetLinkCommand command,
             SurveySheetConnectionInfo connectionInfo,
-            String respondentColumn,
-            String submittedAtColumn,
             Long requesterId
     ) {
         Optional<SurveySheetLink> existingLink =
@@ -197,8 +160,6 @@ public class SaveSurveySheetLinkService
                             connectionInfo.spreadsheetTitle(),
                             connectionInfo.selectedSheetGid(),
                             connectionInfo.selectedSheetName(),
-                            respondentColumn,
-                            submittedAtColumn,
                             requesterId
                     );
         }
@@ -210,8 +171,6 @@ public class SaveSurveySheetLinkService
                 connectionInfo.spreadsheetTitle(),
                 connectionInfo.selectedSheetGid(),
                 connectionInfo.selectedSheetName(),
-                respondentColumn,
-                submittedAtColumn,
                 requesterId
         );
     }
@@ -262,64 +221,5 @@ public class SaveSurveySheetLinkService
         }
     }
 
-    private String normalizeColumnName(
-            String columnName,
-            String fieldName
-    ) {
-        if (columnName == null
-                || columnName.isBlank()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    fieldName + "은(는) 필수입니다."
-            );
-        }
 
-        String normalizedColumnName =
-                columnName.trim();
-
-        if (normalizedColumnName.length() > 255) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    fieldName + "은(는) 255자 이하여야 합니다."
-            );
-        }
-
-        return normalizedColumnName;
-    }
-
-    private void validateDifferentColumns(
-            String respondentColumn,
-            String submittedAtColumn
-    ) {
-        if (respondentColumn.equals(submittedAtColumn)) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "응답자 식별 컬럼과 응답 일시 컬럼은 서로 달라야 합니다."
-            );
-        }
-    }
-
-    private void validateMappedColumnsExist(
-            List<String> actualColumns,
-            String respondentColumn,
-            String submittedAtColumn
-    ) {
-        if (!actualColumns.contains(
-                respondentColumn
-        )) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "선택한 응답자 식별 컬럼이 Google Sheet에 존재하지 않습니다."
-            );
-        }
-
-        if (!actualColumns.contains(
-                submittedAtColumn
-        )) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "선택한 응답 일시 컬럼이 Google Sheet에 존재하지 않습니다."
-            );
-        }
-    }
 }

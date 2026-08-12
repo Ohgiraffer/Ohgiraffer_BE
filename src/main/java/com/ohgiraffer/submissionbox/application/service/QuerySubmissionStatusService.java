@@ -290,11 +290,16 @@ public class QuerySubmissionStatusService
                 result.targetName() == null
                         ? ""
                         : result.targetName()
-                        .toLowerCase(
-                                Locale.ROOT
-                        );
+                        .toLowerCase(Locale.ROOT);
 
-        return targetName.contains(keyword);
+        String targetEmail =
+                result.targetEmail() == null
+                        ? ""
+                        : result.targetEmail()
+                        .toLowerCase(Locale.ROOT);
+
+        return targetName.contains(keyword)
+                || targetEmail.contains(keyword);
     }
 
     private boolean matchesStatus(
@@ -362,7 +367,7 @@ public class QuerySubmissionStatusService
             return findIndividualTargets();
         }
 
-        return findTeamTargets();
+        return findTeamTargets(submissionBox);
     }
 
     private List<SubmissionTarget> findIndividualTargets() {
@@ -375,20 +380,36 @@ public class QuerySubmissionStatusService
                 .map(user ->
                         new SubmissionTarget(
                                 user.getId(),
-                                resolveStudentName(user)
+                                resolveStudentName(user),
+                                resolveStudentEmail(user)
                         )
                 )
                 .toList();
     }
 
-    private List<SubmissionTarget> findTeamTargets() {
+    private List<SubmissionTarget> findTeamTargets(
+            SubmissionBox submissionBox
+    ) {
+        /*
+         * 제출함 시작일이 포함된 팀 운영 기간을 기준으로 조회합니다.
+         *
+         * 예:
+         * 제출함 시작일 2025-08-10
+         * → 2025-08-01 ~ 2025-08-31 팀 기간
+         * → 해당 team_period_id를 가진 팀만 반환
+         */
         return submissionTeamTargetPort
-                .findActiveTeams()
+                .findTeamsByTargetDate(
+                        submissionBox
+                                .getStartAt()
+                                .toLocalDate()
+                )
                 .stream()
                 .map(team ->
                         new SubmissionTarget(
                                 team.teamId(),
-                                team.teamName()
+                                team.teamName(),
+                                null
                         )
                 )
                 .toList();
@@ -403,6 +424,17 @@ public class QuerySubmissionStatusService
         }
 
         return user.getName().trim();
+    }
+
+    private String resolveStudentEmail(
+            User user
+    ) {
+        if (user.getEmail() == null
+                || user.getEmail().isBlank()) {
+            return null;
+        }
+
+        return user.getEmail().trim();
     }
 
     private Map<Long, Submission> mapSubmissionsByTargetId(
@@ -464,6 +496,7 @@ public class QuerySubmissionStatusService
             return SubmissionStatusResult.notSubmitted(
                     target.targetId(),
                     target.targetName(),
+                    target.targetEmail(),
                     false,
                     false
             );
@@ -472,6 +505,7 @@ public class QuerySubmissionStatusService
         return SubmissionStatusResult.submitted(
                 submission,
                 target.targetName(),
+                target.targetEmail(),
                 false,
                 false
         );
@@ -479,7 +513,8 @@ public class QuerySubmissionStatusService
 
     private record SubmissionTarget(
             Long targetId,
-            String targetName
+            String targetName,
+            String targetEmail
     ) {
     }
 }

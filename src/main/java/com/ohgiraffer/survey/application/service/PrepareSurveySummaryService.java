@@ -96,9 +96,7 @@ public class PrepareSurveySummaryService
 
         SurveyStatisticsResult statistics =
                 statisticsCalculator.calculate(
-                        dataset,
-                        sheetLink.getRespondentColumn(),
-                        sheetLink.getSubmittedAtColumn()
+                        dataset
                 );
 
         validateStatistics(
