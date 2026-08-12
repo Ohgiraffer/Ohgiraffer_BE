@@ -80,11 +80,19 @@ public class ChatWebhookService {
     private void mirrorUpdated(Map<String, Object> raw) {
         Map<String, Object> payloadMsg = (Map<String, Object>) raw.get("payload");
         Map<String, Object> file = (Map<String, Object>) payloadMsg.get("file");
+        Object updatedAtRaw = payloadMsg.get("updated_at");
+
+        if (updatedAtRaw == null) {
+            log.warn("[Chat] 수정 이벤트에 updated_at 필드 없음 - 순서 검증 불가로 스킵 | messageId={}",
+                    payloadMsg.get("message_id"));
+            return;
+        }
 
         MirrorMessageUpdatedCommand command = new MirrorMessageUpdatedCommand(
                 String.valueOf(payloadMsg.get("message_id")),
                 (String) payloadMsg.get("message"),
-                file != null ? (String) file.get("url") : null
+                file != null ? (String) file.get("url") : null,
+                Instant.ofEpochMilli(((Number) updatedAtRaw).longValue())
         );
 
         chatMessageMirrorCommandUseCase.mirrorUpdated(command);
@@ -94,9 +102,17 @@ public class ChatWebhookService {
     @SuppressWarnings("unchecked")
     private void mirrorDeleted(Map<String, Object> raw) {
         Map<String, Object> payloadMsg = (Map<String, Object>) raw.get("payload");
+        Object deletedAtRaw = payloadMsg.get("deleted_at");
+
+        if (deletedAtRaw == null) {
+            log.warn("[Chat] 삭제 이벤트에 deleted_at 필드 없음 - 순서 검증 불가로 스킵 | messageId={}",
+                    payloadMsg.get("message_id"));
+            return;
+        }
 
         MirrorMessageDeletedCommand command = new MirrorMessageDeletedCommand(
-                String.valueOf(payloadMsg.get("message_id"))
+                String.valueOf(payloadMsg.get("message_id")),
+                Instant.ofEpochMilli(((Number) deletedAtRaw).longValue())
         );
 
         chatMessageMirrorCommandUseCase.mirrorDeleted(command);

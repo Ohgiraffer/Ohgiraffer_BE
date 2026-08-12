@@ -48,4 +48,6 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, L
           AND u.status = com.ohgiraffer.user.domain.model.UserStatus.ACTIVE
         """)
     int completeActiveStudentsByBootcampId(@Param("bootcampId") Long bootcampId);
+
+    List<UserJpaEntity> findAllByRoleIn(List<Role> roles);
 }

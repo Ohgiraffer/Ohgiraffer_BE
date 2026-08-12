@@ -51,4 +51,8 @@ public interface ChatMessageMirrorRepository {
     // 특정 메시지에 달린 삭제되지 않은 답글 개수
     long countByParentMessageIdAndDeletedAtIsNull(Long parentMessageId);
 
+    // 웹훅 update/delete 시 동시성 제어가 필요한 조회 - PESSIMISTIC_WRITE 락 적용됨
+    // mirrorCreated처럼 DB 유니크 제약으로 못 막는 update/delete의 Lost Update 방지 목적
+    Optional<ChatMessageMirror> findBySendbirdMessageIdForUpdate(String sendbirdMessageId);
+
 }

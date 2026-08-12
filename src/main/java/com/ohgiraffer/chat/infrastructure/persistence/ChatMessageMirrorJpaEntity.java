@@ -57,6 +57,9 @@ public class ChatMessageMirrorJpaEntity extends BaseTimeEntity {
     @Column(name = "is_edited", nullable = false)
     private boolean isEdited;
 
+    @Column(name = "last_event_at")
+    private Instant lastEventAt;
+
     // Domain -> JpaEntity 변환 (저장용)
     public static ChatMessageMirrorJpaEntity from(ChatMessageMirror domain) {
         ChatMessageMirrorJpaEntity entity = new ChatMessageMirrorJpaEntity();
@@ -71,6 +74,7 @@ public class ChatMessageMirrorJpaEntity extends BaseTimeEntity {
         entity.sentAt = domain.getSentAt();
         entity.deletedAt = domain.getDeletedAt();
         entity.isEdited = domain.isEdited();
+        entity.lastEventAt = domain.getLastEventAt();
         return entity;
     }
 
@@ -79,7 +83,7 @@ public class ChatMessageMirrorJpaEntity extends BaseTimeEntity {
         return ChatMessageMirror.reconstitute(
                 id, channelId, sendbirdMessageId, parentMessageId, senderId,
                 content, attachmentUrl, attachmentType, sentAt, deletedAt, isEdited,
-                getCreatedAt(), getUpdatedAt()
+                lastEventAt, getCreatedAt(), getUpdatedAt()
         );
     }
 
