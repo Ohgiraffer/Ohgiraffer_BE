@@ -195,6 +195,25 @@ public interface SpringDataTeamMemberRepository
     );
 
     @Query("""
+            SELECT DISTINCT
+                t.id AS teamId,
+                t.name AS teamName,
+                p.startDate AS startDate,
+                p.endDate AS endDate
+            FROM TeamMemberViewJpaEntity tm
+            JOIN TeamJpaEntity t
+                ON t.id = tm.teamId
+            JOIN TeamPeriodJpaEntity p
+                ON p.id = t.teamPeriodId
+            WHERE tm.userId = :userId
+              AND t.deletedAt IS NULL
+            ORDER BY p.startDate DESC, t.id DESC
+            """)
+    List<UserTeamHistoryProjection> findUserTeamHistories(
+            @Param("userId") Long userId
+    );
+
+    @Query("""
         SELECT COUNT(tm) > 0
         FROM TeamMemberViewJpaEntity tm
         JOIN TeamJpaEntity t

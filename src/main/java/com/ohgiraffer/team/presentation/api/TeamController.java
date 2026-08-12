@@ -11,12 +11,14 @@ import com.ohgiraffer.team.application.usecase.GetTeamHistoryUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamListUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamPeriodListUseCase;
 import com.ohgiraffer.team.application.usecase.GetUnassignedStudentUseCase;
+import com.ohgiraffer.team.application.usecase.GetUserTeamHistoryUseCase;
 import com.ohgiraffer.team.application.usecase.SaveTeamConfigurationUseCase;
 import com.ohgiraffer.team.application.usecase.TeamHistoryResult;
 import com.ohgiraffer.team.application.usecase.TeamListResult;
 import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
 import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
 import com.ohgiraffer.team.application.usecase.UpdateTeamPeriodUseCase;
+import com.ohgiraffer.team.application.usecase.UserTeamHistoryResult;
 import com.ohgiraffer.team.presentation.api.request.CreateTeamPeriodRequest;
 import com.ohgiraffer.team.presentation.api.request.SaveTeamConfigurationRequest;
 import com.ohgiraffer.team.presentation.api.request.UpdateTeamPeriodRequest;
@@ -26,6 +28,7 @@ import com.ohgiraffer.team.presentation.api.response.TeamListResponse;
 import com.ohgiraffer.team.presentation.api.response.TeamPeriodListResponse;
 import com.ohgiraffer.team.presentation.api.response.UnassignedStudentListResponse;
 import com.ohgiraffer.team.presentation.api.response.UpdateTeamPeriodResponse;
+import com.ohgiraffer.team.presentation.api.response.UserTeamHistoryListResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -55,6 +58,7 @@ public class TeamController {
     private final GetUnassignedStudentUseCase getUnassignedStudentUseCase;
     private final GetTeamHistoryUseCase getTeamHistoryUseCase;
     private final GetTeamPeriodListUseCase getTeamPeriodListUseCase;
+    private final GetUserTeamHistoryUseCase getUserTeamHistoryUseCase;
     private final CreateTeamPeriodUseCase createTeamPeriodUseCase;
     private final UpdateTeamPeriodUseCase updateTeamPeriodUseCase;
     private final DeleteTeamPeriodUseCase deleteTeamPeriodUseCase;
@@ -194,6 +198,26 @@ public class TeamController {
         return ResponseEntity.ok(
                 TeamHistoryResponse.from(
                         result
+                )
+        );
+    }
+
+    @GetMapping("/users/{userId:\\d+}/histories")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<UserTeamHistoryListResponse> getUserTeamHistories(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        List<UserTeamHistoryResult> results =
+                getUserTeamHistoryUseCase.getUserTeamHistories(
+                        principal.getId(),
+                        principal.getRole(),
+                        userId
+                );
+
+        return ResponseEntity.ok(
+                UserTeamHistoryListResponse.from(
+                        results
                 )
         );
     }
