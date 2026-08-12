@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -40,33 +41,24 @@ public class TeamOutboxProcessor {
             Long outboxId
     ) {
         try {
-            teamOutboxService.markProcessing(
-                    outboxId
-            );
+            Optional<TeamOutbox> processingOutbox =
+                    teamOutboxService.markProcessing(
+                            outboxId,
+                            processingTimeoutAt()
+                    );
 
-            TeamOutbox outbox =
-                    teamOutboxRepository.findByIdForUpdate(
-                                    outboxId
-                            )
-                            .orElseThrow(() ->
-                                    new BusinessException(
-                                            ErrorCode.INVALID_INPUT_VALUE,
-                                            "Outbox 작업을 찾을 수 없습니다."
-                                    )
-                            );
-
-            if (outbox.getStatus() != TeamOutboxStatus.PROCESSING) {
+            if (processingOutbox.isEmpty()) {
                 return;
             }
 
             processOutbox(
-                    outbox
+                    processingOutbox.get()
             );
 
             teamOutboxService.markSucceeded(
                     outboxId
             );
-        } catch (RuntimeException exception) {
+        } catch (Throwable exception) {
             teamOutboxService.markFailed(
                     outboxId,
                     exception
@@ -200,6 +192,12 @@ public class TeamOutboxProcessor {
                     "Outbox payload 역직렬화에 실패했습니다."
             );
         }
+    }
+
+    private LocalDateTime processingTimeoutAt() {
+        return now().minusMinutes(
+                PROCESSING_TIMEOUT_MINUTES
+        );
     }
 
     private LocalDateTime now() {

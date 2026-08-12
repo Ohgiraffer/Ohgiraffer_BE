@@ -20,10 +20,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class TeamOutboxService {
+
+    private static final int MAX_ERROR_MESSAGE_LENGTH = 1000;
 
     private final TeamOutboxRepository teamOutboxRepository;
     private final ObjectMapper objectMapper;
@@ -84,21 +87,26 @@ public class TeamOutboxService {
     @Transactional(
             propagation = Propagation.REQUIRES_NEW
     )
-    public void markProcessing(
-            Long outboxId
+    public Optional<TeamOutbox> markProcessing(
+            Long outboxId,
+            LocalDateTime processingTimeoutAt
     ) {
         TeamOutbox outbox =
                 findByIdForUpdate(
                         outboxId
                 );
 
-        if (!outbox.canRetry()) {
-            return;
+        if (!outbox.canRetry(
+                processingTimeoutAt
+        )) {
+            return Optional.empty();
         }
 
-        teamOutboxRepository.save(
-                outbox.markProcessing(
-                        now()
+        return Optional.of(
+                teamOutboxRepository.save(
+                        outbox.markProcessing(
+                                now()
+                        )
                 )
         );
     }
@@ -126,7 +134,7 @@ public class TeamOutboxService {
     )
     public void markFailed(
             Long outboxId,
-            RuntimeException exception
+            Throwable exception
     ) {
         TeamOutbox outbox =
                 findByIdForUpdate(
@@ -188,7 +196,7 @@ public class TeamOutboxService {
     }
 
     private String createErrorMessage(
-            RuntimeException exception
+            Throwable exception
     ) {
         if (exception == null) {
             return null;
@@ -197,16 +205,38 @@ public class TeamOutboxService {
         String message =
                 exception.getMessage();
 
+        String errorMessage;
+
         if (message == null
                 || message.isBlank()) {
-            return exception.getClass()
-                    .getSimpleName();
+            errorMessage =
+                    exception.getClass()
+                            .getSimpleName();
+        } else {
+            errorMessage =
+                    exception.getClass()
+                            .getSimpleName()
+                            + ": "
+                            + message;
         }
 
-        return exception.getClass()
-                .getSimpleName()
-                + ": "
-                + message;
+        return truncateErrorMessage(
+                errorMessage
+        );
+    }
+
+    private String truncateErrorMessage(
+            String errorMessage
+    ) {
+        if (errorMessage == null
+                || errorMessage.length() <= MAX_ERROR_MESSAGE_LENGTH) {
+            return errorMessage;
+        }
+
+        return errorMessage.substring(
+                0,
+                MAX_ERROR_MESSAGE_LENGTH
+        );
     }
 
     private LocalDateTime now() {

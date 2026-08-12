@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -78,6 +79,13 @@ public class TeamOutboxJpaEntity {
     )
     private LocalDateTime updatedAt;
 
+    @Version
+    @Column(
+            name = "version",
+            nullable = false
+    )
+    private Long version;
+
     private TeamOutboxJpaEntity(
             Long id,
             TeamOutboxType type,
@@ -87,7 +95,8 @@ public class TeamOutboxJpaEntity {
             String lastErrorMessage,
             LocalDateTime nextRetryAt,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt
+            LocalDateTime updatedAt,
+            Long version
     ) {
         this.id = id;
         this.type = type;
@@ -98,6 +107,7 @@ public class TeamOutboxJpaEntity {
         this.nextRetryAt = nextRetryAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.version = version;
     }
 
     public static TeamOutboxJpaEntity from(
@@ -112,7 +122,8 @@ public class TeamOutboxJpaEntity {
                 outbox.getLastErrorMessage(),
                 outbox.getNextRetryAt(),
                 outbox.getCreatedAt(),
-                outbox.getUpdatedAt()
+                outbox.getUpdatedAt(),
+                outbox.getVersion()
         );
     }
 
@@ -126,7 +137,8 @@ public class TeamOutboxJpaEntity {
                 lastErrorMessage,
                 nextRetryAt,
                 createdAt,
-                updatedAt
+                updatedAt,
+                version
         );
     }
 }

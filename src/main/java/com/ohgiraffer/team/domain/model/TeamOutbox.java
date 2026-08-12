@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public class TeamOutbox {
 
     private static final int MAX_RETRY_COUNT = 5;
+    private static final int MAX_ERROR_MESSAGE_LENGTH = 1000;
 
     private final Long id;
     private final TeamOutboxType type;
@@ -18,6 +19,7 @@ public class TeamOutbox {
     private final LocalDateTime nextRetryAt;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+    private final Long version;
 
     private TeamOutbox(
             Long id,
@@ -28,7 +30,8 @@ public class TeamOutbox {
             String lastErrorMessage,
             LocalDateTime nextRetryAt,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt
+            LocalDateTime updatedAt,
+            Long version
     ) {
         this.id = id;
         this.type = type;
@@ -39,6 +42,7 @@ public class TeamOutbox {
         this.nextRetryAt = nextRetryAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.version = version;
     }
 
     public static TeamOutbox create(
@@ -70,7 +74,8 @@ public class TeamOutbox {
                 null,
                 now,
                 now,
-                now
+                now,
+                null
         );
     }
 
@@ -83,7 +88,8 @@ public class TeamOutbox {
             String lastErrorMessage,
             LocalDateTime nextRetryAt,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt
+            LocalDateTime updatedAt,
+            Long version
     ) {
         return new TeamOutbox(
                 id,
@@ -94,7 +100,8 @@ public class TeamOutbox {
                 lastErrorMessage,
                 nextRetryAt,
                 createdAt,
-                updatedAt
+                updatedAt,
+                version
         );
     }
 
@@ -112,7 +119,8 @@ public class TeamOutbox {
                 lastErrorMessage,
                 nextRetryAt,
                 createdAt,
-                now
+                now,
+                version
         );
     }
 
@@ -130,7 +138,8 @@ public class TeamOutbox {
                 null,
                 null,
                 createdAt,
-                now
+                now,
+                version
         );
     }
 
@@ -162,14 +171,25 @@ public class TeamOutbox {
                         now
                 ),
                 createdAt,
-                now
+                now,
+                version
         );
     }
 
-    public boolean canRetry() {
-        return status == TeamOutboxStatus.PENDING
-                || status == TeamOutboxStatus.FAILED
-                || status == TeamOutboxStatus.PROCESSING;
+    public boolean canRetry(
+            LocalDateTime processingTimeoutAt
+    ) {
+        if (status == TeamOutboxStatus.PENDING
+                || status == TeamOutboxStatus.FAILED) {
+            return true;
+        }
+
+        return status == TeamOutboxStatus.PROCESSING
+                && updatedAt != null
+                && processingTimeoutAt != null
+                && !updatedAt.isAfter(
+                processingTimeoutAt
+        );
     }
 
     private LocalDateTime calculateNextRetryAt(
@@ -235,13 +255,13 @@ public class TeamOutbox {
             return null;
         }
 
-        if (errorMessage.length() <= 1000) {
+        if (errorMessage.length() <= MAX_ERROR_MESSAGE_LENGTH) {
             return errorMessage;
         }
 
         return errorMessage.substring(
                 0,
-                1000
+                MAX_ERROR_MESSAGE_LENGTH
         );
     }
 
@@ -279,5 +299,9 @@ public class TeamOutbox {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 }
