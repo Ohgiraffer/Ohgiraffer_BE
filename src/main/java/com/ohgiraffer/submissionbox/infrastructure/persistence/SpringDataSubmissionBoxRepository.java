@@ -45,4 +45,17 @@ public interface SpringDataSubmissionBoxRepository
             @Param("submissionBoxId")
             Long submissionBoxId
     );
+
+    @EntityGraph(attributePaths = "items")
+    @Query("""
+        SELECT submissionBox
+        FROM SubmissionBoxJpaEntity submissionBox
+        JOIN UserJpaEntity creator
+          ON creator.id = submissionBox.createdBy
+        WHERE creator.bootcampId = :bootcampId
+        ORDER BY submissionBox.dueAt DESC
+        """)
+    List<SubmissionBoxJpaEntity> findAllByBootcampIdOrderByDueAtDesc(
+            @Param("bootcampId") Long bootcampId
+    );
 }

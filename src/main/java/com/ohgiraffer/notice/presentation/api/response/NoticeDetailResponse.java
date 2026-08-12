@@ -25,6 +25,17 @@ public record NoticeDetailResponse(
         boolean visibleToTrainee,
         long confirmationCount,
         boolean confirmedByMe,
+
+        @io.swagger.v3.oas.annotations.media.Schema(
+                description = """
+                        이 공지로 AI 일정 등록을 이미 했는지 여부.
+                        true 이면 AI 일정 등록 컴포넌트를 그리지 않는다. 1회성이라 되돌아가지 않는다.
+                        운영진에게만 뜨는 화면이므로 훈련생 화면에서는 쓸 일이 없다.
+                        """,
+                example = "false"
+        )
+        boolean aiCalendarRegistered,
+
         List<NoticeAttachmentResponse> attachments,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -52,6 +63,7 @@ public record NoticeDetailResponse(
                 view.visibleToTrainee(),
                 view.confirmationCount(),
                 view.confirmedByMe(),
+                view.calendarRegistered(),
                 attachments == null ? List.of() : attachments,
                 toKst(view.createdAt()),
                 toKst(view.updatedAt())

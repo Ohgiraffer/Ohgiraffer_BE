@@ -11,7 +11,6 @@ public final class SurveySheetLink {
     private static final int MAX_SPREADSHEET_ID_LENGTH = 255;
     private static final int MAX_SPREADSHEET_TITLE_LENGTH = 255;
     private static final int MAX_SHEET_NAME_LENGTH = 255;
-    private static final int MAX_COLUMN_NAME_LENGTH = 255;
 
     private final Long id;
     private final Long surveyFormId;
@@ -20,8 +19,6 @@ public final class SurveySheetLink {
     private final String spreadsheetTitle;
     private final Long sheetGid;
     private final String sheetName;
-    private final String respondentColumn;
-    private final String submittedAtColumn;
     private final Long linkedBy;
     private final Instant createdAt;
     private final Instant updatedAt;
@@ -34,8 +31,6 @@ public final class SurveySheetLink {
             String spreadsheetTitle,
             Long sheetGid,
             String sheetName,
-            String respondentColumn,
-            String submittedAtColumn,
             Long linkedBy,
             Instant createdAt,
             Instant updatedAt
@@ -47,8 +42,6 @@ public final class SurveySheetLink {
         this.spreadsheetTitle = spreadsheetTitle;
         this.sheetGid = sheetGid;
         this.sheetName = sheetName;
-        this.respondentColumn = respondentColumn;
-        this.submittedAtColumn = submittedAtColumn;
         this.linkedBy = linkedBy;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -61,8 +54,6 @@ public final class SurveySheetLink {
             String spreadsheetTitle,
             Long sheetGid,
             String sheetName,
-            String respondentColumn,
-            String submittedAtColumn,
             Long linkedBy
     ) {
         validate(
@@ -72,8 +63,6 @@ public final class SurveySheetLink {
                 spreadsheetTitle,
                 sheetGid,
                 sheetName,
-                respondentColumn,
-                submittedAtColumn,
                 linkedBy
         );
 
@@ -84,9 +73,7 @@ public final class SurveySheetLink {
                 spreadsheetId.trim(),
                 spreadsheetTitle.trim(),
                 sheetGid,
-                sheetName,
-                respondentColumn.trim(),
-                submittedAtColumn.trim(),
+                sheetName.trim(),
                 linkedBy,
                 null,
                 null
@@ -101,8 +88,6 @@ public final class SurveySheetLink {
             String spreadsheetTitle,
             Long sheetGid,
             String sheetName,
-            String respondentColumn,
-            String submittedAtColumn,
             Long linkedBy,
             Instant createdAt,
             Instant updatedAt
@@ -121,8 +106,6 @@ public final class SurveySheetLink {
                 spreadsheetTitle,
                 sheetGid,
                 sheetName,
-                respondentColumn,
-                submittedAtColumn,
                 linkedBy
         );
 
@@ -133,9 +116,7 @@ public final class SurveySheetLink {
                 spreadsheetId.trim(),
                 spreadsheetTitle.trim(),
                 sheetGid,
-                sheetName,
-                respondentColumn.trim(),
-                submittedAtColumn.trim(),
+                sheetName.trim(),
                 linkedBy,
                 createdAt,
                 updatedAt
@@ -148,8 +129,6 @@ public final class SurveySheetLink {
             String spreadsheetTitle,
             Long sheetGid,
             String sheetName,
-            String respondentColumn,
-            String submittedAtColumn,
             Long linkedBy
     ) {
         validate(
@@ -159,8 +138,6 @@ public final class SurveySheetLink {
                 spreadsheetTitle,
                 sheetGid,
                 sheetName,
-                respondentColumn,
-                submittedAtColumn,
                 linkedBy
         );
 
@@ -171,9 +148,7 @@ public final class SurveySheetLink {
                 spreadsheetId.trim(),
                 spreadsheetTitle.trim(),
                 sheetGid,
-                sheetName,
-                respondentColumn.trim(),
-                submittedAtColumn.trim(),
+                sheetName.trim(),
                 linkedBy,
                 createdAt,
                 updatedAt
@@ -187,8 +162,6 @@ public final class SurveySheetLink {
             String spreadsheetTitle,
             Long sheetGid,
             String sheetName,
-            String respondentColumn,
-            String submittedAtColumn,
             Long linkedBy
     ) {
         if (surveyFormId == null || surveyFormId <= 0) {
@@ -229,26 +202,6 @@ public final class SurveySheetLink {
                 "Google Sheet 이름"
         );
 
-        validateText(
-                respondentColumn,
-                MAX_COLUMN_NAME_LENGTH,
-                "응답자 식별 컬럼"
-        );
-
-        validateText(
-                submittedAtColumn,
-                MAX_COLUMN_NAME_LENGTH,
-                "응답 일시 컬럼"
-        );
-
-        if (respondentColumn.trim()
-                .equals(submittedAtColumn.trim())) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "응답자 식별 컬럼과 응답 일시 컬럼은 서로 달라야 합니다."
-            );
-        }
-
         if (linkedBy == null || linkedBy <= 0) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
@@ -265,14 +218,14 @@ public final class SurveySheetLink {
         if (value == null || value.isBlank()) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
-                    fieldName + "은(는) 필수입니다."
+                    fieldName + "은 필수입니다."
             );
         }
 
         if (value.trim().length() > maximumLength) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
-                    fieldName + "은(는) "
+                    fieldName + "은 "
                             + maximumLength
                             + "자 이하여야 합니다."
             );
@@ -305,14 +258,6 @@ public final class SurveySheetLink {
 
     public String getSheetName() {
         return sheetName;
-    }
-
-    public String getRespondentColumn() {
-        return respondentColumn;
-    }
-
-    public String getSubmittedAtColumn() {
-        return submittedAtColumn;
     }
 
     public Long getLinkedBy() {

@@ -15,6 +15,7 @@ import com.ohgiraffer.team.application.usecase.CreateTeamPeriodUseCase;
 import com.ohgiraffer.team.application.usecase.DeleteTeamPeriodUseCase;
 import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
 import com.ohgiraffer.team.application.usecase.UpdateTeamPeriodUseCase;
+import com.ohgiraffer.team.domain.model.TeamOutbox;
 import com.ohgiraffer.team.domain.model.TeamPeriod;
 import com.ohgiraffer.team.domain.repository.TeamPeriodRepository;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
@@ -40,6 +41,7 @@ public class TeamPeriodCommandService
     private final TeamPeriodRepository teamPeriodRepository;
     private final BootcampRepository bootcampRepository;
     private final GetUserBootcampIdPort getUserBootcampIdPort;
+    private final TeamOutboxService teamOutboxService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -196,6 +198,12 @@ public class TeamPeriodCommandService
                         teamPeriod.getId()
                 );
 
+        List<Long> externalResourceDeleteOutboxIds =
+                saveExternalResourceDeleteOutboxes(
+                        teamPeriod.getId(),
+                        externalResourceDeleteTargets
+                );
+
         teamRepository.deleteMembersByTeamPeriodId(
                 teamPeriod.getId()
         );
@@ -210,7 +218,7 @@ public class TeamPeriodCommandService
 
         publishTeamPeriodDeletedEvent(
                 teamPeriod.getId(),
-                externalResourceDeleteTargets
+                externalResourceDeleteOutboxIds
         );
     }
 
@@ -229,20 +237,53 @@ public class TeamPeriodCommandService
                 .toList();
     }
 
-    private void publishTeamPeriodDeletedEvent(
+    private List<Long> saveExternalResourceDeleteOutboxes(
             Long teamPeriodId,
             List<TeamExternalResourceDeleteTarget> targets
     ) {
-        if (targets.isEmpty()) {
+        return targets.stream()
+                .filter(this::hasExternalResource)
+                .map(target ->
+                        teamOutboxService.saveExternalResourceDelete(
+                                teamPeriodId,
+                                target
+                        )
+                )
+                .map(TeamOutbox::getId)
+                .toList();
+    }
+
+    private boolean hasExternalResource(
+            TeamExternalResourceDeleteTarget target
+    ) {
+        return hasText(
+                target.sendbirdChannelUrl()
+        ) || hasText(
+                target.notionPageId()
+        );
+    }
+
+    private void publishTeamPeriodDeletedEvent(
+            Long teamPeriodId,
+            List<Long> externalResourceDeleteOutboxIds
+    ) {
+        if (externalResourceDeleteOutboxIds.isEmpty()) {
             return;
         }
 
         eventPublisher.publishEvent(
                 new TeamPeriodDeletedEvent(
                         teamPeriodId,
-                        targets
+                        externalResourceDeleteOutboxIds
                 )
         );
+    }
+
+    private boolean hasText(
+            String value
+    ) {
+        return value != null
+                && !value.isBlank();
     }
 
     private void validateManagerAccess(
@@ -289,7 +330,9 @@ public class TeamPeriodCommandService
             );
         }
 
-        if (startDate.isAfter(endDate)) {
+        if (startDate.isAfter(
+                endDate
+        )) {
             throw new BusinessException(
                     ErrorCode.TEAM_INVALID_PERIOD
             );
@@ -321,8 +364,11 @@ public class TeamPeriodCommandService
                                 )
                         );
 
-        if (startDate.isBefore(bootcamp.getStartDate())
-                || endDate.isAfter(bootcamp.getEndDate())) {
+        if (startDate.isBefore(
+                bootcamp.getStartDate()
+        ) || endDate.isAfter(
+                bootcamp.getEndDate()
+        )) {
             throw new BusinessException(
                     ErrorCode.INVALID_PERIOD_RANGE,
                     "팀 기간은 부트캠프 기간 내에서만 설정할 수 있습니다."

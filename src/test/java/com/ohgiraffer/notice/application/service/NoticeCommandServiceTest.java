@@ -525,6 +525,7 @@ class NoticeCommandServiceTest {
                 CONTENT,
                 pinned,
                 visibleToTrainee,
+                false,
                 now,
                 now
         );
@@ -580,6 +581,7 @@ class NoticeCommandServiceTest {
                 notice.getContent(),
                 notice.isPinned(),
                 notice.isVisibleToTrainee(),
+                notice.isCalendarRegistered(),
                 now,
                 now
         );

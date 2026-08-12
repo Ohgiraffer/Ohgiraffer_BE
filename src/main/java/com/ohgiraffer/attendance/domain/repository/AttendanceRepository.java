@@ -1,9 +1,9 @@
 package com.ohgiraffer.attendance.domain.repository;
 
 import com.ohgiraffer.attendance.domain.model.Attendance;
-import com.ohgiraffer.attendance.domain.model.AttendanceCalendarView;
-import com.ohgiraffer.attendance.domain.model.AttendanceSummaryView;
-import com.ohgiraffer.attendance.domain.model.DailyAttendanceCountView;
+import com.ohgiraffer.attendance.domain.dto.AttendanceCalendarView;
+import com.ohgiraffer.attendance.domain.dto.AttendanceSummaryView;
+import com.ohgiraffer.attendance.domain.dto.DailyAttendanceCountView;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,4 +18,6 @@ public interface AttendanceRepository {
     void save(Attendance attendance);
 
     Optional<Attendance> findByUserIdAndDateForUpdate(Long userId, LocalDate date);
+
+    long countCheckedInByUserIdsAndDate(List<Long> userIds, LocalDate date);
 }

@@ -50,4 +50,6 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, L
     int completeActiveStudentsByBootcampId(@Param("bootcampId") Long bootcampId);
 
     List<UserJpaEntity> findAllByRoleIn(List<Role> roles);
+
+    Optional<UserJpaEntity> findFirstByStatusAndBootcampIdIsNotNull(UserStatus status);
 }

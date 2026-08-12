@@ -1,5 +1,6 @@
 package com.ohgiraffer.team.domain.repository;
 
+import com.ohgiraffer.team.application.usecase.UserTeamHistoryResult;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
 import com.ohgiraffer.team.domain.model.UnassignedStudent;
@@ -79,4 +80,8 @@ public interface TeamRepository {
     );
 
     List<UnassignedStudent> findUnassignedStudents();
+
+    List<UserTeamHistoryResult> findUserTeamHistories(
+            Long userId
+    );
 }

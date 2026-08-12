@@ -1,8 +1,8 @@
 package com.ohgiraffer.attendance.presentation.api.response;
 
 import com.ohgiraffer.attendance.domain.model.AttendanceRiskLevel;
-import com.ohgiraffer.attendance.domain.model.AttendanceSummaryView;
-import com.ohgiraffer.attendance.domain.model.PeriodAttendanceRate;
+import com.ohgiraffer.attendance.domain.dto.AttendanceSummaryView;
+import com.ohgiraffer.attendance.domain.dto.PeriodAttendanceRate;
 
 import java.math.BigDecimal;
 import java.util.List;

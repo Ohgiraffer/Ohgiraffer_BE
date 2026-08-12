@@ -265,6 +265,7 @@ class NoticeAttachmentCommandServiceTest {
                 "<p>본문</p>",
                 false,
                 true,
+                false,
                 Instant.now(),
                 Instant.now()
         );

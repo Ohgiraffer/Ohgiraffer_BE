@@ -1,6 +1,6 @@
 package com.ohgiraffer.attendance.infrastructure.adapter;
 
-import com.ohgiraffer.attendance.domain.model.AttendanceSummaryView;
+import com.ohgiraffer.attendance.domain.dto.AttendanceSummaryView;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.bootcamp.application.port.GetUserBootcampIdPort;
 import com.ohgiraffer.global.exception.BusinessException;

@@ -24,6 +24,7 @@ public class Notice {
     private final String content;
     private final boolean pinned;
     private final boolean visibleToTrainee;
+    private final boolean calendarRegistered;
     private final Instant createdAt;
     private final Instant updatedAt;
 
@@ -35,6 +36,7 @@ public class Notice {
             String content,
             boolean pinned,
             boolean visibleToTrainee,
+            boolean calendarRegistered,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -45,6 +47,7 @@ public class Notice {
         this.content = content;
         this.pinned = pinned;
         this.visibleToTrainee = visibleToTrainee;
+        this.calendarRegistered = calendarRegistered;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -73,6 +76,7 @@ public class Notice {
                 content,
                 pinned,
                 visibleToTrainee,
+                false,
                 null,
                 null
         );
@@ -89,6 +93,7 @@ public class Notice {
             String content,
             boolean pinned,
             boolean visibleToTrainee,
+            boolean calendarRegistered,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -100,6 +105,7 @@ public class Notice {
                 content,
                 pinned,
                 visibleToTrainee,
+                calendarRegistered,
                 createdAt,
                 updatedAt
         );
@@ -130,6 +136,28 @@ public class Notice {
                 content,
                 pinned,
                 visibleToTrainee,
+                calendarRegistered,
+                createdAt,
+                updatedAt
+        );
+    }
+
+    /**
+     * AI 일정 등록을 마친 공지를 돌려준다.
+     *
+     * <p>한 번 켜지면 되돌리지 않는다. 요구사항이 1회성이라, 본문을 수정해도 이 값은 그대로다.
+     * 되돌릴 수 있게 하면 같은 일정을 다시 등록해 캘린더에 겹쳐 쌓인다.
+     */
+    public Notice markCalendarRegistered() {
+        return new Notice(
+                id,
+                authorId,
+                categoryId,
+                title,
+                content,
+                pinned,
+                visibleToTrainee,
+                true,
                 createdAt,
                 updatedAt
         );
@@ -196,6 +224,13 @@ public class Notice {
                     "공지 본문은 필수입니다."
             );
         }
+    }
+
+    /**
+     * AI 일정 등록을 이미 했는지 여부. 화면의 AI 일정 등록 컴포넌트 노출을 이 값이 정한다.
+     */
+    public boolean isCalendarRegistered() {
+        return calendarRegistered;
     }
 
     public Long getId() {

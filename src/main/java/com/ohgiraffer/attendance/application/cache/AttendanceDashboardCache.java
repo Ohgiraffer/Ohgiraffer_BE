@@ -1,13 +1,14 @@
 package com.ohgiraffer.attendance.application.cache;
 
 import com.ohgiraffer.attendance.application.helper.StudentAttendanceRateResolver;
-import com.ohgiraffer.attendance.domain.model.StudentAttendanceRateResult;
+import com.ohgiraffer.attendance.domain.dto.StudentAttendanceRateResult;
+import com.ohgiraffer.attendance.domain.model.AttendanceRiskLevel;
+import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.presentation.api.response.AttendanceDashboardSummaryResponse;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import com.ohgiraffer.user.domain.model.StudentStatusView;
 import com.ohgiraffer.user.domain.model.UserStatus;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,15 +21,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 @Component
 public class AttendanceDashboardCache {
 
-
     private final UserQueryUsecase userQueryUsecase;
     private final StudentAttendanceRateResolver studentAttendanceRateResolver;
+    private final AttendanceRepository attendanceRepository;
     private final RedisTemplate<String, Object> redisTemplate;
 
     private static final String CACHE_PREFIX = "attendanceDashboardSummary::";
@@ -37,7 +39,8 @@ public class AttendanceDashboardCache {
     private final Map<String, ReentrantLock> lockMap = new ConcurrentHashMap<>();
 
     public AttendanceDashboardSummaryResponse getCachedDashboardSummary(Long bootcampId) {
-        String key = CACHE_PREFIX + bootcampId + "-" + LocalDate.now();
+        LocalDate today = LocalDate.now();
+        String key = CACHE_PREFIX + bootcampId + "-" + today;
 
         AttendanceDashboardSummaryResponse cached =
                 (AttendanceDashboardSummaryResponse) redisTemplate.opsForValue().get(key);
@@ -53,7 +56,7 @@ public class AttendanceDashboardCache {
                 return cached;
             }
 
-            AttendanceDashboardSummaryResponse result = loadFromDb(bootcampId);
+            AttendanceDashboardSummaryResponse result = loadFromDb(bootcampId, today);
             redisTemplate.opsForValue().set(key, result, TTL);
             return result;
         } finally {
@@ -62,7 +65,7 @@ public class AttendanceDashboardCache {
         }
     }
 
-    private AttendanceDashboardSummaryResponse loadFromDb(Long bootcampId) {
+    private AttendanceDashboardSummaryResponse loadFromDb(Long bootcampId, LocalDate today) {
         List<StudentStatusView> statuses = userQueryUsecase.getStudentStatusesByBootcampId(bootcampId);
 
         int totalStudents = statuses.size();
@@ -77,14 +80,24 @@ public class AttendanceDashboardCache {
                 .filter(s -> s.status() == UserStatus.WITHDRAWN || s.status() == UserStatus.EXPELLED)
                 .count();
 
+        // 구글 시트 동기화로 실제 출근 처리된 당일 데이터
+        int attendedTodayCount = (int) attendanceRepository.countCheckedInByUserIdsAndDate(activeIds, today);
+
+        // 기간 누적 데이터
         Map<Long, StudentAttendanceRateResult> rateByUserId = studentAttendanceRateResolver.resolve(bootcampId, activeIds);
 
         List<BigDecimal> rates = rateByUserId.values().stream()
                 .map(StudentAttendanceRateResult::attendanceRate)
                 .toList();
-        int atRiskStudents = (int) rateByUserId.values().stream()
+
+        Map<AttendanceRiskLevel, Long> riskCounts = rateByUserId.values().stream()
                 .filter(r -> r.riskLevel() != null)
-                .count();
+                .collect(Collectors.groupingBy(StudentAttendanceRateResult::riskLevel, Collectors.counting()));
+
+        int cautionStudents = riskCounts.getOrDefault(AttendanceRiskLevel.CAUTION, 0L).intValue();
+        int warningStudents = riskCounts.getOrDefault(AttendanceRiskLevel.WARNING, 0L).intValue();
+        int riskStudents = riskCounts.getOrDefault(AttendanceRiskLevel.RISK, 0L).intValue();
+        int atRiskStudents = cautionStudents + warningStudents + riskStudents;
 
         BigDecimal averageAttendanceRate = rates.isEmpty()
                 ? BigDecimal.ZERO
@@ -102,7 +115,9 @@ public class AttendanceDashboardCache {
 
         return new AttendanceDashboardSummaryResponse(
                 averageAttendanceRate, expectedCompletionRate,
-                totalStudents, activeStudents, managedStudents, atRiskStudents, dropoutStudents
+                totalStudents, activeStudents, attendedTodayCount,
+                managedStudents, cautionStudents, warningStudents, riskStudents,
+                atRiskStudents, dropoutStudents
         );
     }
 }
