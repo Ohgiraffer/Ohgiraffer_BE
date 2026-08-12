@@ -79,4 +79,15 @@ public interface SpringDataAttendanceRepository extends JpaRepository<Attendance
             @Param("userId") Long userId,
             @Param("date") LocalDate date
     );
+
+    @Query("""
+    SELECT COUNT(a) FROM AttendanceJpaEntity a
+    WHERE a.userId IN :userIds
+      AND a.attendanceDate = :date
+      AND a.checkInTime IS NOT NULL
+    """)
+    long countCheckedInByUserIdsAndDate(
+            @Param("userIds") List<Long> userIds,
+            @Param("date") LocalDate date
+    );
 }

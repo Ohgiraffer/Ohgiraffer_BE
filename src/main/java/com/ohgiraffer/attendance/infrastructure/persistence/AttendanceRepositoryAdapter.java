@@ -67,4 +67,12 @@ public class AttendanceRepositoryAdapter implements AttendanceRepository {
         return springDataAttendanceRepository.findByUserIdAndAttendanceDateForUpdate(userId, date)
                 .map(AttendanceJpaEntity::toDomain);
     }
+
+    @Override
+    public long countCheckedInByUserIdsAndDate(List<Long> userIds, LocalDate date) {
+        if (userIds.isEmpty()) {
+            return 0;
+        }
+        return springDataAttendanceRepository.countCheckedInByUserIdsAndDate(userIds, date);
+    }
 }

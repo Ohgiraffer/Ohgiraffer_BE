@@ -18,4 +18,6 @@ public interface AttendanceRepository {
     void save(Attendance attendance);
 
     Optional<Attendance> findByUserIdAndDateForUpdate(Long userId, LocalDate date);
+
+    long countCheckedInByUserIdsAndDate(List<Long> userIds, LocalDate date);
 }
