@@ -11,14 +11,8 @@ public interface SpringDataStudentTeamRepository
         extends JpaRepository<TeamMemberJpaEntity, Long> {
 
     /**
-     * 훈련생이 현재 소속된 활성 팀 ID를 조회합니다.
-     *
-     * 활성 팀 조건:
-     * 1. 팀원 이탈 시간이 없어야 함
-     * 2. 팀이 해산되지 않아야 함
-     * 3. 팀이 보관되거나 삭제되지 않아야 함
-     * 4. 팀 운영 기간이 보관되거나 삭제되지 않아야 함
-     * 5. 애플리케이션 기준 오늘 날짜가 팀 운영 기간 안에 있어야 함
+     * 기준 날짜가 포함된 팀 운영 기간에서
+     * 훈련생이 소속된 팀 ID를 조회합니다.
      */
     @Query(
             value = """
@@ -29,19 +23,21 @@ public interface SpringDataStudentTeamRepository
                     JOIN team_period tp
                       ON tp.team_period_id = t.team_period_id
                     WHERE tm.user_id = :userId
-                      AND tm.left_at IS NULL
                       AND t.dissolved_at IS NULL
                       AND t.archived_at IS NULL
                       AND t.deleted_at IS NULL
                       AND tp.archived_at IS NULL
                       AND tp.deleted_at IS NULL
-                      AND :currentDate BETWEEN tp.start_date AND tp.end_date
-                    ORDER BY tm.joined_at DESC, tm.team_member_id DESC
+                      AND :targetDate
+                          BETWEEN tp.start_date
+                              AND tp.end_date
+                    ORDER BY tm.joined_at DESC,
+                             tm.team_member_id DESC
                     """,
             nativeQuery = true
     )
-    List<Long> findActiveTeamIdsByUserId(
+    List<Long> findTeamIdsByUserIdAndDate(
             @Param("userId") Long userId,
-            @Param("currentDate") LocalDate currentDate
+            @Param("targetDate") LocalDate targetDate
     );
 }

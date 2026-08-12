@@ -7,7 +7,11 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Component
 public class SurveyStatisticsCalculator {
@@ -48,7 +52,9 @@ public class SurveyStatisticsCalculator {
             String header =
                     dataset.headers().get(columnIndex);
 
-            if (header == null || header.isBlank()) {
+            if (header == null
+                    || header.isBlank()
+                    || isSensitiveMetadataColumn(header)) {
                 continue;
             }
 
@@ -330,12 +336,13 @@ public class SurveyStatisticsCalculator {
         String normalized =
                 header.trim()
                         .toLowerCase(Locale.ROOT)
-                        .replace(" ", "");
+                        .replaceAll("[\\s_-]", "");
 
         return normalized.equals("이메일")
                 || normalized.equals("이메일주소")
                 || normalized.equals("email")
-                || normalized.equals("emailaddress");
+                || normalized.equals("emailaddress")
+                || normalized.equals("응답자이메일");
     }
 
     private boolean isNumber(

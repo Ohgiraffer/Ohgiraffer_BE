@@ -409,13 +409,15 @@ public class CreateSubmissionService
         }
 
         Long teamId = studentTeamRepository
-                .findActiveTeamIdByStudentId(
-                        submittedBy
+                .findTeamIdByStudentIdAndDate(
+                        submittedBy,
+                        submissionBox
+                                .getStartAt()
+                                .toLocalDate()
                 )
                 .orElseThrow(() ->
                         new BusinessException(
-                                ErrorCode
-                                        .SUBMISSION_TEAM_NOT_FOUND
+                                ErrorCode.SUBMISSION_TEAM_NOT_FOUND
                         )
                 );
 

@@ -63,20 +63,44 @@ public class SubmissionTodoAdapter implements SubmissionTodoPort {
     }
 
     // targetScope에 따라 제출 여부 확인 방식 분기
-    private boolean isSubmitted(SubmissionBox box, Long userId) {
-        if (box.getTargetScope() == SubmissionTargetScope.INDIVIDUAL) {
-            return submissionRepository.existsBySubmissionBoxIdAndOwnerUserId(box.getId(), userId);
+    private boolean isSubmitted(
+            SubmissionBox box,
+            Long userId
+    ) {
+        if (box.getTargetScope()
+                == SubmissionTargetScope.INDIVIDUAL) {
+            return submissionRepository
+                    .existsBySubmissionBoxIdAndOwnerUserId(
+                            box.getId(),
+                            userId
+                    );
         }
 
-        // TEAM 단위 - 소속 팀이 없으면 제출 불가 상태이므로 "미제출"로 간주
-        Optional<Long> teamId = studentTeamRepository.findActiveTeamIdByStudentId(userId);
+        /*
+         * 현재 팀이 아니라 제출함 시작일 당시의 팀을 기준으로
+         * 팀 제출 여부를 확인합니다.
+         */
+        Optional<Long> teamId =
+                studentTeamRepository
+                        .findTeamIdByStudentIdAndDate(
+                                userId,
+                                box.getStartAt()
+                                        .toLocalDate()
+                        );
+
         return teamId.isPresent()
-                && submissionRepository.existsBySubmissionBoxIdAndTeamId(box.getId(), teamId.get());
+                && submissionRepository
+                .existsBySubmissionBoxIdAndTeamId(
+                        box.getId(),
+                        teamId.get()
+                );
     }
 
-    // SubmissionBox 도메인 모델 -> TodoItemResponse 변환
+    // SubmissionBox 도메인 모델을 TODO 응답으로 변환
     private TodoItemResponse toTodoItemResponse(SubmissionBox box) {
-        String status = LocalDateTime.now().isAfter(box.getDueAt()) ? "마감" : "진행중";  // 별도 status 필드 없어 dueAt 기준 파생
+        String status = LocalDateTime.now().isAfter(box.getDueAt())
+                ? "마감"
+                : "진행중";
 
         return new TodoItemResponse(
                 TodoSourceDomain.SUBMISSION,

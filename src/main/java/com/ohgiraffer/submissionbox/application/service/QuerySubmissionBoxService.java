@@ -107,12 +107,6 @@ public class QuerySubmissionBoxService
             Long studentId,
             LocalDateTime now
     ) {
-        Optional<Long> activeTeamId =
-                studentTeamRepository
-                        .findActiveTeamIdByStudentId(
-                                studentId
-                        );
-
         return submissionBoxes.stream()
                 .map(submissionBox -> {
                     List<SubmissionListEntry> entries =
@@ -122,12 +116,22 @@ public class QuerySubmissionBoxService
                                             List.of()
                                     );
 
+                    /*
+                     * 제출함마다 시작일이 다를 수 있으므로
+                     * 각 제출함 시작일을 기준으로 소속 팀을 조회합니다.
+                     */
+                    Optional<Long> requesterTeamId =
+                            findRequesterTeamId(
+                                    submissionBox,
+                                    studentId
+                            );
+
                     Long submissionId =
                             findStudentSubmissionId(
                                     submissionBox,
                                     entries,
                                     studentId,
-                                    activeTeamId
+                                    requesterTeamId
                             );
 
                     return SubmissionBoxListResult
@@ -432,8 +436,11 @@ public class QuerySubmissionBoxService
         }
 
         return studentTeamRepository
-                .findActiveTeamIdByStudentId(
-                        requesterId
+                .findTeamIdByStudentIdAndDate(
+                        requesterId,
+                        submissionBox
+                                .getStartAt()
+                                .toLocalDate()
                 );
     }
 
