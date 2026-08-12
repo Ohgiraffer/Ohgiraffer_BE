@@ -7,12 +7,9 @@ import com.ohgiraffer.team.application.outbox.ExternalResourceDeletePayload;
 import com.ohgiraffer.team.application.outbox.NotionWorkspaceSyncPayload;
 import com.ohgiraffer.team.application.outbox.SendbirdChannelSyncPayload;
 import com.ohgiraffer.team.domain.model.TeamOutbox;
-import com.ohgiraffer.team.domain.model.TeamOutboxStatus;
-import com.ohgiraffer.team.domain.repository.TeamOutboxRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -25,10 +22,12 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class TeamOutboxProcessor {
 
-    private static final int RETRY_BATCH_SIZE = 20;
-    private static final Duration PROCESSING_TIMEOUT = Duration.ofMinutes(10);
+    private static final Duration PROCESSING_TIMEOUT =
+            Duration.ofMinutes(
+                    10
+            );
 
-    private final TeamOutboxRepository teamOutboxRepository;
+    private final TeamOutboxRetryTargetReader teamOutboxRetryTargetReader;
     private final TeamOutboxService teamOutboxService;
     private final TeamSendbirdChannelSyncService teamSendbirdChannelSyncService;
     private final TeamNotionWorkspaceService teamNotionWorkspaceService;
@@ -83,34 +82,12 @@ public class TeamOutboxProcessor {
         }
     }
 
-    @Transactional
     public void processRetryTargets() {
-        LocalDateTime now =
-                LocalDateTime.now(
-                        clock
-                );
+        List<Long> retryTargetIds =
+                teamOutboxRetryTargetReader.findRetryTargetIds();
 
-        LocalDateTime processingTimeoutAt =
-                now.minus(
-                        PROCESSING_TIMEOUT
-                );
-
-        List<TeamOutbox> retryTargets =
-                teamOutboxRepository.findRetryTargets(
-                        List.of(
-                                TeamOutboxStatus.PENDING,
-                                TeamOutboxStatus.FAILED
-                        ),
-                        TeamOutboxStatus.PROCESSING,
-                        now,
-                        processingTimeoutAt,
-                        RETRY_BATCH_SIZE
-                );
-
-        retryTargets.forEach(outbox ->
-                process(
-                        outbox.getId()
-                )
+        retryTargetIds.forEach(
+                this::process
         );
     }
 
