@@ -142,6 +142,18 @@ public class TeamRepositoryAdapter
     }
 
     @Override
+    public List<TeamMember> findActiveMembersByTeamPeriodIdForUpdate(
+            Long teamPeriodId
+    ) {
+        return springDataTeamMemberRepository.findActiveMembersByTeamPeriodIdForUpdate(
+                        teamPeriodId
+                )
+                .stream()
+                .map(TeamMemberViewJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<TeamMember> findActiveMembersByTeamId(
             Long teamId
     ) {
@@ -251,8 +263,12 @@ public class TeamRepositoryAdapter
     }
 
     @Override
-    public List<UnassignedStudent> findUnassignedStudents() {
-        return springDataTeamMemberRepository.findUnassignedStudents()
+    public List<UnassignedStudent> findUnassignedStudents(
+            Long teamPeriodId
+    ) {
+        return springDataTeamMemberRepository.findUnassignedStudents(
+                        teamPeriodId
+                )
                 .stream()
                 .map(this::toUnassignedStudent)
                 .toList();

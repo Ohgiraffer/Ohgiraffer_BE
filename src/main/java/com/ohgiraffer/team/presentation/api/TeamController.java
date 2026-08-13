@@ -225,12 +225,14 @@ public class TeamController {
     @GetMapping("/unassigned-students")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     public ResponseEntity<UnassignedStudentListResponse> getUnassignedStudents(
+            @RequestParam Long periodId,
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         List<UnassignedStudentResult> results =
                 getUnassignedStudentUseCase.getUnassignedStudents(
                         principal.getId(),
-                        principal.getRole()
+                        principal.getRole(),
+                        periodId
                 );
 
         return ResponseEntity.ok(
