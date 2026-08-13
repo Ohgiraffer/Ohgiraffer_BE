@@ -12,20 +12,25 @@ import com.ohgiraffer.survey.application.summary.SurveyQuestionStatistics;
 import org.springframework.web.client.RestClientException;
 import org.springframework.stereotype.Component;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
-public class GeminiSurveySummaryAdapter
-        implements SurveySummaryAiPort {
+public class GeminiSurveySummaryAdapter implements SurveySummaryAiPort {
 
     private final GeminiClient geminiClient;
-
     private final ObjectMapper objectMapper;
-
     private final SurveySummaryPromptBuilder promptBuilder;
+    private static final Logger log =
+            LoggerFactory.getLogger(
+                    GeminiSurveySummaryAdapter.class
+            );
+
 
     public GeminiSurveySummaryAdapter(
             GeminiClient geminiClient,
@@ -42,22 +47,30 @@ public class GeminiSurveySummaryAdapter
             String surveyTitle,
             SurveyStatisticsResult statistics
     ) {
-        String prompt =
-                promptBuilder.build(
-                        surveyTitle,
-                        statistics
-                );
+        String stage = "BUILD_PROMPT";
 
         try {
+            String prompt =
+                    promptBuilder.build(
+                            surveyTitle,
+                            statistics
+                    );
+
+            stage = "CALL_GEMINI_API";
+
             String responseText =
                     geminiClient.generateText(
                             prompt
                     );
 
+            stage = "EXTRACT_JSON";
+
             String responseJson =
                     extractJson(
                             responseText
                     );
+
+            stage = "PARSE_JSON";
 
             GeminiSurveySummaryResponse response =
                     objectMapper.readValue(
@@ -65,7 +78,11 @@ public class GeminiSurveySummaryAdapter
                             GeminiSurveySummaryResponse.class
                     );
 
+            stage = "VALIDATE_RESPONSE";
+
             validateResponse(response);
+
+            stage = "CONVERT_RESPONSE";
 
             return SurveyAiSummary.success(
                     response.overview(),
@@ -78,12 +95,47 @@ public class GeminiSurveySummaryAdapter
                             statistics
                     )
             );
+
         } catch (BusinessException exception) {
-            throw exception;
+            log.warn(
+                    "Gemini 설문 요약 처리 실패. stage={}, errorCode={}",
+                    stage,
+                    exception.getErrorCode(),
+                    exception
+            );
+
+            if (exception.getErrorCode()
+                    == ErrorCode.AI_API_CALL_FAILED) {
+                throw exception;
+            }
+
+            throw new BusinessException(
+                    ErrorCode.AI_API_CALL_FAILED,
+                    exception
+            );
+
         } catch (
                 JsonProcessingException
                 | RestClientException exception
         ) {
+            log.warn(
+                    "Gemini 설문 요약 처리 실패. stage={}",
+                    stage,
+                    exception
+            );
+
+            throw new BusinessException(
+                    ErrorCode.AI_API_CALL_FAILED,
+                    exception
+            );
+
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Gemini 설문 요약 처리 중 예상하지 못한 오류. stage={}",
+                    stage,
+                    exception
+            );
+
             throw new BusinessException(
                     ErrorCode.AI_API_CALL_FAILED,
                     exception
