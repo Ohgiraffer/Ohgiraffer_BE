@@ -69,7 +69,7 @@ public class AttendanceListCache {
                 .map(userId -> {
                     String name = nameByUserId.getOrDefault(userId, "알 수 없음");
                     StudentAttendanceRateResult r = rateByUserId.get(userId);
-                    return StudentAttendanceSummaryResponse.of(name, r.attendanceRate(), r.counts(), r.riskLevel());
+                    return StudentAttendanceSummaryResponse.of(userId, name, r.attendanceRate(), r.counts(), r.riskLevel());
                 })
                 .toList();
 
