@@ -1,4 +1,4 @@
-package com.ohgiraffer.todo.infrastructure.adapter;
+package com.ohgiraffer.notice.infrastructure.adapter;
 
 import com.ohgiraffer.notice.domain.model.Notice;
 import com.ohgiraffer.notice.domain.model.ViewerRole;

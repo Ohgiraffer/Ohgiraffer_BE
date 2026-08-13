@@ -2,10 +2,7 @@ package com.ohgiraffer.chat.infrastructure.sendbird;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ohgiraffer.chat.application.port.SendbirdApiPort;
-import com.ohgiraffer.chat.application.result.SendbirdMessageResult;
-import com.ohgiraffer.chat.application.result.SendbirdUserProvisionResult;
-import com.ohgiraffer.chat.application.result.SendbirdUserResult;
-import com.ohgiraffer.chat.application.result.SendbirdUserStatus;
+import com.ohgiraffer.chat.application.result.*;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
@@ -505,6 +502,103 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
             );
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.CHAT_WEBHOOK_SIGNATURE_INVALID, "웹훅 서명 검증 중 오류 발생");
+        }
+    }
+
+    // 봇 리소스 생성 - POST 그/bots
+    @Override
+    public SendbirdBotProvisionResult registerBot(String botUserId, String nickname, String profileUrl,
+                                                  String botCallbackUrl, boolean isPrivacyMode) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("bot_userid", botUserId);
+        body.put("bot_nickname", nickname);
+        if (profileUrl != null) {
+            body.put("bot_profile_url", profileUrl);
+        }
+        body.put("bot_callback_url", botCallbackUrl);
+        body.put("is_privacy_mode", isPrivacyMode);
+        body.put("enable_mark_as_read", true);
+
+        try {
+            Map<String, Object> response = restClient.post()
+                    .uri("/bots")
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
+
+            // 응답 구조도 확인 필요 - 아래는 추정, 실제 응답 로그로 검증 요망
+            Map<String, Object> botResponse = response.containsKey("bot")
+                    ? (Map<String, Object>) response.get("bot")
+                    : response;
+
+            return new SendbirdBotProvisionResult(
+                    (String) botResponse.get("bot_userid"),
+                    (String) botResponse.get("bot_nickname"),
+                    (String) botResponse.get("bot_token")
+            );
+        } catch (HttpClientErrorException e) {
+            // 이미 등록된 botUserId면 재등록 없이 재사용하는 흐름은 별도 분기 필요 - 최초 세팅 시 1회성이라 우선 에러 전파만 처리
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR,
+                    "Sendbird 봇 등록 실패 (status=" + e.getStatusCode() + ", body=" + e.getResponseBodyAsString() + ")");
+        } catch (RestClientException e) {
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 봇 등록 중 통신 오류 발생");
+        }
+    }
+
+    // 봇 메시지 전송 - POST /bots/{bot_userid}/send
+    @Override
+    public SendbirdMessageResult sendBotMessage(String botUserId, String channelId, String content) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("message", content);
+        body.put("channel_url", channelId);
+
+        try {
+            Map<String, Object> response = restClient.post()
+                    .uri("/bots/{bot_userid}/send", botUserId)
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
+
+            return toBotMessageResult(response, channelId); // 봇 전용 파싱 메서드로 교체
+        } catch (HttpClientErrorException e) {
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR,
+                    "Sendbird 봇 메시지 전송 실패 (status=" + e.getStatusCode() + ", body=" + e.getResponseBodyAsString() + ")");
+        } catch (RestClientException e) {
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 봇 메시지 전송 중 통신 오류 발생");
+        }
+    }
+
+    // 봇 전송 응답(raw Map)을 SendbirdMessageResult로 변환 - 봇의 user_id는 숫자가 아닌 고정 문자열(예: "campflow-ai-assistant")이라
+// 우리 서비스의 Long 타입 senderId 체계에 속하지 않음 - 봇 발신 메시지는 senderId를 null로 처리
+    private SendbirdMessageResult toBotMessageResult(Map<String, Object> raw, String channelId) {
+        Map<String, Object> messageObj = (Map<String, Object>) raw.get("message");
+
+        long createdAtMillis = ((Number) messageObj.get("created_at")).longValue();
+        Map<String, Object> file = (Map<String, Object>) messageObj.get("file");
+        String attachmentUrl = (file != null && !file.isEmpty()) ? (String) file.get("url") : null;
+
+        return new SendbirdMessageResult(
+                String.valueOf(messageObj.get("message_id")),
+                channelId,
+                null, // 봇 발신 메시지는 senderId(Long) 개념 자체가 없음 - user_id가 문자열("campflow-ai-assistant")이라 파싱 불가/불필요
+                (String) messageObj.get("message"),
+                attachmentUrl,
+                (String) messageObj.get("type"),
+                Instant.ofEpochMilli(createdAtMillis)
+        );
+    }
+
+    // 봇 채널 초대 - 일반 유저 초대와 동일 API, user_ids에 봇 userId(문자열)만 담아 호출
+    @Override
+    public void inviteBotToChannel(String channelId, String botUserId) {
+        try {
+            restClient.post()
+                    .uri("/group_channels/{channel_url}/invite", channelId)
+                    .body(Map.of("user_ids", List.of(botUserId)))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException e) {
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 봇 채널 초대 실패");
         }
     }
 

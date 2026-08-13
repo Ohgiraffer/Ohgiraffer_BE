@@ -1,4 +1,4 @@
-package com.ohgiraffer.todo.infrastructure.adapter;
+package com.ohgiraffer.approval.infrastructure.adapter;
 
 import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
@@ -15,7 +15,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/* comment.
+/*
+ * comment.
  *  ApprovalTodoPort 실구현체
  *  - 훈련생: findByRequesterIdOrderByRequestedAtDesc로 본인 신청 전체 조회 후 COMPLETED/REJECTED 아닌 건만 "처리중"으로 필터링
  *  - 강사/매니저: findProcessingApprovals(userId, bootcampId)로 처리 대상 목록 그대로 사용
