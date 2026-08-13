@@ -68,12 +68,7 @@ public class TeamQueryAdapter implements TeamQueryPort {
 
     @Override
     public List<UnassignedStudentResult> getUnassignedStudents(Long userId, Role role) {
-        Long currentPeriodId = resolveCurrentTeamPeriodId(userId, role);
-        if (currentPeriodId == null) {
-            log.info("[ChatbotTeamQuery] 오늘 날짜 포함하는 팀 편성 기간 없음 - 미배정 훈련생 조회 불가 | userId={}", userId);
-            return Collections.emptyList();
-        }
-        return getUnassignedStudentUseCase.getUnassignedStudents(userId, role, currentPeriodId);
+        return getUnassignedStudentUseCase.getUnassignedStudents(userId, role);
     }
 
 }
