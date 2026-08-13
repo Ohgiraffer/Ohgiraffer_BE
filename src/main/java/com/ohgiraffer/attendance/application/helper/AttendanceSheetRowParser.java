@@ -52,7 +52,8 @@ public class AttendanceSheetRowParser {
                 .collect(java.util.stream.Collectors.toSet());
 
         if (!missing.isEmpty()) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "컬럼매핑에 누락된 항목이 있습니다: " + missing);
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE,
+                    "컬럼매핑에 누락된 항목이 있습니다: " + missing + " — 재등록이 필요합니다.");
         }
 
         return result;
