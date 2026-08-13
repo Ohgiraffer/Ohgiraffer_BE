@@ -11,7 +11,6 @@ import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -19,12 +18,12 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class UpdateMyApprovalProfileService
         implements UpdateMyApprovalProfileUseCase {
 
     private final UserRepository userRepository;
     private final ApprovalApplicantProfileRepository approvalApplicantProfileRepository;
+    private final ApprovalApplicantProfileCreateService approvalApplicantProfileCreateService;
     private final Clock clock;
 
     @Override
@@ -101,18 +100,13 @@ public class UpdateMyApprovalProfileService
             LocalDateTime now
     ) {
         try {
-            ApprovalApplicantProfile profile =
-                    ApprovalApplicantProfile.create(
-                            loginUserId,
-                            birthDate,
-                            now
-                    );
-
-            return approvalApplicantProfileRepository.save(
-                    profile
+            return approvalApplicantProfileCreateService.create(
+                    loginUserId,
+                    birthDate,
+                    now
             );
         } catch (DataIntegrityViolationException exception) {
-            return retryUpdateAfterDuplicateProfile(
+            return updateProfileAfterConcurrentCreate(
                     loginUserId,
                     birthDate,
                     now
@@ -120,7 +114,7 @@ public class UpdateMyApprovalProfileService
         }
     }
 
-    private ApprovalApplicantProfile retryUpdateAfterDuplicateProfile(
+    private ApprovalApplicantProfile updateProfileAfterConcurrentCreate(
             Long loginUserId,
             LocalDate birthDate,
             LocalDateTime now
