@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 public class AttendanceSheetCommandService implements AttendanceSheetCommandUsecase {
 
     private static final int RETENTION_DAYS = 5;
-    private static final String REASON_NAME_NOT_FOUND = "훈련생 식별자를 찾을 수 없음";
+    private static final String REASON_EMAIL_NOT_FOUND = "이메일로 훈련생을 찾을 수 없음";
     private static final String REASON_UNKNOWN = "처리 중 오류가 발생했습니다";
 
     private final AttendanceExternalSheetLinkRepository attendanceExternalSheetLinkRepository;
@@ -80,7 +80,6 @@ public class AttendanceSheetCommandService implements AttendanceSheetCommandUsec
             String reason = "시트에 선택된 날짜(" + targetDate + ")가 오늘과 달라 자동 동기화를 건너뜀";
             log.warn("[sync] {}", reason);
 
-            // 시트를 읽지 못했으므로 "동기화 시도"로 보지 않음 -> lastSyncedAt 갱신 없이 로그만 남김
             AttendanceSheetSyncLog skippedLog = AttendanceSheetSyncLog.builder()
                     .attendanceSheetLinkId(link.getAttendanceSheetLinkId())
                     .changedRange(null)
@@ -104,14 +103,13 @@ public class AttendanceSheetCommandService implements AttendanceSheetCommandUsec
 
         boolean provisional = command.trigger() == SyncTriggerType.SCHEDULED;
 
-        // 부트캠프 ID 하나만 조회 (시트는 단일 부트캠프 기준)
         Long bootcampId = command.trigger() == SyncTriggerType.SCHEDULED
                 ? userQueryUsecase.getAnyActiveBootcampId()
                 : userQueryUsecase.getBootcampId(command.userId());
 
         Map<Long, UserStatus> statusMap = userQueryUsecase.getStudentStatusesByBootcampId(bootcampId).stream()
                 .collect(Collectors.toMap(StudentStatusView::userId, StudentStatusView::status));
-        Map<String, Long> userIdByName = userQueryUsecase.getStudentNameToIdMapByBootcampId(bootcampId);
+        Map<String, Long> userIdByEmail = userQueryUsecase.getStudentEmailToIdMapByBootcampId(bootcampId);
 
         int totalCount = 0;
         int successCount = 0;
@@ -125,12 +123,12 @@ public class AttendanceSheetCommandService implements AttendanceSheetCommandUsec
             }
 
             totalCount++;
-            String name = attendanceSheetRowParser.cell(row, columnIndex.get("name"));
+            String email = attendanceSheetRowParser.cell(row, columnIndex.get("email"));
 
             try {
-                Long userId = userIdByName.get(name);
+                Long userId = userIdByEmail.get(email);
                 if (userId == null) {
-                    failedRows.add(new FailedRowDetail(rowNum, REASON_NAME_NOT_FOUND));
+                    failedRows.add(new FailedRowDetail(rowNum, REASON_EMAIL_NOT_FOUND));
                     continue;
                 }
 
@@ -149,7 +147,7 @@ public class AttendanceSheetCommandService implements AttendanceSheetCommandUsec
                     }
                 }
             } catch (Exception e) {
-                log.warn("[sync] 행 처리 실패 | row={}, name={}", rowNum, name, e);
+                log.warn("[sync] 행 처리 실패 | row={}, email={}", rowNum, email, e);
                 String reason = e.getMessage() != null ? e.getMessage() : REASON_UNKNOWN;
                 failedRows.add(new FailedRowDetail(rowNum, reason));
             }

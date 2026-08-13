@@ -28,7 +28,7 @@ public class AttendanceSheetRowParser {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private static final Set<String> REQUIRED_COLUMN_FIELDS = Set.of(
-            "name", "trainingStatus", "attendanceStatus",
+            "email", "name", "trainingStatus", "attendanceStatus",
             "checkIn", "checkOut", "outing", "return", "trainingDate"
     );
 
