@@ -1,9 +1,6 @@
 package com.ohgiraffer.chat.application.port;
 
-import com.ohgiraffer.chat.application.result.SendbirdMessageResult;
-import com.ohgiraffer.chat.application.result.SendbirdUserProvisionResult;
-import com.ohgiraffer.chat.application.result.SendbirdUserResult;
-import com.ohgiraffer.chat.application.result.SendbirdUserStatus;
+import com.ohgiraffer.chat.application.result.*;
 
 import java.util.List;
 
@@ -52,4 +49,14 @@ public interface SendbirdApiPort {
 
     // 웹훅 서명 검증
     boolean verifyWebhookSignature(String payload, String signature);
+
+    // 봇 리소스 신규 등록 - 최초 1회만 호출되는 관리성 작업 (프로퍼티에 bot_userid/token 저장해두고 재사용 권장)
+    SendbirdBotProvisionResult registerBot(String botUserId, String nickname, String profileUrl, String botCallbackUrl, boolean isPrivacyMode);
+
+    // 봇 전용 메시지 전송 API
+    SendbirdMessageResult sendBotMessage(String botUserId, String channelId, String content);
+
+    // 봇을 채널에 초대 - 봇 userId는 문자열이라 기존 updateChannelMembers(Long)와 별도 메서드 필요
+    void inviteBotToChannel(String channelId, String botUserId);
+
 }

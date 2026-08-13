@@ -55,7 +55,7 @@ spring:
 
 google:
   sheets:
-    enabled: ${GOOGLE_SHEETS_ENABLED:false}
+    enabled: ${GOOGLE_SHEETS_ENABLED:true}
     application-name: ${GOOGLE_SHEETS_APPLICATION_NAME:ohgiraffer}
     credentials-location: ${GOOGLE_SHEETS_CREDENTIALS_LOCATION:}
 
@@ -133,6 +133,12 @@ ai:
     api-key: ${GEMINI_API_KEY}
     model: ${GEMINI_MODEL:gemini-3.6-flash}
     timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:90}
+  chatbot:
+    bot:
+      user-id: ${CHATBOT_BOT_USER_ID:campflow-ai-assistant}
+      nickname: ${CHATBOT_BOT_NICKNAME:AI비서}
+      callback-url: ${CHATBOT_BOT_CALLBACK_URL:}
+      token: ${CHATBOT_BOT_TOKEN:}
 
       
 # ==== management =====
@@ -167,6 +173,29 @@ resilience4j:
         slow-call-duration-threshold: 30s
         slow-call-rate-threshold: 50
         wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - org.springframework.web.client.RestClientException
+          - com.ohgiraffer.global.exception.BusinessException
+      # Notion Circuit Breaker
+      teamNotion:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 10s
+        slow-call-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+      geminiApiChatbot: # 신규 - 챗봇 전용, 값은 초기 추정치(운영 관찰 후 튜닝 필요)
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 15s
+        slow-call-rate-threshold: 50
+        wait-duration-in-open-state: 30s
         permitted-number-of-calls-in-half-open-state: 3
         automatic-transition-from-open-to-half-open-enabled: true
         record-exceptions:

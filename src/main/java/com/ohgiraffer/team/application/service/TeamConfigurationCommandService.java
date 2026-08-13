@@ -131,7 +131,9 @@ public class TeamConfigurationCommandService
         );
 
         List<TeamMember> activeMembers =
-                teamRepository.findActiveMembersForUpdate();
+                teamRepository.findActiveMembersByTeamPeriodIdForUpdate(
+                        teamPeriod.getId()
+                );
 
         Map<Long, TeamMember> activeMemberByUserId =
                 createActiveMemberByUserId(
