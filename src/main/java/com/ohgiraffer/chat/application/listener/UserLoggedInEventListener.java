@@ -2,6 +2,7 @@ package com.ohgiraffer.chat.application.listener;
 
 import com.ohgiraffer.auth.domain.event.UserLoggedInEvent;
 import com.ohgiraffer.chat.application.port.SendbirdApiPort;
+import com.ohgiraffer.global.s3.S3UrlResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -21,17 +22,26 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class UserLoggedInEventListener {
 
     private final SendbirdApiPort sendbirdApiPort; // Sendbird 유저 생성/재사용
+    private final S3UrlResolver s3UrlResolver;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserLoggedIn(UserLoggedInEvent event) {
         log.info("[UserLoggedInEventListener] 이벤트 수신 | userId={}", event.userId());
         try {
-            sendbirdApiPort.provisionUser(event.userId(), event.name(), event.profileImg());
+            String profileImgUrl = resolveProfileImgUrl(event.profileImg());
+            sendbirdApiPort.provisionUser(event.userId(), event.name(), profileImgUrl);
             log.info("[UserLoggedInEventListener] 프로비저닝 성공 | userId={}", event.userId());
         } catch (Exception e) {
             log.warn("[UserLoggedInEventListener] Sendbird 유저 프로비저닝 실패 | userId={} | reason={}",
                     event.userId(), e.getMessage());
         }
+    }
+
+    private String resolveProfileImgUrl(String profileImgKey) {
+        if (profileImgKey == null || profileImgKey.isBlank()) {
+            return null;
+        }
+        return s3UrlResolver.resolve(profileImgKey);
     }
 
 }

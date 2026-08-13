@@ -1,6 +1,6 @@
 package com.ohgiraffer.attendance.infrastructure.persistence;
 
-import com.ohgiraffer.attendance.domain.model.DailyAttendanceCountView;
+import com.ohgiraffer.attendance.domain.dto.DailyAttendanceCountView;
 import com.ohgiraffer.attendance.infrastructure.projection.AttendanceCalendarProjection;
 import com.ohgiraffer.attendance.infrastructure.projection.AttendanceSummaryProjection;
 import jakarta.persistence.LockModeType;
@@ -50,7 +50,7 @@ public interface SpringDataAttendanceRepository extends JpaRepository<Attendance
     );
 
     @Query("""
-    SELECT new com.ohgiraffer.attendance.domain.model.DailyAttendanceCountView(
+    SELECT new com.ohgiraffer.attendance.domain.dto.DailyAttendanceCountView(
         a.attendanceDate,
         SUM(CASE WHEN a.status <> com.ohgiraffer.attendance.domain.model.AttendanceStatus.ABSENT THEN 1 ELSE 0 END),
         SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.ABSENT THEN 1 ELSE 0 END)
@@ -70,13 +70,24 @@ public interface SpringDataAttendanceRepository extends JpaRepository<Attendance
     Optional<AttendanceJpaEntity> findByUserIdAndAttendanceDate(Long userId, LocalDate attendanceDate);
 
     /*
-    * 비관적 락
-    * 트랜잭션이 그 행을 읽는 순간부터 DB 레벨에서 물리적으로 잠가버려서 다른 트랜잭션이 그 행을 건드리지 못하게 막음
-    * */
+     * 비관적 락
+     * 트랜잭션이 그 행을 읽는 순간부터 DB 레벨에서 물리적으로 잠가버려서 다른 트랜잭션이 그 행을 건드리지 못하게 막음
+     * */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM AttendanceJpaEntity a WHERE a.userId = :userId AND a.attendanceDate = :date")
     Optional<AttendanceJpaEntity> findByUserIdAndAttendanceDateForUpdate(
             @Param("userId") Long userId,
+            @Param("date") LocalDate date
+    );
+
+    @Query("""
+    SELECT COUNT(a) FROM AttendanceJpaEntity a
+    WHERE a.userId IN :userIds
+      AND a.attendanceDate = :date
+      AND a.checkInTime IS NOT NULL
+    """)
+    long countCheckedInByUserIdsAndDate(
+            @Param("userIds") List<Long> userIds,
             @Param("date") LocalDate date
     );
 }

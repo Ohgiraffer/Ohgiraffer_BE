@@ -1,6 +1,6 @@
 package com.ohgiraffer.attendance.presentation.api.response;
 
-import com.ohgiraffer.attendance.domain.model.DailyAttendanceCountView;
+import com.ohgiraffer.attendance.domain.dto.DailyAttendanceCountView;
 
 import java.time.LocalDate;
 

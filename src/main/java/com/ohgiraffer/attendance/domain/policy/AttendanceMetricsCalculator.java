@@ -12,6 +12,9 @@ import java.util.List;
 
 public class AttendanceMetricsCalculator {
 
+    // 지각/조퇴/외출 3회 = 결석 1일 환산 (법정 고정값)
+    public static final int LATE_EARLY_OUTING_CONVERSION_COUNT = 3;
+
     private AttendanceMetricsCalculator() {
     }
 
@@ -21,8 +24,7 @@ public class AttendanceMetricsCalculator {
             long absentDays,
             long lateCount,
             long earlyLeaveCount,
-            long outingCount,
-            int conversionCount
+            long outingCount
     ) {
         long totalDays = countWeekdays(start, end);
         if (totalDays <= 0) {
@@ -30,7 +32,7 @@ public class AttendanceMetricsCalculator {
         }
 
         long irregularCount = lateCount + earlyLeaveCount + outingCount;
-        long convertedAbsences = conversionCount > 0 ? irregularCount / conversionCount : 0;
+        long convertedAbsences = irregularCount / LATE_EARLY_OUTING_CONVERSION_COUNT;
 
         long effectiveAbsentDays = absentDays + convertedAbsences;
         long attendedDays = Math.max(totalDays - effectiveAbsentDays, 0);

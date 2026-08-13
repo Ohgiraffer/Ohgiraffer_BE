@@ -1,8 +1,9 @@
 package com.ohgiraffer.attendance.application.cache;
 
 import com.ohgiraffer.attendance.domain.model.AttendanceRiskLevel;
-import com.ohgiraffer.attendance.domain.model.AttendanceSummaryView;
-import com.ohgiraffer.attendance.domain.model.PeriodAttendanceRate;
+import com.ohgiraffer.attendance.domain.dto.AttendanceSummaryView;
+import com.ohgiraffer.attendance.domain.dto.PeriodAttendanceRate;
+import com.ohgiraffer.attendance.domain.policy.AttendanceMetricsCalculator;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.presentation.api.response.AttendanceSummaryResponse;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
@@ -11,21 +12,17 @@ import com.ohgiraffer.bootcamp.domain.model.AttendancePolicyResult;
 import com.ohgiraffer.bootcamp.domain.model.BootcampPeriodResult;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-
-import static com.ohgiraffer.attendance.domain.policy.AttendanceMetricsCalculator.countWeekdays;
 
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -37,7 +34,6 @@ public class AttendanceSummaryCache {
     private final BootcampQueryUsecase bootcampQueryUsecase;
     private final RedisTemplate<String, Object> redisTemplate;
 
-    private static final int LATE_EARLY_LEAVE_CONVERSION_COUNT = 3;
     private static final String CACHE_PREFIX = "attendanceSummary::";
     private static final Duration TTL = Duration.ofHours(25);
 
@@ -88,9 +84,11 @@ public class AttendanceSummaryCache {
 
         AttendanceSummaryView summary = attendanceRepository.countByUserAndDateRange(userId, start, end);
 
-        long totalDays = countWeekdays(start, end);
-        BigDecimal attendanceRate = calculateAttendanceRate(summary, totalDays);
-        AttendanceRiskLevel riskLevel = calculateRiskLevel(attendanceRate, policy);
+        BigDecimal attendanceRate = AttendanceMetricsCalculator.calculateAttendanceRate(
+                start, end,
+                summary.absentDays(), summary.lateCount(), summary.earlyLeaveCount(), summary.outingCount()
+        );
+        AttendanceRiskLevel riskLevel = AttendanceMetricsCalculator.calculateRiskLevel(attendanceRate, policy);
 
         List<PeriodAttendanceRate> periodRates = calculatePeriodRates(userId, bootcampId, today);
 
@@ -108,41 +106,13 @@ public class AttendanceSummaryCache {
                     AttendanceSummaryView periodSummary =
                             attendanceRepository.countByUserAndDateRange(userId, period.periodStart(), periodEnd);
 
-                    long periodTotalDays = countWeekdays(period.periodStart(), periodEnd);
-                    BigDecimal periodRate = calculateAttendanceRate(periodSummary, periodTotalDays);
+                    BigDecimal periodRate = AttendanceMetricsCalculator.calculateAttendanceRate(
+                            period.periodStart(), periodEnd,
+                            periodSummary.absentDays(), periodSummary.lateCount(), periodSummary.earlyLeaveCount(), periodSummary.outingCount()
+                    );
 
                     return new PeriodAttendanceRate(period.periodNo(), periodRate);
                 })
                 .toList();
-    }
-
-    private BigDecimal calculateAttendanceRate(AttendanceSummaryView summary, long totalDays) {
-        if (totalDays <= 0) {
-            return BigDecimal.ZERO;
-        }
-
-        long irregularCount = summary.lateCount() + summary.earlyLeaveCount() + summary.outingCount();
-        long convertedAbsences = irregularCount / LATE_EARLY_LEAVE_CONVERSION_COUNT;
-        long effectiveAbsentDays = summary.absentDays() + convertedAbsences;
-
-        long attendedDays = Math.max(totalDays - effectiveAbsentDays, 0);
-
-        return BigDecimal.valueOf(attendedDays)
-                .divide(BigDecimal.valueOf(totalDays), 4, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100))
-                .setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private AttendanceRiskLevel calculateRiskLevel(BigDecimal attendanceRate, AttendancePolicyResult policy) {
-        if (attendanceRate.compareTo(policy.periodExpulsionPct()) <= 0) {
-            return AttendanceRiskLevel.RISK;
-        }
-        if (attendanceRate.compareTo(policy.warningThresholdPct()) <= 0) {
-            return AttendanceRiskLevel.WARNING;
-        }
-        if (attendanceRate.compareTo(policy.cautionThresholdPct()) <= 0) {
-            return AttendanceRiskLevel.CAUTION;
-        }
-        return null;
     }
 }

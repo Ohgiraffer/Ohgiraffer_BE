@@ -1,9 +1,9 @@
 package com.ohgiraffer.attendance.infrastructure.persistence;
 
 import com.ohgiraffer.attendance.domain.model.Attendance;
-import com.ohgiraffer.attendance.domain.model.AttendanceCalendarView;
-import com.ohgiraffer.attendance.domain.model.AttendanceSummaryView;
-import com.ohgiraffer.attendance.domain.model.DailyAttendanceCountView;
+import com.ohgiraffer.attendance.domain.dto.AttendanceCalendarView;
+import com.ohgiraffer.attendance.domain.dto.AttendanceSummaryView;
+import com.ohgiraffer.attendance.domain.dto.DailyAttendanceCountView;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.infrastructure.projection.AttendanceSummaryProjection;
 import lombok.RequiredArgsConstructor;
@@ -66,5 +66,13 @@ public class AttendanceRepositoryAdapter implements AttendanceRepository {
     public Optional<Attendance> findByUserIdAndDateForUpdate(Long userId, LocalDate date) {
         return springDataAttendanceRepository.findByUserIdAndAttendanceDateForUpdate(userId, date)
                 .map(AttendanceJpaEntity::toDomain);
+    }
+
+    @Override
+    public long countCheckedInByUserIdsAndDate(List<Long> userIds, LocalDate date) {
+        if (userIds.isEmpty()) {
+            return 0;
+        }
+        return springDataAttendanceRepository.countCheckedInByUserIdsAndDate(userIds, date);
     }
 }
