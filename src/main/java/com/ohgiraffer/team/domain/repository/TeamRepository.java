@@ -36,6 +36,10 @@ public interface TeamRepository {
 
     List<TeamMember> findActiveMembersForUpdate();
 
+    List<TeamMember> findActiveMembersByTeamPeriodIdForUpdate(
+            Long teamPeriodId
+    );
+
     List<TeamMember> findActiveMembersByTeamId(
             Long teamId
     );
@@ -79,7 +83,9 @@ public interface TeamRepository {
             Long teamPeriodId
     );
 
-    List<UnassignedStudent> findUnassignedStudents();
+    List<UnassignedStudent> findUnassignedStudents(
+            Long teamPeriodId
+    );
 
     List<UserTeamHistoryResult> findUserTeamHistories(
             Long userId

@@ -95,6 +95,21 @@ public interface SpringDataTeamMemberRepository
             """)
     List<TeamMemberViewJpaEntity> findActiveMembersForUpdate();
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT tm
+            FROM TeamMemberViewJpaEntity tm
+            JOIN TeamJpaEntity t
+                ON t.id = tm.teamId
+            WHERE t.teamPeriodId = :teamPeriodId
+              AND t.deletedAt IS NULL
+              AND tm.leftAt IS NULL
+            ORDER BY tm.teamId ASC, tm.joinedAt ASC, tm.id ASC
+            """)
+    List<TeamMemberViewJpaEntity> findActiveMembersByTeamPeriodIdForUpdate(
+            @Param("teamPeriodId") Long teamPeriodId
+    );
+
     Optional<TeamMemberViewJpaEntity> findById(
             Long teamMemberId
     );
@@ -125,12 +140,18 @@ public interface SpringDataTeamMemberRepository
               AND NOT EXISTS (
                     SELECT 1
                     FROM TeamMemberViewJpaEntity tm
+                    JOIN TeamJpaEntity t
+                        ON t.id = tm.teamId
                     WHERE tm.userId = u.id
+                      AND t.teamPeriodId = :teamPeriodId
+                      AND t.deletedAt IS NULL
                       AND tm.leftAt IS NULL
               )
             ORDER BY u.name ASC, u.id ASC
             """)
-    List<UnassignedStudentProjection> findUnassignedStudents();
+    List<UnassignedStudentProjection> findUnassignedStudents(
+            @Param("teamPeriodId") Long teamPeriodId
+    );
 
     @Query("""
             SELECT
@@ -214,26 +235,26 @@ public interface SpringDataTeamMemberRepository
     );
 
     @Query("""
-        SELECT COUNT(tm) > 0
-        FROM TeamMemberViewJpaEntity tm
-        JOIN TeamJpaEntity t
-            ON t.id = tm.teamId
-        WHERE t.teamPeriodId = :teamPeriodId
-          AND tm.leftAt IS NULL
-        """)
+            SELECT COUNT(tm) > 0
+            FROM TeamMemberViewJpaEntity tm
+            JOIN TeamJpaEntity t
+                ON t.id = tm.teamId
+            WHERE t.teamPeriodId = :teamPeriodId
+              AND tm.leftAt IS NULL
+            """)
     boolean existsActiveMemberByTeamPeriodId(
             @Param("teamPeriodId") Long teamPeriodId
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
-        DELETE FROM TeamMemberViewJpaEntity tm
-        WHERE tm.teamId IN (
-            SELECT t.id
-            FROM TeamJpaEntity t
-            WHERE t.teamPeriodId = :teamPeriodId
-        )
-        """)
+            DELETE FROM TeamMemberViewJpaEntity tm
+            WHERE tm.teamId IN (
+                SELECT t.id
+                FROM TeamJpaEntity t
+                WHERE t.teamPeriodId = :teamPeriodId
+            )
+            """)
     void deleteByTeamPeriodId(
             @Param("teamPeriodId") Long teamPeriodId
     );
