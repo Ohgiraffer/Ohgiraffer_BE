@@ -27,7 +27,7 @@ public class AttendanceListCache {
     private final StudentAttendanceRateResolver studentAttendanceRateResolver;
     private final RedisTemplate<String, Object> redisTemplate;
 
-    private static final String CACHE_PREFIX = "attendanceList::";
+    private static final String CACHE_PREFIX = "attendanceList:v2:";
     private static final Duration TTL = Duration.ofHours(25);
 
     private final Map<String, ReentrantLock> lockMap = new ConcurrentHashMap<>();
@@ -69,7 +69,7 @@ public class AttendanceListCache {
                 .map(userId -> {
                     String name = nameByUserId.getOrDefault(userId, "알 수 없음");
                     StudentAttendanceRateResult r = rateByUserId.get(userId);
-                    return StudentAttendanceSummaryResponse.of(name, r.attendanceRate(), r.counts(), r.riskLevel());
+                    return StudentAttendanceSummaryResponse.of(userId, name, r.attendanceRate(), r.counts(), r.riskLevel());
                 })
                 .toList();
 

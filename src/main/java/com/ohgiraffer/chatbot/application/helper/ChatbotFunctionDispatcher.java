@@ -1,5 +1,6 @@
 package com.ohgiraffer.chatbot.application.helper;
 
+import com.ohgiraffer.aiassistant.application.port.AttendanceRiskPort;
 import com.ohgiraffer.aiassistant.application.port.CalendarQueryPort;
 import com.ohgiraffer.aiassistant.application.port.NotificationQueryPort;
 import com.ohgiraffer.chatbot.application.port.ApprovalActionPort;
@@ -32,9 +33,8 @@ public class ChatbotFunctionDispatcher {
     private final SubmissionTodoPort submissionTodoPort;
     private final ApprovalTodoPort approvalTodoPort;
     private final NoticeTodoPort noticeTodoPort;
-    private final EvaluationTodoPort evaluationTodoPort;
     private final ConsultationTodoPort consultationTodoPort;
-    private final AttendanceTodoPort attendanceTodoPort;
+    private final AttendanceRiskPort attendanceRiskPort;
     private final TeamQueryPort teamQueryPort;
     private final ApprovalActionPort approvalActionPort;
     private final NotificationQueryPort notificationQueryPort;
@@ -46,16 +46,13 @@ public class ChatbotFunctionDispatcher {
         return switch (call.name()) {
             case "getSubmissionPendingItems" -> requireStudent(role, () -> submissionTodoPort.getPendingItems(userId, role));
             case "getSubmissionSummary" -> requireStudent(role, () -> submissionTodoPort.getSummary(userId, role));
-            case "getEvaluationPendingItems" -> requireStudent(role, () -> evaluationTodoPort.getPendingItems(userId, role));
-            case "getEvaluationSummary" -> requireStudent(role, () -> evaluationTodoPort.getSummary(userId, role));
             case "getApprovalPendingItems" -> approvalTodoPort.getPendingItems(userId, role);
             case "getApprovalSummary" -> approvalTodoPort.getSummary(userId, role);
             case "getNoticePendingItems" -> noticeTodoPort.getPendingItems(userId, role);
             case "getNoticeSummary" -> noticeTodoPort.getSummary(userId, role);
             case "getConsultationPendingItems" -> consultationTodoPort.getPendingItems(userId, role);
             case "getConsultationSummary" -> consultationTodoPort.getSummary(userId, role);
-            case "getAttendanceRisk" -> attendanceTodoPort.getPendingItems(userId, role);
-            case "getAttendanceSummary" -> attendanceTodoPort.getSummary(userId, role);
+            case "getAttendanceRisk" -> attendanceRiskPort.getRiskItems(userId, role);
 
             case "getCurrentTeamList" -> teamQueryPort.getCurrentTeamList(userId, role);
             case "getTeamPeriods" -> teamQueryPort.getTeamPeriods(userId, role);

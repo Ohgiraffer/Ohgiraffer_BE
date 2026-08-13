@@ -118,6 +118,14 @@ public class OpenHtmlApprovalPdfAdapter implements GenerateApprovalPdfPort {
                 data.studentName()
         );
         context.setVariable(
+                "birthDate",
+                data.birthDate()
+        );
+        context.setVariable(
+                "phoneNumber",
+                data.phoneNumber()
+        );
+        context.setVariable(
                 "courseName",
                 data.courseName()
         );

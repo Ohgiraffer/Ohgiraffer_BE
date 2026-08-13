@@ -5,7 +5,8 @@ import com.ohgiraffer.approval.domain.model.approval.ApprovalLeaveDetail;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalType;
-import com.ohgiraffer.approval.domain.model.signature.UserSignature;
+import com.ohgiraffer.approval.domain.model.profile.ApprovalApplicantProfile;
+import com.ohgiraffer.approval.domain.repository.ApprovalApplicantProfileRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalLeaveDetailRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;
 import com.ohgiraffer.approval.domain.repository.UserSignatureRepository;
@@ -36,6 +37,7 @@ public class ApprovalPdfDataReaderService {
 
     private final ApprovalRequestRepository approvalRequestRepository;
     private final ApprovalLeaveDetailRepository approvalLeaveDetailRepository;
+    private final ApprovalApplicantProfileRepository approvalApplicantProfileRepository;
     private final UserRepository userRepository;
     private final UserSignatureRepository userSignatureRepository;
     private final BootcampRepository bootcampRepository;
@@ -76,6 +78,12 @@ public class ApprovalPdfDataReaderService {
         return new LeavePdfData(
                 approvalRequest.getId(),
                 requester.getName(),
+                findBirthDate(
+                        requester.getId()
+                ),
+                valueOrEmpty(
+                        requester.getPhone()
+                ),
                 findCourseName(
                         requester
                 ),
@@ -231,6 +239,25 @@ public class ApprovalPdfDataReaderService {
                 );
     }
 
+    private String findBirthDate(
+            Long requesterId
+    ) {
+        return approvalApplicantProfileRepository.findByUserId(
+                        requesterId
+                )
+                .map(
+                        ApprovalApplicantProfile::getBirthDate
+                )
+                .map(
+                        birthDate -> birthDate.format(
+                                DATE_FORMATTER
+                        )
+                )
+                .orElse(
+                        ""
+                );
+    }
+
     private String findApproverName(
             Long approverId
     ) {
@@ -270,7 +297,8 @@ public class ApprovalPdfDataReaderService {
     private String toRequesterSignatureDataUri(
             ApprovalRequest approvalRequest
     ) {
-        byte[] signatureImage = approvalRequest.getSignatureImageSnapshot();
+        byte[] signatureImage =
+                approvalRequest.getSignatureImageSnapshot();
 
         if (signatureImage == null
                 || approvalRequest.getSignatureFileTypeSnapshot() == null) {
@@ -319,5 +347,15 @@ public class ApprovalPdfDataReaderService {
                 + Base64.getEncoder().encodeToString(
                 image
         );
+    }
+
+    private String valueOrEmpty(
+            String value
+    ) {
+        if (value == null) {
+            return "";
+        }
+
+        return value;
     }
 }

@@ -29,16 +29,13 @@ public class ChatbotFunctionCatalog {
             // ===== 조회 - TODO 계열 =====
             new ChatbotFunctionDefinition("getSubmissionPendingItems", "훈련생 본인의 미제출 제출물(발표자료/평가만족도) 상세 목록을 조회한다.", ChatbotFunctionDefinition.noParams(), STUDENT_ONLY),
             new ChatbotFunctionDefinition("getSubmissionSummary", "훈련생 본인의 미제출 제출물 건수 요약을 조회한다.", ChatbotFunctionDefinition.noParams(), STUDENT_ONLY),
-            new ChatbotFunctionDefinition("getEvaluationPendingItems", "훈련생 본인의 미완료 평가 상세 목록을 조회한다.", ChatbotFunctionDefinition.noParams(), STUDENT_ONLY),
-            new ChatbotFunctionDefinition("getEvaluationSummary", "훈련생 본인의 미완료 평가 건수 요약을 조회한다.", ChatbotFunctionDefinition.noParams(), STUDENT_ONLY),
-            new ChatbotFunctionDefinition("getApprovalPendingItems", "결재 대기 상세 목록을 조회한다. 훈련생은 본인이 신청해 처리중인 결재, 강사/매니저는 본인이 처리해야 할 결재 목록을 반환한다.", ChatbotFunctionDefinition.noParams(), ALL_ROLES),
+            new ChatbotFunctionDefinition("getApprovalPendingItems", "결재 대기 상세 목록을 조회한다. 훈련생/강사는 본인이 신청해 처리중인 결재, 매니저는 본인이 처리해야 할 결재 목록을 반환한다.", ChatbotFunctionDefinition.noParams(), ALL_ROLES),
             new ChatbotFunctionDefinition("getApprovalSummary", "결재 대기 건수 요약을 조회한다.", ChatbotFunctionDefinition.noParams(), ALL_ROLES),
             new ChatbotFunctionDefinition("getNoticePendingItems", "아직 확인하지 않은 공지사항 상세 목록을 조회한다.", ChatbotFunctionDefinition.noParams(), ALL_ROLES),
             new ChatbotFunctionDefinition("getNoticeSummary", "미확인 공지사항 건수 요약을 조회한다.", ChatbotFunctionDefinition.noParams(), ALL_ROLES),
             new ChatbotFunctionDefinition("getConsultationPendingItems", "예정된 상담 상세 목록을 조회한다.", ChatbotFunctionDefinition.noParams(), ALL_ROLES),
             new ChatbotFunctionDefinition("getConsultationSummary", "예정된 상담 건수 요약을 조회한다.", ChatbotFunctionDefinition.noParams(), ALL_ROLES),
             new ChatbotFunctionDefinition("getAttendanceRisk", "출결 위험 상태 상세 목록을 조회한다. 훈련생은 본인 상태, 강사/매니저는 담당 위험군 훈련생 목록을 반환한다.", ChatbotFunctionDefinition.noParams(), ALL_ROLES),
-            new ChatbotFunctionDefinition("getAttendanceSummary", "출결 위험 건수 요약을 조회한다.", ChatbotFunctionDefinition.noParams(), ALL_ROLES),
             new ChatbotFunctionDefinition("getUnreadNotifications", "읽지 않은 알림 목록을 조회한다.", ChatbotFunctionDefinition.noParams(), ALL_ROLES),
             new ChatbotFunctionDefinition("getTodayCalendarEvents", "오늘 일정(캘린더 이벤트) 목록을 조회한다.", ChatbotFunctionDefinition.noParams(), ALL_ROLES),
 

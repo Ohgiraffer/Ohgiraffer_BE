@@ -49,34 +49,46 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
 
     @Override
     public List<AvailableTimeSlot> getAvailableTimes(Long counselorId, LocalDate date) {
-        List<LocalTime> registered = getRegisteredTimes(counselorId, date);
+        List<AvailableTimeSlot> registered = getRegisteredTimes(counselorId, date);
         if (registered.isEmpty()) {
             return List.of();
         }
 
         LocalDateTime now = LocalDateTime.now();
+
+        return registered.stream()
+                .filter(slot -> date.isAfter(now.toLocalDate())
+                        || (date.isEqual(now.toLocalDate()) && slot.time().isAfter(now.toLocalTime())))
+                .toList();
+    }
+
+    @Override
+    public List<AvailableTimeSlot> getRegisteredTimes(Long counselorId, LocalDate date) {
+        List<LocalTime> registered = availableDateRepository.findByCounselorIdAndAvailableDate(counselorId, date)
+                .map(d -> d.getTimes().stream().sorted().toList())
+                .orElseGet(List::of);
+
+        if (registered.isEmpty()) {
+            return List.of();
+        }
+
+        Set<LocalTime> booked = resolveBookedTimes(counselorId, date);
+
+        return registered.stream()
+                .map(t -> new AvailableTimeSlot(t, booked.contains(t)))
+                .toList();
+    }
+
+    private Set<LocalTime> resolveBookedTimes(Long counselorId, LocalDate date) {
         LocalDateTime dayStart = date.atStartOfDay();
         LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
 
-        Set<LocalTime> booked = consultationRepository
+        return consultationRepository
                 .findByCounselorIdAndScheduledAtBetweenAndStatusNot(
                         counselorId, dayStart, dayEnd, ConsultationStatus.CANCELLED)
                 .stream()
                 .map(c -> c.getScheduledAt().toLocalTime())
                 .collect(Collectors.toSet());
-
-        return registered.stream()
-                .filter(t -> date.isAfter(now.toLocalDate())
-                        || (date.isEqual(now.toLocalDate()) && t.isAfter(now.toLocalTime())))
-                .map(t -> new AvailableTimeSlot(t, booked.contains(t)))
-                .toList();
-    }
-
-    @Override
-    public List<LocalTime> getRegisteredTimes(Long counselorId, LocalDate date) {
-        return availableDateRepository.findByCounselorIdAndAvailableDate(counselorId, date)
-                .map(d -> d.getTimes().stream().sorted().toList())
-                .orElseGet(List::of);
     }
 
     @Override

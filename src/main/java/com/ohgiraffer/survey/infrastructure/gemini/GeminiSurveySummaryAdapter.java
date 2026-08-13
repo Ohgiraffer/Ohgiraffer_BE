@@ -8,17 +8,12 @@ import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.survey.application.port.SurveySummaryAiPort;
 import com.ohgiraffer.survey.application.summary.SurveyAiSummary;
 import com.ohgiraffer.survey.application.summary.SurveyStatisticsResult;
-import com.ohgiraffer.survey.application.summary.SurveyQuestionStatistics;
 import org.springframework.web.client.RestClientException;
 import org.springframework.stereotype.Component;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Component
 public class GeminiSurveySummaryAdapter implements SurveySummaryAiPort {
@@ -50,8 +45,11 @@ public class GeminiSurveySummaryAdapter implements SurveySummaryAiPort {
         String stage = "BUILD_PROMPT";
 
         try {
-            String prompt =
-                    promptBuilder.build(
+            String systemInstruction =
+                    promptBuilder.buildSystemInstruction();
+
+            String userPrompt =
+                    promptBuilder.buildUserPrompt(
                             surveyTitle,
                             statistics
                     );
@@ -60,7 +58,8 @@ public class GeminiSurveySummaryAdapter implements SurveySummaryAiPort {
 
             String responseText =
                     geminiClient.generateText(
-                            prompt
+                            systemInstruction,
+                            userPrompt
                     );
 
             stage = "EXTRACT_JSON";
@@ -90,10 +89,7 @@ public class GeminiSurveySummaryAdapter implements SurveySummaryAiPort {
                     response.strengths(),
                     response.improvements(),
                     response.recommendations(),
-                    convertQuestionSummaries(
-                            response.questionSummaries(),
-                            statistics
-                    )
+                    response.qualitativeSummary()
             );
 
         } catch (BusinessException exception) {
@@ -198,49 +194,6 @@ public class GeminiSurveySummaryAdapter implements SurveySummaryAiPort {
         );
     }
 
-    private List<SurveyAiSummary.QuestionSummary>
-    convertQuestionSummaries(
-            List<GeminiSurveySummaryResponse
-                    .QuestionSummaryResponse> responses,
-            SurveyStatisticsResult statistics
-    ) {
-        if (responses == null || responses.isEmpty()) {
-            return List.of();
-        }
-
-        Set<Integer> validQuestionNumbers =
-                statistics.questions()
-                        .stream()
-                        .map(
-                                SurveyQuestionStatistics::questionNumber
-                        )
-                        .collect(
-                                Collectors.toUnmodifiableSet()
-                        );
-
-        Set<Integer> seenQuestionNumbers =
-                new HashSet<>();
-
-        return responses.stream()
-                .filter(response ->
-                        response != null
-                                && validQuestionNumbers.contains(
-                                response.questionNumber()
-                        )
-                                && seenQuestionNumbers.add(
-                                response.questionNumber()
-                        )
-                                && response.summary() != null
-                                && !response.summary().isBlank()
-                )
-                .map(response ->
-                        new SurveyAiSummary.QuestionSummary(
-                                response.questionNumber(),
-                                response.summary()
-                        )
-                )
-                .toList();
-    }
 
     private void validateResponse(
             GeminiSurveySummaryResponse response

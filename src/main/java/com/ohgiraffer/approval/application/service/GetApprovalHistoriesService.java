@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -129,16 +130,9 @@ public class GetApprovalHistoriesService implements GetApprovalHistoriesUseCase 
             Long requesterId,
             Long loginUserId
     ) {
-        Long requesterBootcampId = findBootcampId(
-                requesterId
-        );
-
-        Long loginUserBootcampId = findBootcampId(
+        if (!isSameBootcamp(
+                requesterId,
                 loginUserId
-        );
-
-        if (!requesterBootcampId.equals(
-                loginUserBootcampId
         )) {
             throw new BusinessException(
                     ErrorCode.APPROVAL_ACCESS_DENIED
@@ -146,16 +140,27 @@ public class GetApprovalHistoriesService implements GetApprovalHistoriesUseCase 
         }
     }
 
-    private Long findBootcampId(
-            Long userId
+    private boolean isSameBootcamp(
+            Long requesterId,
+            Long loginUserId
     ) {
-        return userRepository.findBootcampIdByUserId(
-                        userId
-                )
-                .orElseThrow(
-                        () -> new BusinessException(
-                                ErrorCode.USER_NOT_FOUND
-                        )
+        Optional<Long> requesterBootcampId =
+                userRepository.findBootcampIdByUserId(
+                        requesterId
                 );
+
+        Optional<Long> loginUserBootcampId =
+                userRepository.findBootcampIdByUserId(
+                        loginUserId
+                );
+
+        if (requesterBootcampId.isEmpty()
+                || loginUserBootcampId.isEmpty()) {
+            return false;
+        }
+
+        return requesterBootcampId.get().equals(
+                loginUserBootcampId.get()
+        );
     }
 }

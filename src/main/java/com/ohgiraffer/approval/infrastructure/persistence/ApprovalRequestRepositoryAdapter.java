@@ -86,6 +86,21 @@ public class ApprovalRequestRepositoryAdapter
     }
 
     @Override
+    public List<ApprovalRequest> findManagerProcessingApprovals(
+            Long bootcampId
+    ) {
+        return repository
+                .findManagerProcessingApprovals(
+                        bootcampId
+                )
+                .stream()
+                .map(
+                        ApprovalRequestJpaEntity::toDomain
+                )
+                .toList();
+    }
+
+    @Override
     public List<ApprovalRequest> findByRequesterIdAndRequestTypeAndStatusInOrderByRequestedAtDesc(
             Long requesterId,
             ApprovalType requestType,

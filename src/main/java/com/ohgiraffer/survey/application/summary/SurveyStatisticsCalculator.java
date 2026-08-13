@@ -12,6 +12,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 @Component
 public class SurveyStatisticsCalculator {
@@ -30,6 +32,78 @@ public class SurveyStatisticsCalculator {
     private static final int MAX_TEXT_RESPONSES = 200;
 
     private static final int MAX_TEXT_LENGTH = 500;
+
+    /*
+     * 이메일과 전화번호는 AI에 전달하기 전에 제거합니다.
+     * 주관식 응답에 개인정보가 포함될 가능성을 줄이기 위한 처리입니다.
+     */
+    private static final Pattern EMAIL_PATTERN =
+            Pattern.compile(
+                    "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+            );
+
+    /*
+     * 지원 형식:
+     * - 휴대전화: 010-1234-5678
+     * - 인터넷전화: 070-1234-5678
+     * - 서울 유선전화: 02-123-4567, 02-1234-5678
+     * - 지역 유선전화: 031-123-4567
+     * - 괄호 지역번호: (02) 1234-5678, (031) 123-4567
+     * - 국가번호: +82 10-1234-5678
+     * - 국가번호와 국내 식별번호: +82 (0)10-1234-5678
+     */
+    private static final Pattern PHONE_PATTERN =
+            Pattern.compile(
+                    "(?<!\\d)"
+                            + "(?:"
+                            // +82 10-1234-5678, +82 (0)10-1234-5678
+                            + "(?:\\+82[\\s.-]?"
+                            + "(?:\\(0\\)[\\s.-]?)?"
+                            + "(?:1[016789]|2|[3-6]\\d|70))"
+                            + "|"
+                            // (02) 1234-5678, (031) 123-4567, (070) 1234-5678
+                            + "(?:\\(0(?:2|[3-6]\\d|70)\\))"
+                            + "|"
+                            // 010, 02, 031, 070으로 시작하는 일반 국내 번호
+                            + "(?:0(?:1[016789]|2|[3-6]\\d|70))"
+                            + ")"
+                            + "[\\s.-]?\\d{3,4}"
+                            + "[\\s.-]?\\d{4}"
+                            + "(?!\\d)"
+            );
+
+    /*
+     * Google Form 응답 시트에 자동 또는 사용자 입력으로 포함될 수 있는
+     * 개인정보/응답자 메타데이터 컬럼입니다.
+     *
+     * 이 컬럼은 통계, AI 요청, PDF에서 모두 제외합니다.
+     */
+    private static final Set<String> EXCLUDED_HEADERS =
+            Set.of(
+                    "타임스탬프",
+                    "응답일시",
+                    "제출일시",
+                    "제출시간",
+                    "이메일",
+                    "이메일주소",
+                    "응답자이메일",
+                    "email",
+                    "emailaddress",
+                    "이름",
+                    "성명",
+                    "응답자이름",
+                    "전화번호",
+                    "휴대전화",
+                    "휴대폰번호",
+                    "학번",
+                    "주소",
+                    "소속팀",
+                    "팀명",
+                    "트랙",
+                    "모듈",
+                    "반",
+                    "기수"
+            );
 
     public SurveyStatisticsResult calculate(
             SurveyResponseDataset dataset
@@ -52,6 +126,10 @@ public class SurveyStatisticsCalculator {
             String header =
                     dataset.headers().get(columnIndex);
 
+            /*
+             * 제목이 없거나 개인정보/메타데이터 컬럼이면
+             * 문항으로 만들지 않습니다.
+             */
             if (header == null
                     || header.isBlank()
                     || isSensitiveMetadataColumn(header)) {
@@ -64,22 +142,20 @@ public class SurveyStatisticsCalculator {
                             columnIndex
                     );
 
-            SurveyQuestionStatistics statistics;
-
+            /*
+             * 응답이 한 건도 없는 문항은
+             * AI 입력과 PDF에서 완전히 제외합니다.
+             */
             if (responses.isEmpty()) {
-                statistics =
-                        createUnansweredQuestion(
-                                questionNumber,
-                                header
-                        );
-            } else {
-                statistics =
-                        analyzeSafely(
-                                questionNumber,
-                                header,
-                                responses
-                        );
+                continue;
             }
+
+            SurveyQuestionStatistics statistics =
+                    analyzeSafely(
+                            questionNumber,
+                            header.trim(),
+                            responses
+                    );
 
             questions.add(statistics);
             questionNumber++;
@@ -91,23 +167,6 @@ public class SurveyStatisticsCalculator {
                 dataset.responseCount(),
                 questions.size(),
                 questions
-        );
-    }
-
-    private SurveyQuestionStatistics createUnansweredQuestion(
-            int questionNumber,
-            String question
-    ) {
-        return new SurveyQuestionStatistics(
-                questionNumber,
-                question,
-                SurveyQuestionType.UNANSWERED,
-                0,
-                null,
-                null,
-                null,
-                Map.of(),
-                List.of()
         );
     }
 
@@ -187,9 +246,7 @@ public class SurveyStatisticsCalculator {
 
         BigDecimal average =
                 sum.divide(
-                        BigDecimal.valueOf(
-                                numbers.size()
-                        ),
+                        BigDecimal.valueOf(numbers.size()),
                         AVERAGE_SCALE,
                         RoundingMode.HALF_UP
                 );
@@ -205,9 +262,7 @@ public class SurveyStatisticsCalculator {
                         .orElse(BigDecimal.ZERO);
 
         Map<String, Long> distribution =
-                createDistribution(
-                        responses
-                );
+                createDistribution(responses);
 
         return new SurveyQuestionStatistics(
                 questionNumber,
@@ -228,9 +283,7 @@ public class SurveyStatisticsCalculator {
             List<String> responses
     ) {
         Map<String, Long> distribution =
-                createDistribution(
-                        responses
-                );
+                createDistribution(responses);
 
         return new SurveyQuestionStatistics(
                 questionNumber,
@@ -250,8 +303,14 @@ public class SurveyStatisticsCalculator {
             String question,
             List<String> responses
     ) {
-        List<String> limitedResponses =
+        /*
+         * 주관식 원문은 PDF에 직접 표시하지 않습니다.
+         * 개인정보를 제거한 결과만 AI 요약 입력으로 전달합니다.
+         */
+        List<String> sanitizedResponses =
                 responses.stream()
+                        .map(this::sanitizeTextResponse)
+                        .filter(value -> !value.isBlank())
                         .limit(MAX_TEXT_RESPONSES)
                         .map(this::limitTextLength)
                         .toList();
@@ -260,12 +319,12 @@ public class SurveyStatisticsCalculator {
                 questionNumber,
                 question,
                 SurveyQuestionType.TEXT,
-                responses.size(),
+                sanitizedResponses.size(),
                 null,
                 null,
                 null,
                 Map.of(),
-                limitedResponses
+                sanitizedResponses
         );
     }
 
@@ -282,9 +341,11 @@ public class SurveyStatisticsCalculator {
                 continue;
             }
 
-            String value = row.get(columnIndex);
+            String value =
+                    row.get(columnIndex);
 
-            if (value == null || value.isBlank()) {
+            if (value == null
+                    || value.isBlank()) {
                 continue;
             }
 
@@ -334,15 +395,53 @@ public class SurveyStatisticsCalculator {
             String header
     ) {
         String normalized =
-                header.trim()
-                        .toLowerCase(Locale.ROOT)
-                        .replaceAll("[\\s_-]", "");
+                normalizeHeader(header);
 
-        return normalized.equals("이메일")
-                || normalized.equals("이메일주소")
-                || normalized.equals("email")
-                || normalized.equals("emailaddress")
-                || normalized.equals("응답자이메일");
+        if (EXCLUDED_HEADERS.contains(normalized)) {
+            return true;
+        }
+
+        /*
+         * "이름을 기재해주세요", "이메일을 입력해주세요"처럼
+         * 문장 형태로 작성된 개인정보 컬럼도 제외합니다.
+         */
+        return normalized.contains("이메일")
+                || normalized.contains("emailaddress")
+                || normalized.contains("응답자email")
+                || normalized.contains("이름을기재")
+                || normalized.contains("이름을입력")
+                || normalized.contains("성명을기재")
+                || normalized.contains("성명을입력")
+                || normalized.contains("전화번호를입력")
+                || normalized.contains("휴대전화번호")
+                || normalized.contains("타임스탬프");
+    }
+
+    private String normalizeHeader(
+            String header
+    ) {
+        return header.trim()
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[\\s_\\-()\\[\\]{}:]", "");
+    }
+
+    private String sanitizeTextResponse(
+            String value
+    ) {
+        if (value == null
+                || value.isBlank()) {
+            return "";
+        }
+
+        String sanitized =
+                EMAIL_PATTERN.matcher(value.trim())
+                        .replaceAll("[이메일 제거]");
+
+        sanitized =
+                PHONE_PATTERN.matcher(sanitized)
+                        .replaceAll("[전화번호 제거]");
+
+        return sanitized;
     }
 
     private boolean isNumber(
@@ -394,9 +493,25 @@ public class SurveyStatisticsCalculator {
             return value;
         }
 
+        /*
+         * Unicode 코드 포인트 기준으로 잘라서
+         * 이모지나 보조 평면 문자가 깨지지 않도록 합니다.
+         */
+        int endIndex =
+                value.offsetByCodePoints(
+                        0,
+                        Math.min(
+                                MAX_TEXT_LENGTH,
+                                value.codePointCount(
+                                        0,
+                                        value.length()
+                                )
+                        )
+                );
+
         return value.substring(
                 0,
-                MAX_TEXT_LENGTH
+                endIndex
         ) + "...";
     }
 }
