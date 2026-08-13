@@ -27,7 +27,7 @@ public class AttendanceListCache {
     private final StudentAttendanceRateResolver studentAttendanceRateResolver;
     private final RedisTemplate<String, Object> redisTemplate;
 
-    private static final String CACHE_PREFIX = "attendanceList::";
+    private static final String CACHE_PREFIX = "attendanceList:v2:";
     private static final Duration TTL = Duration.ofHours(25);
 
     private final Map<String, ReentrantLock> lockMap = new ConcurrentHashMap<>();
