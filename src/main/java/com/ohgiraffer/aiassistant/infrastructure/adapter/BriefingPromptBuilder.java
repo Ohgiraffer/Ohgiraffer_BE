@@ -1,8 +1,10 @@
 package com.ohgiraffer.aiassistant.infrastructure.adapter;
 
+import com.ohgiraffer.aiassistant.domain.model.AttendanceRiskInfo;
 import com.ohgiraffer.aiassistant.domain.model.BriefingSourceData;
 import com.ohgiraffer.notification.application.result.NotificationResult;
 import com.ohgiraffer.todo.domain.model.TodoItemResponse;
+import com.ohgiraffer.user.domain.model.Role;
 import org.springframework.stereotype.Component;
 
 import java.time.format.DateTimeFormatter;
@@ -72,8 +74,31 @@ public class BriefingPromptBuilder {
     }
 
     // 출결 위험도 - null이면 "정상"으로 표기
+    // "리스트 크기"가 아니라 role로 직접 분기, 강사/매니저는 위험군이 1명이어도 항상 집계 포맷 유지
     private String formatAttendance(BriefingSourceData data) {
-        return data.attendanceRiskLevel() == null ? "정상" : data.attendanceRiskLevel();
+        List<AttendanceRiskInfo> riskItems = data.attendanceRiskItems();
+        if (riskItems == null || riskItems.isEmpty()) {
+            return "정상";
+        }
+
+        // 훈련생은 본인 위험도 1건뿐이므로 riskLevel 그대로 노출
+        if (data.role() == Role.STUDENT) {
+            return riskItems.get(0).riskLevel();
+        }
+
+        // 강사/매니저는 위험군 인원이 몇 명이든 항상 집계 포맷 유지 (1명이어도 개인 riskLevel로 새지 않음)
+        long dangerCount = riskItems.stream().filter(r -> "경고".equals(r.riskLevel())).count();
+        long warningCount = riskItems.stream().filter(r -> "주의".equals(r.riskLevel())).count();
+
+        StringBuilder sb = new StringBuilder();
+        if (dangerCount > 0) {
+            sb.append("경고 ").append(dangerCount).append("명");
+        }
+        if (warningCount > 0) {
+            if (!sb.isEmpty()) sb.append(", ");
+            sb.append("주의 ").append(warningCount).append("명");
+        }
+        return sb.isEmpty() ? "정상" : sb.toString();
     }
 
     // 24시간 이내 마감 항목 - TodoItemResponse 필드 기준으로 포맷
@@ -90,7 +115,6 @@ public class BriefingPromptBuilder {
     private String formatGeneralItems(BriefingSourceData data) {
         List<TodoItemResponse> general = data.todoItems().stream()
                 .filter(item -> !data.oneDayDeadlineItems().contains(item))
-                .filter(item -> item.sourceDomain() != com.ohgiraffer.todo.domain.model.TodoSourceDomain.ATTENDANCE)
                 .toList();
 
         if (general.isEmpty()) {
