@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 
@@ -217,7 +216,7 @@ public class ConsultationController {
         return ResponseEntity.ok(consultationQueryUsecase.getAvailableDates(principal.getId(), yearMonth));
     }
 
-    @Operation(summary = "내가 등록한 상담 가능 시간 조회", description = "가능 시간 등록 화면에서 특정일에 이미 등록된 시간을 조회합니다.")
+    @Operation(summary = "내가 등록한 상담 가능 시간 조회", description = "가능 시간 등록 화면에서 특정일에 이미 등록된 시간을 예약 여부(isReserved)와 함께 조회합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "401", description = "인증되지 않음"),
@@ -226,14 +225,14 @@ public class ConsultationController {
     })
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
     @GetMapping("/available-times/mine")
-    public ResponseEntity<List<String>> getRegisteredTimes(
+    public ResponseEntity<List<AvailableTimeResponse>> getRegisteredTimes(
             @AuthenticationPrincipal CustomUserPrincipal principal,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
     ) {
-        List<String> times = consultationQueryUsecase.getRegisteredTimes(principal.getId(), date).stream()
-                .map(t -> t.format(DateTimeFormatter.ofPattern("HH:mm")))
+        List<AvailableTimeResponse> response = consultationQueryUsecase.getRegisteredTimes(principal.getId(), date).stream()
+                .map(AvailableTimeResponse::from)
                 .toList();
-        return ResponseEntity.ok(times);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "상담 가능 시간 등록/수정", description = "특정일의 상담 가능 시간을 전체 교체 방식으로 저장합니다.")

@@ -33,7 +33,7 @@ import java.time.LocalDateTime;
 public class AuthController {
     private final AuthCommandUsecase authCommandUsecase;
 
-    @Value("${app.cookie.secure}")
+    @Value("${app.cookie.secure:true}")
     private boolean cookieSecure;
 
     @Operation(summary = "로그인", description = "아이디와 비밀번호를 기입하여 로그인 합니다")
@@ -79,7 +79,7 @@ public class AuthController {
         ResponseCookie expiredCookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("Strict")
+                .sameSite("None")
                 .path("/auth")
                 .maxAge(0)
                 .build();
@@ -98,7 +98,7 @@ public class AuthController {
         return ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("Strict")
+                .sameSite("None")
                 .path("/auth")
                 .maxAge(ttlSeconds)
                 .build();

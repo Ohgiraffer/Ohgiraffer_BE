@@ -6,6 +6,7 @@ import com.ohgiraffer.attendance.domain.dto.StudentAttendanceCountsView;
 import java.math.BigDecimal;
 
 public record StudentAttendanceSummaryResponse(
+        Long userId,
         String name,
         BigDecimal attendanceRate,
         long lateCount,
@@ -15,10 +16,10 @@ public record StudentAttendanceSummaryResponse(
         AttendanceRiskLevel status
 ) {
     public static StudentAttendanceSummaryResponse of(
-            String name, BigDecimal rate, StudentAttendanceCountsView counts, AttendanceRiskLevel riskLevel
+            Long userId, String name, BigDecimal rate, StudentAttendanceCountsView counts, AttendanceRiskLevel riskLevel
     ) {
         return new StudentAttendanceSummaryResponse(
-                name, rate,
+                userId, name, rate,
                 counts.lateCount(), counts.earlyLeaveCount(), counts.outingCount(), counts.absentDays(),
                 riskLevel
         );
