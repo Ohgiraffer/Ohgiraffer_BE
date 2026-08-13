@@ -4,6 +4,7 @@ import com.ohgiraffer.aiassistant.domain.model.AttendanceRiskInfo;
 import com.ohgiraffer.aiassistant.domain.model.BriefingSourceData;
 import com.ohgiraffer.notification.application.result.NotificationResult;
 import com.ohgiraffer.todo.domain.model.TodoItemResponse;
+import com.ohgiraffer.user.domain.model.Role;
 import org.springframework.stereotype.Component;
 
 import java.time.format.DateTimeFormatter;
@@ -73,20 +74,21 @@ public class BriefingPromptBuilder {
     }
 
     // 출결 위험도 - null이면 "정상"으로 표기
-    // 수정 - 명시적 집계 규칙: "경고" 1명이라도 있으면 경고 우선 표시, 없으면 "주의" 인원수, 둘 다 없으면 정상
+    // "리스트 크기"가 아니라 role로 직접 분기, 강사/매니저는 위험군이 1명이어도 항상 집계 포맷 유지
     private String formatAttendance(BriefingSourceData data) {
         List<AttendanceRiskInfo> riskItems = data.attendanceRiskItems();
         if (riskItems == null || riskItems.isEmpty()) {
             return "정상";
         }
 
-        long dangerCount = riskItems.stream().filter(r -> "경고".equals(r.riskLevel())).count();
-        long warningCount = riskItems.stream().filter(r -> "주의".equals(r.riskLevel())).count();
-
-        // STUDENT는 본인 1건뿐이라 riskLevel 그대로 노출, INSTRUCTOR/MANAGER는 인원수 집계로 표시
-        if (riskItems.size() == 1 && dangerCount + warningCount == 1) {
+        // 훈련생은 본인 위험도 1건뿐이므로 riskLevel 그대로 노출
+        if (data.role() == Role.STUDENT) {
             return riskItems.get(0).riskLevel();
         }
+
+        // 강사/매니저는 위험군 인원이 몇 명이든 항상 집계 포맷 유지 (1명이어도 개인 riskLevel로 새지 않음)
+        long dangerCount = riskItems.stream().filter(r -> "경고".equals(r.riskLevel())).count();
+        long warningCount = riskItems.stream().filter(r -> "주의".equals(r.riskLevel())).count();
 
         StringBuilder sb = new StringBuilder();
         if (dangerCount > 0) {
