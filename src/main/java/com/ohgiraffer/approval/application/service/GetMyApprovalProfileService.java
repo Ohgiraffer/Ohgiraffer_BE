@@ -2,7 +2,7 @@ package com.ohgiraffer.approval.application.service;
 
 import com.ohgiraffer.approval.application.query.ApprovalProfileResult;
 import com.ohgiraffer.approval.application.usecase.GetMyApprovalProfileUseCase;
-import com.ohgiraffer.approval.infrastructure.adapter.ApprovalApplicantProfileRepository;
+import com.ohgiraffer.approval.domain.repository.ApprovalApplicantProfileRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.user.domain.model.User;

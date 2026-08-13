@@ -1,6 +1,7 @@
 package com.ohgiraffer.approval.infrastructure.adapter;
 
 import com.ohgiraffer.approval.domain.model.profile.ApprovalApplicantProfile;
+import com.ohgiraffer.approval.domain.repository.ApprovalApplicantProfileRepository;
 import com.ohgiraffer.approval.infrastructure.persistence.ApprovalApplicantProfileJpaEntity;
 import com.ohgiraffer.approval.infrastructure.persistence.SpringDataApprovalApplicantProfileRepository;
 import lombok.RequiredArgsConstructor;

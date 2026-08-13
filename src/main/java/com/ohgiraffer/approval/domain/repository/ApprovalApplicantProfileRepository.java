@@ -1,4 +1,4 @@
-package com.ohgiraffer.approval.infrastructure.adapter;
+package com.ohgiraffer.approval.domain.repository;
 
 import com.ohgiraffer.approval.domain.model.profile.ApprovalApplicantProfile;
 

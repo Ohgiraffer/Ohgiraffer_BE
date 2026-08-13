@@ -7,7 +7,7 @@ import com.ohgiraffer.approval.domain.model.approval.ApprovalHistory;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalLeaveDetail;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
 import com.ohgiraffer.approval.domain.model.signature.UserSignature;
-import com.ohgiraffer.approval.infrastructure.adapter.ApprovalApplicantProfileRepository;
+import com.ohgiraffer.approval.domain.repository.ApprovalApplicantProfileRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalHistoryRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalLeaveDetailRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;

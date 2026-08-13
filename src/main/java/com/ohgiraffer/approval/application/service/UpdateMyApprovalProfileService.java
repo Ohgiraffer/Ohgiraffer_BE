@@ -3,12 +3,13 @@ package com.ohgiraffer.approval.application.service;
 import com.ohgiraffer.approval.application.query.ApprovalProfileResult;
 import com.ohgiraffer.approval.application.usecase.UpdateMyApprovalProfileUseCase;
 import com.ohgiraffer.approval.domain.model.profile.ApprovalApplicantProfile;
-import com.ohgiraffer.approval.infrastructure.adapter.ApprovalApplicantProfileRepository;
+import com.ohgiraffer.approval.domain.repository.ApprovalApplicantProfileRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,41 +40,108 @@ public class UpdateMyApprovalProfileService
                 birthDate
         );
 
-        LocalDateTime now =
-                LocalDateTime.now(
-                        clock
-                );
-
-        ApprovalApplicantProfile profile =
-                approvalApplicantProfileRepository.findByUserId(
-                                loginUserId
-                        )
-                        .map(
-                                existingProfile -> {
-                                    existingProfile.updateBirthDate(
-                                            birthDate,
-                                            now
-                                    );
-
-                                    return existingProfile;
-                                }
-                        )
-                        .orElseGet(
-                                () -> ApprovalApplicantProfile.create(
-                                        loginUserId,
-                                        birthDate,
-                                        now
-                                )
-                        );
-
         ApprovalApplicantProfile savedProfile =
-                approvalApplicantProfileRepository.save(
-                        profile
+                saveOrUpdateProfile(
+                        loginUserId,
+                        birthDate
                 );
 
         return new ApprovalProfileResult(
                 savedProfile.getBirthDate(),
                 user.getPhone()
+        );
+    }
+
+    private ApprovalApplicantProfile saveOrUpdateProfile(
+            Long loginUserId,
+            LocalDate birthDate
+    ) {
+        LocalDateTime now =
+                LocalDateTime.now(
+                        clock
+                );
+
+        return approvalApplicantProfileRepository.findByUserId(
+                        loginUserId
+                )
+                .map(
+                        existingProfile -> updateExistingProfile(
+                                existingProfile,
+                                birthDate,
+                                now
+                        )
+                )
+                .orElseGet(
+                        () -> createProfileSafely(
+                                loginUserId,
+                                birthDate,
+                                now
+                        )
+                );
+    }
+
+    private ApprovalApplicantProfile updateExistingProfile(
+            ApprovalApplicantProfile existingProfile,
+            LocalDate birthDate,
+            LocalDateTime now
+    ) {
+        existingProfile.updateBirthDate(
+                birthDate,
+                now
+        );
+
+        return approvalApplicantProfileRepository.save(
+                existingProfile
+        );
+    }
+
+    private ApprovalApplicantProfile createProfileSafely(
+            Long loginUserId,
+            LocalDate birthDate,
+            LocalDateTime now
+    ) {
+        try {
+            ApprovalApplicantProfile profile =
+                    ApprovalApplicantProfile.create(
+                            loginUserId,
+                            birthDate,
+                            now
+                    );
+
+            return approvalApplicantProfileRepository.save(
+                    profile
+            );
+        } catch (DataIntegrityViolationException exception) {
+            return retryUpdateAfterDuplicateProfile(
+                    loginUserId,
+                    birthDate,
+                    now
+            );
+        }
+    }
+
+    private ApprovalApplicantProfile retryUpdateAfterDuplicateProfile(
+            Long loginUserId,
+            LocalDate birthDate,
+            LocalDateTime now
+    ) {
+        ApprovalApplicantProfile existingProfile =
+                approvalApplicantProfileRepository.findByUserId(
+                                loginUserId
+                        )
+                        .orElseThrow(
+                                () -> new BusinessException(
+                                        ErrorCode.INTERNAL_SERVER_ERROR
+                                )
+                        );
+
+        existingProfile.updateBirthDate(
+                birthDate,
+                now
+        );
+
+        return approvalApplicantProfileRepository.save(
+                existingProfile
         );
     }
 

@@ -6,7 +6,7 @@ import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalType;
 import com.ohgiraffer.approval.domain.model.profile.ApprovalApplicantProfile;
-import com.ohgiraffer.approval.infrastructure.adapter.ApprovalApplicantProfileRepository;
+import com.ohgiraffer.approval.domain.repository.ApprovalApplicantProfileRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalLeaveDetailRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;
 import com.ohgiraffer.approval.domain.repository.UserSignatureRepository;
@@ -253,10 +253,8 @@ public class ApprovalPdfDataReaderService {
                                 DATE_FORMATTER
                         )
                 )
-                .orElseThrow(
-                        () -> new BusinessException(
-                                ErrorCode.INVALID_INPUT_VALUE
-                        )
+                .orElse(
+                        ""
                 );
     }
 
