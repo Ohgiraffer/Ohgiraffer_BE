@@ -68,8 +68,8 @@ public class AttendanceCommandService implements AttendanceCommandUsecase {
 
         Attendance attendance = existing.isPresent()
                 ? Attendance.reconstitute(
-                existing.get().getId(), userId, date, AttendanceStatus.LEAVE, null, null, externalRefId)
-                : Attendance.create(userId, date, AttendanceStatus.LEAVE, null, null, externalRefId);
+                existing.get().getId(), userId, date, AttendanceStatus.LEAVE, null, null, null, null, externalRefId)
+                : Attendance.create(userId, date, AttendanceStatus.LEAVE, null, null, null, null, externalRefId);
 
         try {
             attendanceRepository.save(attendance);

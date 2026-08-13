@@ -106,4 +106,29 @@ public class GeminiClient {
 
         throw new BusinessException(ErrorCode.AI_API_CALL_FAILED);
     }
+
+    // 챗봇 전용 - function-calling 지원. contents는 대화 히스토리(user/model/function role 섞임), tools는 role별 필터링된 함수 목록
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> generateWithTools(List<Map<String, Object>> contents, List<Map<String, Object>> tools) {
+        Map<String, Object> body = Map.of(
+                "contents", contents,
+                "tools", tools
+        );
+
+        Map<String, Object> response = restClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/models/{model}:generateContent")
+                        .queryParam("key", properties.getApiKey())
+                        .build(properties.getModel()))
+                .body(body)
+                .retrieve()
+                .body(Map.class);
+
+        if (response == null) {
+            throw new BusinessException(ErrorCode.AI_API_CALL_FAILED);
+        }
+        return response;
+
+    }
+
 }

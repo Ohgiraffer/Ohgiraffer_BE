@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
  */
 
 @RestController
-@RequestMapping("/api/webhooks/sendbird")
+@RequestMapping("/webhooks/sendbird")
 @RequiredArgsConstructor
 public class ChatWebhookController {
 

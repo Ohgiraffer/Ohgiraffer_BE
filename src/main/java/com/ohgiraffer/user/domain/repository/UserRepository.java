@@ -31,4 +31,6 @@ public interface UserRepository {
     List<User> findAllByBootcampIdAndRole(Long bootcampId, Role role);
 
     List<User> findAllByBootcampId(Long bootcampId);
+
+    Optional<Long> findAnyBootcampIdByStatus(UserStatus status);
 }

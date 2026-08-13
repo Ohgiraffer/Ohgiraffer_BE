@@ -22,7 +22,7 @@ public class S3UrlResolver {
     @Value("${cloud.aws.region.static}")
     private String region;
 
-    private static final Duration URL_EXPIRATION = Duration.ofHours(24);
+    private static final Duration URL_EXPIRATION = Duration.ofHours(80);
     private static final Duration DOWNLOAD_URL_EXPIRATION = Duration.ofMinutes(5);
     private static final Duration PREVIEW_URL_EXPIRATION = Duration.ofMinutes(5);
 
