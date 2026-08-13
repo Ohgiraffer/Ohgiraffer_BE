@@ -45,8 +45,11 @@ public class GeminiSurveySummaryAdapter implements SurveySummaryAiPort {
         String stage = "BUILD_PROMPT";
 
         try {
-            String prompt =
-                    promptBuilder.build(
+            String systemInstruction =
+                    promptBuilder.buildSystemInstruction();
+
+            String userPrompt =
+                    promptBuilder.buildUserPrompt(
                             surveyTitle,
                             statistics
                     );
@@ -55,7 +58,8 @@ public class GeminiSurveySummaryAdapter implements SurveySummaryAiPort {
 
             String responseText =
                     geminiClient.generateText(
-                            prompt
+                            systemInstruction,
+                            userPrompt
                     );
 
             stage = "EXTRACT_JSON";
