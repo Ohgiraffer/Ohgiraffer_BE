@@ -1,8 +1,10 @@
 package com.ohgiraffer.aiassistant.infrastructure.adapter;
 
+import com.ohgiraffer.aiassistant.application.port.AttendanceRiskPort;
 import com.ohgiraffer.aiassistant.application.port.BriefingDataGatheringPort;
 import com.ohgiraffer.aiassistant.application.port.CalendarQueryPort;
 import com.ohgiraffer.aiassistant.application.port.NotificationQueryPort;
+import com.ohgiraffer.aiassistant.domain.model.AttendanceRiskInfo;
 import com.ohgiraffer.aiassistant.domain.model.BriefingSourceData;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.todo.application.port.*;
@@ -36,16 +38,14 @@ public class BriefingDataGatheringAdapter implements BriefingDataGatheringPort {
     private final SubmissionTodoPort submissionTodoPort;
     private final ApprovalTodoPort approvalTodoPort;
     private final NoticeTodoPort noticeTodoPort;
-    private final EvaluationTodoPort evaluationTodoPort;
     private final ConsultationTodoPort consultationTodoPort;
-    private final AttendanceTodoPort attendanceTodoPort;
+    private final AttendanceRiskPort attendanceRiskPort;
     private final CalendarQueryPort calendarQueryPort;
     private final NotificationQueryPort notificationQueryPort;
 
     @Override
     public BriefingSourceData gather(Long userId, Role role) {
-
-        ZonedDateTime nowKst = ZonedDateTime.now(KST);          // 기준 시각 한 번만 캡처 - 이후 전부 재사용
+        ZonedDateTime nowKst = ZonedDateTime.now(KST);
         LocalDateTime now = nowKst.toLocalDateTime();
         LocalDate today = nowKst.toLocalDate();
 
@@ -53,31 +53,29 @@ public class BriefingDataGatheringAdapter implements BriefingDataGatheringPort {
 
         if (role == Role.STUDENT) {
             todoItems.addAll(safeGet(() -> submissionTodoPort.getPendingItems(userId, role), userId, "SUBMISSION"));
-            todoItems.addAll(safeGet(() -> evaluationTodoPort.getPendingItems(userId, role), userId, "EVALUATION"));
         }
         todoItems.addAll(safeGet(() -> approvalTodoPort.getPendingItems(userId, role), userId, "APPROVAL"));
         todoItems.addAll(safeGet(() -> noticeTodoPort.getPendingItems(userId, role), userId, "NOTICE"));
         todoItems.addAll(safeGet(() -> consultationTodoPort.getPendingItems(userId, role), userId, "CONSULTATION"));
-        todoItems.addAll(safeGet(() -> attendanceTodoPort.getPendingItems(userId, role), userId, "ATTENDANCE"));
 
-        LocalDateTime deadline24h = LocalDateTime.now().plusHours(24);
+        LocalDateTime deadline24h = now.plusHours(24);
         List<TodoItemResponse> oneDayDeadlineItems = todoItems.stream()
-                // 과거에 이미 지난 항목은 제외, "지금부터 24시간 이내"만 포함
                 .filter(item -> item.dueOrEventTime() != null
                         && !item.dueOrEventTime().isBefore(now)
                         && item.dueOrEventTime().isBefore(deadline24h))
                 .toList();
 
-        String attendanceRiskLevel = todoItems.stream()
-                .filter(item -> item.sourceDomain() == TodoSourceDomain.ATTENDANCE)
-                .map(TodoItemResponse::status)
+        // 출결은 별도 Port에서 위험도만 조회 - 정상이면 빈 리스트라 attendanceRiskLevel은 null
+        List<AttendanceRiskInfo> riskItems = safeGet(() -> attendanceRiskPort.getRiskItems(userId, role), userId, "ATTENDANCE");
+        String attendanceRiskLevel = riskItems.stream()
+                .map(AttendanceRiskInfo::riskLevel)
                 .findFirst()
                 .orElse(null);
 
         return new BriefingSourceData(
                 userId,
                 role,
-                today,  // KST 기준 오늘 날짜
+                today,
                 todoItems,
                 oneDayDeadlineItems,
                 attendanceRiskLevel,
@@ -86,7 +84,6 @@ public class BriefingDataGatheringAdapter implements BriefingDataGatheringPort {
         );
     }
 
-    // 개별 소스 조회 실패를 격리 - 예외 발생 시 로그만 남기고 빈 리스트로 대체, 브리핑 생성 자체는 계속 진행
     private <T> List<T> safeGet(java.util.function.Supplier<List<T>> supplier, Long userId, String sourceName) {
         try {
             return supplier.get();

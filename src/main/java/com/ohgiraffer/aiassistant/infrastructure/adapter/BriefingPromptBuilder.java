@@ -90,7 +90,6 @@ public class BriefingPromptBuilder {
     private String formatGeneralItems(BriefingSourceData data) {
         List<TodoItemResponse> general = data.todoItems().stream()
                 .filter(item -> !data.oneDayDeadlineItems().contains(item))
-                .filter(item -> item.sourceDomain() != com.ohgiraffer.todo.domain.model.TodoSourceDomain.ATTENDANCE)
                 .toList();
 
         if (general.isEmpty()) {
