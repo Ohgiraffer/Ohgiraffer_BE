@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const cron = require("node-cron"); // npm install node-cron 필요
 const { fetchRecentLogs } = require("./lib/loki");
 const { analyzeAlert } = require("./lib/gemini");
 const { sendToSlack, buildBaseBlocks, buildActionButtons, buildTeamProgressSection } = require("./lib/slack");
@@ -7,6 +8,7 @@ const { evaluateAlert } = require("./config/actions");
 const { runAction } = require("./lib/executor");
 const { verifySlackSignature } = require("./lib/slackVerify");
 const approvalTracker = require("./lib/approvalTracker");
+const { notifyManagerOnResolve, sendDailyDigest, DIGEST_CRON } = require("./lib/notifyManager");
 
 const app = express();
 
@@ -81,8 +83,17 @@ async function handleSingleAlert(alert) {
   // "무엇에 대한 승인인지" 추적할 고유 ID를 만들어둔다.
   const instanceId = `${alertName}::${Date.now()}`;
 
+  // 1. 개발팀 Slack 통보가 먼저
   await sendToSlack({ alertName, status, value, labels, analysis, policy, executionResult, instanceId });
   console.log(`[webhook] 처리 완료: ${alertName} (경로: ${policy.route}, instanceId: ${instanceId})`);
+
+  // 2. 자동 실행(AUTO_EXECUTE)은 이 시점에 이미 해결/실패가 결정된 상태이므로,
+  //    Slack 통보 다음 순서로 매니저 알림을 보낸다.
+  //    SINGLE_APPROVAL/TEAM_APPROVAL은 아직 결과가 없으므로 여기서는 아무것도 보내지 않고,
+  //    handleSingleApproval()/handleTeamApproval()에서 결과가 나온 뒤에 보낸다.
+  if (executionResult) {
+    await notifyManagerOnResolve({ alertName, policy, result: executionResult });
+  }
 }
 
 function formatValues(values) {
@@ -167,15 +178,27 @@ async function handleSingleApproval({ action, approver, alertName, value, policy
     const result = policy.scriptId
       ? await runAction(policy.scriptId, { alertName, value })
       : { success: false, message: "실행 가능한 조치가 등록되어 있지 않습니다." };
+
+    // 1. 개발팀 Slack 갱신이 먼저
     await respondToSlack(responseUrl, {
       replace_original: true,
       text: `✅ *${approver}님이 승인했습니다*\n조치: ${policy.action}\n실행 결과: ${result.message}`,
     });
+
+    // 2. 그 다음 매니저 알림 (등급이 낮으면 다이제스트로 쌓임)
+    await notifyManagerOnResolve({ alertName, policy, result });
   } else if (action.action_id === "reject_action") {
     console.log(`[slack-interactions] ${approver}님이 거부함: ${alertName}`);
+
     await respondToSlack(responseUrl, {
       replace_original: true,
       text: `❌ *${approver}님이 거부했습니다*\n조치: ${policy.action}\n실행되지 않았습니다.`,
+    });
+
+    await notifyManagerOnResolve({
+      alertName,
+      policy,
+      result: { success: false, message: `${approver}님이 거부하여 실행되지 않음` },
     });
   }
 }
@@ -186,9 +209,18 @@ async function handleTeamApproval({ action, approver, alertName, value, policy, 
     approvalTracker.addRejection(instanceId, approver);
     approvalTracker.markFinalized(instanceId);
     console.log(`[slack-interactions] ${approver}님이 거부함(고위험, 즉시 중단): ${alertName}`);
+
+    // 1. 개발팀 Slack 갱신이 먼저
     await respondToSlack(responseUrl, {
       replace_original: true,
       text: `❌ *${approver}님이 거부하여 조치가 중단되었습니다*\n조치: ${policy.action}`,
+    });
+
+    // 2. 그 다음 매니저 알림: HIGH 등급이라 거부되어도 즉시 통보 (숨기지 않음)
+    await notifyManagerOnResolve({
+      alertName,
+      policy,
+      result: { success: false, message: `${approver}님이 거부하여 조치가 중단됨` },
     });
     return;
   }
@@ -211,6 +243,7 @@ async function handleTeamApproval({ action, approver, alertName, value, policy, 
         ? await runAction(policy.scriptId, { alertName, value })
         : { success: true, message: "이 알럿은 자동 실행 조치가 없습니다. 팀 승인 완료 후 수동 대응이 필요합니다." };
 
+      // 1. 개발팀 Slack 갱신이 먼저
       await respondToSlack(responseUrl, {
         replace_original: true,
         text:
@@ -218,6 +251,9 @@ async function handleTeamApproval({ action, approver, alertName, value, policy, 
           `조치: ${policy.action}\n` +
           `실행 결과: ${result.message}`,
       });
+
+      // 2. 그 다음 매니저 알림: 팀 승인 완료 후 최종 처리 결과 통보
+      await notifyManagerOnResolve({ alertName, policy, result });
     } else {
       // 아직 정족수 미달 — 진행 현황만 갱신하고 버튼은 그대로 유지해서
       // 다른 팀원이 계속 승인할 수 있게 한다.
@@ -258,6 +294,15 @@ async function respondToSlack(responseUrl, body) {
     console.error("[slack-interactions] response_url 전송 중 오류:", err.message);
   }
 }
+
+// 매니저용 다이제스트: LOW/MEDIUM 등급으로 쌓인 알림을 하루 한 번 요약해서 전송
+cron.schedule(DIGEST_CRON, sendDailyDigest);
+
+// ⚠️ 테스트 전용 - 다이제스트 즉시 발송 확인용, 검증 끝나면 삭제할 것
+app.get("/debug/send-digest-now", async (req, res) => {
+  await sendDailyDigest();
+  res.json({ ok: true, message: "다이제스트 발송 시도 완료, 콘솔/Sendbird 확인" });
+});
 
 app.listen(PORT, () => {
   console.log(`AIOps 중계서버가 http://localhost:${PORT} 에서 실행 중`);

@@ -2,14 +2,9 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 function isPlaceholder(v) {
-  // .env.example을 그대로 복사해서 값을 안 채운 경우(한글 플레이스홀더 텍스트가 남아있음)를 감지
   return !v || /[^\x00-\x7F]/.test(v) || v.trim() === "";
 }
 
-/**
- * 알럿 정보 + 최근 로그를 Gemini에게 넘겨서
- * "발생 / why / how" 3단계 분석을 JSON으로 받아온다.
- */
 async function analyzeAlert({ alertName, status, value, labels, logs }) {
   if (isPlaceholder(GEMINI_API_KEY)) {
     return {
@@ -20,13 +15,13 @@ async function analyzeAlert({ alertName, status, value, labels, logs }) {
   }
 
   const logSnippet =
-    logs.length > 0
-      ? logs.join("\n")
-      : "(최근 로그를 가져오지 못했습니다. Loki 연결 또는 라벨 설정을 확인하세요.)";
+      logs.length > 0
+          ? logs.join("\n")
+          : "(최근 로그를 가져오지 못했습니다. Loki 연결 또는 라벨 설정을 확인하세요.)";
 
   const labelText = Object.entries(labels || {})
-    .map(([k, v]) => `${k}=${v}`)
-    .join(", ");
+      .map(([k, v]) => `${k}=${v}`)
+      .join(", ");
 
   const prompt = `당신은 백엔드 서비스의 SRE/AIOps 분석가입니다.
 아래 Grafana 알럿 정보와 최근 로그를 보고, 실제 운영자가 참고할 수 있도록
@@ -58,8 +53,7 @@ ${logSnippet}
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 500,
-          // Gemini에 JSON 강제 모드가 있어서 파싱 안정성이 더 높음
+          maxOutputTokens: 2000, // thinkingConfig 미지원 모델이라, thinking 소비분까지 감안해 대폭 상향
           responseMimeType: "application/json",
         },
       }),
@@ -81,7 +75,6 @@ ${logSnippet}
     try {
       return JSON.parse(rawText);
     } catch {
-      // responseMimeType: json을 지정해도 혹시 모를 방어 파싱
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (jsonMatch) return JSON.parse(jsonMatch[0]);
 
@@ -102,4 +95,38 @@ ${logSnippet}
   }
 }
 
-module.exports = { analyzeAlert };
+async function summarizeForManager(prompt) {
+  if (isPlaceholder(GEMINI_API_KEY)) {
+    return "(GEMINI_API_KEY 미설정 - 요약 생략됨. .env 확인 필요)";
+  }
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 1200, // thinkingConfig 미지원 모델이라, thinking 소비분까지 감안해 상향
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`[gemini] 매니저 요약 호출 실패: HTTP ${res.status} - ${text}`);
+      return "(AI 요약 실패 - 중계서버 로그 확인 필요)";
+    }
+
+    const data = await res.json();
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "(빈 응답)";
+  } catch (err) {
+    console.error("[gemini] 매니저 요약 중 예외 발생:", err.message);
+    return "(AI 요약 중 오류 발생)";
+  }
+}
+
+module.exports = { analyzeAlert, summarizeForManager };
