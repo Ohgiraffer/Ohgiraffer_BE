@@ -143,10 +143,16 @@ public class GetApprovalDetailService implements GetApprovalDetailUseCase {
             return;
         }
 
-        if (approvalRequest.getStatus() == ApprovalStatus.PENDING
-                && canProcessApproval(
-                loginUserRole
-        )
+        if (loginUserRole == Role.MANAGER
+                && isSameBootcamp(
+                loginUserId,
+                approvalRequest.getRequesterId()
+        )) {
+            return;
+        }
+
+        if (loginUserRole == Role.INSTRUCTOR
+                && approvalRequest.getStatus() == ApprovalStatus.PENDING
                 && isSameBootcamp(
                 loginUserId,
                 approvalRequest.getRequesterId()
