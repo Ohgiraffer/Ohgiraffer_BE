@@ -78,7 +78,7 @@ public class BriefingDataGatheringAdapter implements BriefingDataGatheringPort {
                 today,
                 todoItems,
                 oneDayDeadlineItems,
-                attendanceRiskLevel,
+                riskItems,  // 리스트 그대로 전달 - 임의 선택 없음
                 safeGet(() -> notificationQueryPort.getUnreadNotifications(userId), userId, "NOTIFICATION"),
                 safeGet(() -> calendarQueryPort.getTodayEvents(userId), userId, "CALENDAR")
         );

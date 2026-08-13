@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /*
@@ -31,6 +32,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AttendanceRiskAdapter implements AttendanceRiskPort {
 
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");  // BriefingDataGatheringAdapter와 동일 기준 - 서버 타임존 무관하게 브리핑 날짜와 일치시킴
+
     private final AttendanceRepository attendanceRepository;  // 출결 도메인 Repository 직접 주입
     private final UserRepository userRepository;              // 담당 훈련생 목록 조회용
     private final GetUserBootcampIdPort getUserBootcampIdPort;    // 요청자(강사/매니저)의 bootcampId 조회용
@@ -41,7 +44,7 @@ public class AttendanceRiskAdapter implements AttendanceRiskPort {
     // role별 출결 위험도 요약
     @Override
     public List<AttendanceRiskInfo> getRiskItems(Long userId, Role role) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(KST);
         LocalDate monthStart = today.withDayOfMonth(1);
 
         if (role == Role.STUDENT) {

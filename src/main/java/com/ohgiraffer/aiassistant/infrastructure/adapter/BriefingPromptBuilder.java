@@ -1,5 +1,6 @@
 package com.ohgiraffer.aiassistant.infrastructure.adapter;
 
+import com.ohgiraffer.aiassistant.domain.model.AttendanceRiskInfo;
 import com.ohgiraffer.aiassistant.domain.model.BriefingSourceData;
 import com.ohgiraffer.notification.application.result.NotificationResult;
 import com.ohgiraffer.todo.domain.model.TodoItemResponse;
@@ -72,8 +73,30 @@ public class BriefingPromptBuilder {
     }
 
     // 출결 위험도 - null이면 "정상"으로 표기
+    // 수정 - 명시적 집계 규칙: "경고" 1명이라도 있으면 경고 우선 표시, 없으면 "주의" 인원수, 둘 다 없으면 정상
     private String formatAttendance(BriefingSourceData data) {
-        return data.attendanceRiskLevel() == null ? "정상" : data.attendanceRiskLevel();
+        List<AttendanceRiskInfo> riskItems = data.attendanceRiskItems();
+        if (riskItems == null || riskItems.isEmpty()) {
+            return "정상";
+        }
+
+        long dangerCount = riskItems.stream().filter(r -> "경고".equals(r.riskLevel())).count();
+        long warningCount = riskItems.stream().filter(r -> "주의".equals(r.riskLevel())).count();
+
+        // STUDENT는 본인 1건뿐이라 riskLevel 그대로 노출, INSTRUCTOR/MANAGER는 인원수 집계로 표시
+        if (riskItems.size() == 1 && dangerCount + warningCount == 1) {
+            return riskItems.get(0).riskLevel();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        if (dangerCount > 0) {
+            sb.append("경고 ").append(dangerCount).append("명");
+        }
+        if (warningCount > 0) {
+            if (!sb.isEmpty()) sb.append(", ");
+            sb.append("주의 ").append(warningCount).append("명");
+        }
+        return sb.isEmpty() ? "정상" : sb.toString();
     }
 
     // 24시간 이내 마감 항목 - TodoItemResponse 필드 기준으로 포맷
