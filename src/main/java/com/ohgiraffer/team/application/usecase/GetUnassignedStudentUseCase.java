@@ -8,6 +8,7 @@ public interface GetUnassignedStudentUseCase {
 
     List<UnassignedStudentResult> getUnassignedStudents(
             Long requesterId,
-            Role requesterRole
+            Role requesterRole,
+            Long teamPeriodId
     );
 }
