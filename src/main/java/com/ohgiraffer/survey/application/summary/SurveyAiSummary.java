@@ -9,21 +9,27 @@ public record SurveyAiSummary(
         List<String> strengths,
         List<String> improvements,
         List<String> recommendations,
-        List<QuestionSummary> questionSummaries
+        String qualitativeSummary
 ) {
 
     public SurveyAiSummary {
-        overview = normalizeText(overview);
+        overview =
+                normalizeText(overview);
 
-        keyInsights = safeList(keyInsights);
-        strengths = safeList(strengths);
-        improvements = safeList(improvements);
-        recommendations = safeList(recommendations);
+        keyInsights =
+                safeList(keyInsights);
 
-        questionSummaries =
-                questionSummaries == null
-                        ? List.of()
-                        : List.copyOf(questionSummaries);
+        strengths =
+                safeList(strengths);
+
+        improvements =
+                safeList(improvements);
+
+        recommendations =
+                safeList(recommendations);
+
+        qualitativeSummary =
+                normalizeText(qualitativeSummary);
     }
 
     public static SurveyAiSummary success(
@@ -32,7 +38,7 @@ public record SurveyAiSummary(
             List<String> strengths,
             List<String> improvements,
             List<String> recommendations,
-            List<QuestionSummary> questionSummaries
+            String qualitativeSummary
     ) {
         return new SurveyAiSummary(
                 true,
@@ -41,7 +47,7 @@ public record SurveyAiSummary(
                 strengths,
                 improvements,
                 recommendations,
-                questionSummaries
+                qualitativeSummary
         );
     }
 
@@ -53,14 +59,20 @@ public record SurveyAiSummary(
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of()
+                ""
         );
+    }
+
+    public boolean hasQualitativeSummary() {
+        return qualitativeSummary != null
+                && !qualitativeSummary.isBlank();
     }
 
     private static String normalizeText(
             String value
     ) {
-        if (value == null || value.isBlank()) {
+        if (value == null
+                || value.isBlank()) {
             return "";
         }
 
@@ -81,15 +93,5 @@ public record SurveyAiSummary(
                 )
                 .map(String::trim)
                 .toList();
-    }
-
-    public record QuestionSummary(
-            int questionNumber,
-            String summary
-    ) {
-
-        public QuestionSummary {
-            summary = normalizeText(summary);
-        }
     }
 }

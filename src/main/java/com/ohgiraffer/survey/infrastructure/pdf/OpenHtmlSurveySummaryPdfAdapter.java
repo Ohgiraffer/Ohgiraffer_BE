@@ -190,9 +190,21 @@ public class OpenHtmlSurveySummaryPdfAdapter
         );
 
         context.setVariable(
-                "questions",
+                "reportQuestions",
                 result.statistics()
-                        .questions()
+                        .reportQuestions()
+        );
+
+        context.setVariable(
+                "hasReportQuestions",
+                result.statistics()
+                        .hasReportQuestions()
+        );
+
+        context.setVariable(
+                "hasTextQuestions",
+                result.statistics()
+                        .hasTextQuestions()
         );
 
         context.setVariable(
