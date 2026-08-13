@@ -1,6 +1,6 @@
 package com.ohgiraffer.aiassistant.domain.model;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /* comment.
  *  AI 브리핑 캐시/응답에 쓰이는 값 객체
@@ -10,6 +10,6 @@ import java.time.LocalDateTime;
 public record BriefingSummary(
         Long userId,              // 브리핑 대상 유저
         String summaryText,       // Gemini가 생성한 마크다운 브리핑 본문
-        LocalDateTime generatedAt // 생성 시각
+        Instant generatedAt // 생성 시각
 ) {
 }
