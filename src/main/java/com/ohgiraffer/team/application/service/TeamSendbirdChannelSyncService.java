@@ -9,6 +9,7 @@ import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.team.application.event.TeamChannelSyncTarget;
+import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,9 +38,10 @@ public class TeamSendbirdChannelSyncService {
             TeamChannelSyncTarget target,
             boolean createChatChannel
     ) {
-        lockTeam(
-                target.teamId()
-        );
+        Team team =
+                lockTeam(
+                        target.teamId()
+                );
 
         ChatChannel teamChannel =
                 findUniqueTeamChannel(
@@ -48,6 +50,7 @@ public class TeamSendbirdChannelSyncService {
 
         if (teamChannel == null) {
             createTeamChannelIfAllowed(
+                    team,
                     target,
                     createChatChannel
             );
@@ -60,10 +63,10 @@ public class TeamSendbirdChannelSyncService {
         );
     }
 
-    private void lockTeam(
+    private Team lockTeam(
             Long teamId
     ) {
-        teamRepository.findByIdForUpdate(
+        return teamRepository.findByIdForUpdate(
                         teamId
                 )
                 .orElseThrow(() ->
@@ -96,6 +99,7 @@ public class TeamSendbirdChannelSyncService {
     }
 
     private void createTeamChannelIfAllowed(
+            Team team,
             TeamChannelSyncTarget target,
             boolean createChatChannel
     ) {
@@ -117,7 +121,8 @@ public class TeamSendbirdChannelSyncService {
         }
 
         chatChannelCommandUseCase.createTeamChannel(
-                target.teamId(),
+                team.getId(),
+                team.getName(),
                 target.memberUserIds()
         );
     }
