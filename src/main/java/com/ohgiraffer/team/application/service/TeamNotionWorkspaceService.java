@@ -119,6 +119,13 @@ public class TeamNotionWorkspaceService {
                 team.getId(),
                 createdPageId
         );
+
+        teamWorkspacePort.updateTeamPage(
+                createdPageId,
+                team.getId(),
+                team.getName(),
+                memberNames
+        );
     }
 
     private void fallbackOnNotionFailure(
