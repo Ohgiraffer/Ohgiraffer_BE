@@ -50,18 +50,9 @@ public class TeamQueryService
                 requesterRole
         );
 
-        validateTeamPeriodId(
+        validateAndGetTeamPeriod(
                 teamPeriodId
         );
-
-        teamPeriodRepository.findById(
-                        teamPeriodId
-                )
-                .orElseThrow(() ->
-                        new BusinessException(
-                                ErrorCode.TEAM_NOT_FOUND
-                        )
-                );
 
         List<Team> teams =
                 teamRepository.findVisibleTeamsByPeriodId(
@@ -120,7 +111,8 @@ public class TeamQueryService
     @Override
     public List<UnassignedStudentResult> getUnassignedStudents(
             Long requesterId,
-            Role requesterRole
+            Role requesterRole,
+            Long teamPeriodId
     ) {
         validateRequester(
                 requesterId,
@@ -131,7 +123,13 @@ public class TeamQueryService
                 requesterRole
         );
 
-        return teamRepository.findUnassignedStudents()
+        validateAndGetTeamPeriod(
+                teamPeriodId
+        );
+
+        return teamRepository.findUnassignedStudents(
+                        teamPeriodId
+                )
                 .stream()
                 .map(this::toUnassignedStudentResult)
                 .toList();
@@ -224,6 +222,23 @@ public class TeamQueryService
                     ErrorCode.TEAM_ACCESS_DENIED
             );
         }
+    }
+
+    private void validateAndGetTeamPeriod(
+            Long teamPeriodId
+    ) {
+        validateTeamPeriodId(
+                teamPeriodId
+        );
+
+        teamPeriodRepository.findById(
+                        teamPeriodId
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.TEAM_NOT_FOUND
+                        )
+                );
     }
 
     private void validateTeamPeriodId(

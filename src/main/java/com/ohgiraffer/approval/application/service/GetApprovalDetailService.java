@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Base64;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -168,28 +169,24 @@ public class GetApprovalDetailService implements GetApprovalDetailUseCase {
             Long loginUserId,
             Long requesterId
     ) {
-        Long loginUserBootcampId = findBootcampId(
-                loginUserId
-        );
+        Optional<Long> loginUserBootcampId =
+                userRepository.findBootcampIdByUserId(
+                        loginUserId
+                );
 
-        Long requesterBootcampId = findBootcampId(
-                requesterId
-        );
+        Optional<Long> requesterBootcampId =
+                userRepository.findBootcampIdByUserId(
+                        requesterId
+                );
 
-        return loginUserBootcampId.equals(
-                requesterBootcampId
-        );
-    }
+        if (loginUserBootcampId.isEmpty()
+                || requesterBootcampId.isEmpty()) {
+            return false;
+        }
 
-    private Long findBootcampId(
-            Long userId
-    ) {
-        return userRepository.findBootcampIdByUserId(
-                        userId
-                )
-                .orElseThrow(() -> new BusinessException(
-                        ErrorCode.USER_NOT_FOUND
-                ));
+        return loginUserBootcampId.get().equals(
+                requesterBootcampId.get()
+        );
     }
 
     private String findUserName(

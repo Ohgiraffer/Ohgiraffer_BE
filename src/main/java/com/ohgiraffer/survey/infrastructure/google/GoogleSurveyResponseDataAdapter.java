@@ -29,13 +29,39 @@ public class GoogleSurveyResponseDataAdapter
             String spreadsheetTitle,
             String sheetName
     ) {
+        try {
+            return doReadResponses(
+                    spreadsheetId,
+                    spreadsheetTitle,
+                    sheetName
+            );
+
+        } catch (BusinessException exception) {
+            throw exception;
+
+        } catch (RuntimeException exception) {
+            throw new BusinessException(
+                    ErrorCode.GOOGLE_SHEET_API_ERROR,
+                    exception
+            );
+        }
+    }
+
+    private SurveyResponseDataset doReadResponses(
+            String spreadsheetId,
+            String spreadsheetTitle,
+            String sheetName
+    ) {
         validateRequest(
                 spreadsheetId,
                 spreadsheetTitle,
                 sheetName
         );
 
-        String range = buildSheetRange(sheetName);
+        String range =
+                buildSheetRange(
+                        sheetName
+                );
 
         List<List<Object>> values =
                 googleSheetsClient.readRange(
@@ -53,7 +79,9 @@ public class GoogleSurveyResponseDataAdapter
         }
 
         List<String> headers =
-                convertRow(values.get(0));
+                convertRow(
+                        values.get(0)
+                );
 
         if (headers.isEmpty()) {
             return new SurveyResponseDataset(

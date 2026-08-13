@@ -341,6 +341,20 @@ public class QuerySubmissionBoxService
                                 submissionBoxId
                         );
 
+        /*
+         * 제출함 시작일에 유효했던 팀 목록을 조회합니다.
+         *
+         * key   : teamId
+         * value : teamName
+         *
+         * 이후 제출 내역에 저장된 teamId를 이용해
+         * 화면에 표시할 실제 팀 이름을 찾습니다.
+         */
+        Map<Long, String> teamNamesById =
+                findTeamNamesById(
+                        submissionBox
+                );
+
         List<SubmissionStatusResult> submissionStatuses =
                 new ArrayList<>();
 
@@ -363,7 +377,8 @@ public class QuerySubmissionBoxService
             TargetDisplayInfo targetDisplayInfo =
                     createTargetDisplayInfo(
                             submissionBox,
-                            submission
+                            submission,
+                            teamNamesById
                     );
 
             submissionStatuses.add(
@@ -384,7 +399,8 @@ public class QuerySubmissionBoxService
                             submissionBox,
                             requesterId,
                             requesterTeamId,
-                            basicDetail.acceptingSubmissions()
+                            basicDetail.acceptingSubmissions(),
+                            teamNamesById
                     )
             );
         }
@@ -397,6 +413,40 @@ public class QuerySubmissionBoxService
                 eligibleToSubmit,
                 submissionStatuses
         );
+    }
+
+    /**
+     * 제출함 시작일을 기준으로 유효한 팀의 ID와 이름을 조회합니다.
+     *
+     * 개인 제출함은 팀 이름이 필요하지 않으므로 빈 Map을 반환합니다.
+     */
+    private Map<Long, String> findTeamNamesById(
+            SubmissionBox submissionBox
+    ) {
+        if (submissionBox.getTargetScope()
+                != SubmissionTargetScope.TEAM) {
+            return Map.of();
+        }
+
+        return submissionTeamTargetPort
+                .findTeamsByTargetDate(
+                        submissionBox
+                                .getStartAt()
+                                .toLocalDate()
+                )
+                .stream()
+                .collect(
+                        Collectors.toMap(
+                                team -> team.teamId(),
+                                team -> team.teamName(),
+                                /*
+                                 * 동일한 teamId가 중복 조회될 경우
+                                 * 먼저 조회된 이름을 사용합니다.
+                                 */
+                                (firstName, secondName) ->
+                                        firstName
+                        )
+                );
     }
 
     private void validateDetailRequest(
@@ -476,14 +526,51 @@ public class QuerySubmissionBoxService
                 .orElse(false);
     }
 
+    /**
+     * 제출 내역 한 건의 화면 표시용 이름과 이메일을 생성합니다.
+     *
+     * TEAM:
+     * - 제출 데이터의 teamId로 실제 팀 이름을 조회
+     * - 이메일은 사용하지 않음
+     *
+     * INDIVIDUAL:
+     * - 제출자의 사용자 ID로 이름과 이메일 조회
+     */
     private TargetDisplayInfo createTargetDisplayInfo(
             SubmissionBox submissionBox,
-            Submission submission
+            Submission submission,
+            Map<Long, String> teamNamesById
     ) {
         if (submissionBox.getTargetScope()
                 == SubmissionTargetScope.TEAM) {
+
+            Long teamId =
+                    submission.getTeamId();
+
+            if (teamId == null
+                    || teamId <= 0) {
+                throw new BusinessException(
+                        ErrorCode.SUBMISSION_TEAM_DATA_INCONSISTENT
+                );
+            }
+
+            String teamName =
+                    teamNamesById.get(teamId);
+
+            /*
+             * 정상 데이터라면 반드시 실제 팀 이름이 조회됩니다.
+             *
+             * 과거 데이터, 해산된 팀 등으로 이름을 조회하지 못하더라도
+             * 상세 조회 전체가 실패하지 않도록 임시 표시명을 사용합니다.
+             */
+            if (teamName == null
+                    || teamName.isBlank()) {
+                teamName =
+                        "팀 " + teamId;
+            }
+
             return new TargetDisplayInfo(
-                    "팀 " + submission.getTeamId(),
+                    teamName.trim(),
                     null
             );
         }
@@ -493,14 +580,22 @@ public class QuerySubmissionBoxService
         );
     }
 
+    /**
+     * 현재 요청자가 아직 제출하지 않았을 때 표시할 상태를 생성합니다.
+     */
     private SubmissionStatusResult createMyNotSubmittedStatus(
             SubmissionBox submissionBox,
             Long requesterId,
             Optional<Long> requesterTeamId,
-            boolean acceptingSubmissions
+            boolean acceptingSubmissions,
+            Map<Long, String> teamNamesById
     ) {
+        /*
+         * 개인 제출함은 사용자 이름과 이메일을 사용합니다.
+         */
         if (submissionBox.getTargetScope()
                 == SubmissionTargetScope.INDIVIDUAL) {
+
             TargetDisplayInfo targetDisplayInfo =
                     findIndividualTargetDisplayInfo(
                             requesterId
@@ -515,6 +610,10 @@ public class QuerySubmissionBoxService
             );
         }
 
+        /*
+         * 팀 제출함은 제출함 시작일 당시
+         * 요청자가 소속된 팀 ID를 사용합니다.
+         */
         Long teamId =
                 requesterTeamId.orElseThrow(() ->
                         new BusinessException(
@@ -522,9 +621,22 @@ public class QuerySubmissionBoxService
                         )
                 );
 
+        String teamName =
+                teamNamesById.get(teamId);
+
+        /*
+         * 정상적으로 팀이 조회되면 실제 팀 이름을 사용합니다.
+         * 조회되지 않는 과거 데이터만 "팀 {id}"로 표시합니다.
+         */
+        if (teamName == null
+                || teamName.isBlank()) {
+            teamName =
+                    "팀 " + teamId;
+        }
+
         return SubmissionStatusResult.notSubmitted(
                 teamId,
-                "팀 " + teamId,
+                teamName.trim(),
                 null,
                 true,
                 acceptingSubmissions

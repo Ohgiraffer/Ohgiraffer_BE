@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class CheckApprovalService implements CheckApprovalUseCase {
@@ -154,27 +155,23 @@ public class CheckApprovalService implements CheckApprovalUseCase {
             Long loginUserId,
             Long requesterId
     ) {
-        Long loginUserBootcampId = findBootcampId(
-                loginUserId
-        );
+        Optional<Long> loginUserBootcampId =
+                userRepository.findBootcampIdByUserId(
+                        loginUserId
+                );
 
-        Long requesterBootcampId = findBootcampId(
-                requesterId
-        );
+        Optional<Long> requesterBootcampId =
+                userRepository.findBootcampIdByUserId(
+                        requesterId
+                );
 
-        return loginUserBootcampId.equals(
-                requesterBootcampId
-        );
-    }
+        if (loginUserBootcampId.isEmpty()
+                || requesterBootcampId.isEmpty()) {
+            return false;
+        }
 
-    private Long findBootcampId(
-            Long userId
-    ) {
-        return userRepository.findBootcampIdByUserId(
-                        userId
-                )
-                .orElseThrow(() -> new BusinessException(
-                        ErrorCode.USER_NOT_FOUND
-                ));
+        return loginUserBootcampId.get().equals(
+                requesterBootcampId.get()
+        );
     }
 }

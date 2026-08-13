@@ -7,6 +7,7 @@ import com.ohgiraffer.approval.domain.model.approval.ApprovalHistory;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalLeaveDetail;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
 import com.ohgiraffer.approval.domain.model.signature.UserSignature;
+import com.ohgiraffer.approval.domain.repository.ApprovalApplicantProfileRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalHistoryRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalLeaveDetailRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;
@@ -28,6 +29,7 @@ public class CreateLeaveApprovalService
     private final ApprovalLeaveDetailRepository approvalLeaveDetailRepository;
     private final ApprovalHistoryRepository approvalHistoryRepository;
     private final UserSignatureRepository userSignatureRepository;
+    private final ApprovalApplicantProfileRepository approvalApplicantProfileRepository;
     private final Clock clock;
 
     public CreateLeaveApprovalService(
@@ -35,12 +37,14 @@ public class CreateLeaveApprovalService
             ApprovalLeaveDetailRepository approvalLeaveDetailRepository,
             ApprovalHistoryRepository approvalHistoryRepository,
             UserSignatureRepository userSignatureRepository,
+            ApprovalApplicantProfileRepository approvalApplicantProfileRepository,
             Clock clock
     ) {
         this.approvalRequestRepository = approvalRequestRepository;
         this.approvalLeaveDetailRepository = approvalLeaveDetailRepository;
         this.approvalHistoryRepository = approvalHistoryRepository;
         this.userSignatureRepository = userSignatureRepository;
+        this.approvalApplicantProfileRepository = approvalApplicantProfileRepository;
         this.clock = clock;
     }
 
@@ -58,6 +62,10 @@ public class CreateLeaveApprovalService
                 command.startDate(),
                 command.endDate(),
                 now.toLocalDate()
+        );
+
+        validateApplicantProfileExists(
+                command.requesterId()
         );
 
         UserSignature userSignature =
@@ -125,17 +133,38 @@ public class CreateLeaveApprovalService
             );
         }
 
-        if (startDate.isAfter(endDate)) {
+        if (startDate.isAfter(
+                endDate
+        )) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "휴가 시작일은 종료일보다 이후일 수 없습니다."
             );
         }
 
-        if (startDate.isBefore(today)) {
+        if (startDate.isBefore(
+                today
+        )) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "지난 날짜로는 휴가를 신청할 수 없습니다."
+            );
+        }
+    }
+
+    private void validateApplicantProfileExists(
+            Long requesterId
+    ) {
+        boolean exists =
+                approvalApplicantProfileRepository.findByUserId(
+                                requesterId
+                        )
+                        .isPresent();
+
+        if (!exists) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "휴가 신청을 위해 생년월일을 입력해주세요."
             );
         }
     }

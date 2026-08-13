@@ -8,12 +8,6 @@ public record GeminiSurveySummaryResponse(
         List<String> strengths,
         List<String> improvements,
         List<String> recommendations,
-        List<QuestionSummaryResponse> questionSummaries
+        String qualitativeSummary
 ) {
-
-    public record QuestionSummaryResponse(
-            int questionNumber,
-            String summary
-    ) {
-    }
 }

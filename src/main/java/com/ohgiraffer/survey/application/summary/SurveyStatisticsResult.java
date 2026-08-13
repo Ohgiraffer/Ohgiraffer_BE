@@ -40,6 +40,34 @@ public record SurveyStatisticsResult(
                 .toList();
     }
 
+    /*
+     * PDF 상세 문항 영역에 표시할 문항입니다.
+     * 점수형과 선택형만 표시합니다.
+     */
+    public List<SurveyQuestionStatistics> reportQuestions() {
+        return questions.stream()
+                .filter(question ->
+                        question.isNumeric()
+                                || question.isChoice()
+                )
+                .toList();
+    }
+
+    public boolean hasTextQuestions() {
+        return questions.stream()
+                .anyMatch(
+                        SurveyQuestionStatistics::isText
+                );
+    }
+
+    public boolean hasReportQuestions() {
+        return questions.stream()
+                .anyMatch(question ->
+                        question.isNumeric()
+                                || question.isChoice()
+                );
+    }
+
     public boolean hasResponses() {
         return totalResponseCount > 0;
     }
