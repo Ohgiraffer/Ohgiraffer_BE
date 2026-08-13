@@ -71,5 +71,4 @@ public class TeamQueryAdapter implements TeamQueryPort {
         return getUnassignedStudentUseCase.getUnassignedStudents(userId, role);
     }
 
-
 }
