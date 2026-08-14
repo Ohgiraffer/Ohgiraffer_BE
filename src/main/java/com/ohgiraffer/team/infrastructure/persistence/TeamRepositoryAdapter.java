@@ -13,6 +13,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -282,15 +284,45 @@ public class TeamRepositoryAdapter
                         userId
                 )
                 .stream()
-                .map(projection ->
-                        new UserTeamHistoryResult(
-                                projection.getTeamId(),
-                                projection.getTeamName(),
-                                projection.getStartDate(),
-                                projection.getEndDate()
-                        )
-                )
+                .map(this::toUserTeamHistoryResult)
                 .toList();
+    }
+
+    private UserTeamHistoryResult toUserTeamHistoryResult(
+            UserTeamHistoryProjection projection
+    ) {
+        return new UserTeamHistoryResult(
+                projection.getTeamId(),
+                projection.getTeamName(),
+                toStartDate(
+                        projection.getJoinedAt()
+                ),
+                toEndDate(
+                        projection.getLeftAt(),
+                        projection.getPeriodEndDate()
+                )
+        );
+    }
+
+    private LocalDate toStartDate(
+            LocalDateTime joinedAt
+    ) {
+        if (joinedAt == null) {
+            return null;
+        }
+
+        return joinedAt.toLocalDate();
+    }
+
+    private LocalDate toEndDate(
+            LocalDateTime leftAt,
+            LocalDate periodEndDate
+    ) {
+        if (leftAt != null) {
+            return leftAt.toLocalDate();
+        }
+
+        return periodEndDate;
     }
 
     private TeamMember toTeamMember(
