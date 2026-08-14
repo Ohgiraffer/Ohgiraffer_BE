@@ -64,4 +64,9 @@ public class GetUserInfoPortAdapter implements GetUserInfoPort {
                         s3UrlResolver.resolve(u.getProfileImg())
                 ));
     }
+
+    @Override
+    public boolean existsById(Long userId) {
+        return springDataUserRepository.existsById(userId);
+    }
 }

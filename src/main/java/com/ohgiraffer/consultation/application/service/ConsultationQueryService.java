@@ -157,12 +157,33 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
                 .toList();
     }
 
+    @Override
+    public List<StudentConsultationHistoryItem> getStudentHistory(Long studentId) {
+        if (!getUserInfoPort.existsById(studentId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        return consultationRepository.findByRequesterId(studentId).stream()
+                .map(this::toStudentHistoryItem)
+                .toList();
+    }
+
     private ConsultationListItem toListItem(Consultation c) {
         return new ConsultationListItem(
                 c.getId(),
                 c.getTopic(),
                 c.getScheduledAt(),
                 resolveName(c.getRequesterId()),
+                resolveName(c.getCounselorId()),
+                c.getStatus()
+        );
+    }
+
+    private StudentConsultationHistoryItem toStudentHistoryItem(Consultation c) {
+        return new StudentConsultationHistoryItem(
+                c.getId(),
+                c.getTopic(),
+                c.getScheduledAt(),
                 resolveName(c.getCounselorId()),
                 c.getStatus()
         );
