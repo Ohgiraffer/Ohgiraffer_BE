@@ -217,3 +217,9 @@ team:
   outbox:
     retry-fixed-delay-ms: 60000
     retry-initial-delay-ms: 30000
+
+# ===== auditlog =====
+audit:
+  hash:
+    secret-key: ${AUDIT_HASH_SECRET_KEY:this-is-ohgiraffer-campflow-audit-hash-key-for-auditlog}
+
