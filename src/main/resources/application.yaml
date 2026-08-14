@@ -218,8 +218,13 @@ team:
     retry-fixed-delay-ms: 60000
     retry-initial-delay-ms: 30000
 
-# ===== auditlog =====
+# ===== hashchain =====
 audit:
   hash:
     secret-key: ${AUDIT_HASH_SECRET_KEY:this-is-ohgiraffer-campflow-audit-hash-key-for-auditlog}
+
+# ===== AES =====
+encryption:
+  aes:
+    secret-key: ${AES_SECRET_KEY:aes128-secretkey}
 
