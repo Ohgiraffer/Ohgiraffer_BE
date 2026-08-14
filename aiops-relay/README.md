@@ -3,7 +3,7 @@
 Grafana 알럿 → Loki 로그 컨텍스트 수집 → Gemini API로 발생/why/how 추론 →
 Slack(개발팀, 승인 버튼)으로 통보 → 해결/실패 결과가 나온 뒤 Sendbird(매니저)로 요약 통보.
 
-```
+```text
 Grafana 알럿 발동 (firing)
   → POST /webhook/grafana
     → Loki에서 최근 로그 조회
@@ -21,7 +21,9 @@ Slack 승인/거부 버튼 클릭 (별도 요청, /slack/interactions)
 
 **매니저 알림 원칙**: 항상 "개발팀 Slack 통보/갱신이 끝난 뒤"에만 나간다. 감지 시점에
 매니저를 먼저 또는 동시에 알리는 경로는 없다. HIGH 등급은 결과가 나오는 즉시 매니저에게도
-바로 전송되고, LOW/MEDIUM 등급은 다이제스트로 모아서 매일 09시(`DIGEST_CRON`)에 한 번에 전송된다.
+바로 전송되고, LOW/MEDIUM 등급은 다이제스트로 모아서 매일 09시에 한 번에 전송된다. 이 시각은
+`.env`가 아니라 `lib/notifyManager.js`의 `DIGEST_CRON` 상수(`"0 9 * * *"`)에 코드로 고정되어
+있으며, 바꾸려면 이 상수를 직접 수정해야 한다.
 
 ## 1. 설치
 
@@ -80,7 +82,7 @@ Slack 앱 설정 → Interactivity & Shortcuts → Request URL을
 
 ## 파일 구조
 
-```
+```text
 aiops-relay/
 ├── server.js                        # 웹훅 수신 + 파이프라인 오케스트레이션
 ├── config/

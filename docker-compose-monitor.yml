@@ -23,10 +23,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=ap-northeast-2
     volumes:
-      - ./promtail/promtail-config.yml:/etc/promtail/config.yml
-      - /var/log:/var/log:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./docker/loki/loki-config.yml:/etc/loki/local-config.yml:ro
     command: -config.file=/etc/loki/local-config.yml
     depends_on:
       - loki
