@@ -4,6 +4,7 @@ import com.ohgiraffer.consultation.domain.model.*;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -24,4 +25,6 @@ public interface ConsultationQueryUsecase {
     List<ConsultationListItem> getUpcoming(Long callerId);
 
     List<ConsultationListItem> getHistory();
+
+    List<StudentConsultationHistoryItem> getStudentHistory(Long studentId);
 }

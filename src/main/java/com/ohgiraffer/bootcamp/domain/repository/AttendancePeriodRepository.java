@@ -12,4 +12,6 @@ public interface AttendancePeriodRepository {
     void deleteAllByBootcampId(Long bootcampId);
 
     List<AttendancePeriod> findAllByPeriodStart(LocalDate periodStart);
+
+    List<AttendancePeriod> findActivePeriods(LocalDate referenceDate);
 }
