@@ -9,7 +9,7 @@ async function analyzeAlert({ alertName, status, value, labels, logs }) {
   if (isPlaceholder(GEMINI_API_KEY)) {
     return {
       발생: `${alertName} 알럿이 ${status} 상태입니다. (GEMINI_API_KEY 미설정 - AI 분석 생략됨)`,
-      why: "분석 불가 (API 키 없음 또는 .env.example 플레이스홀더가 그대로 남아있음)",
+      why: "분석 불가 (API 키 없음 또는 .env.example 플레이스홀더가 그대로 남아 있음)",
       how: ".env 파일에서 GEMINI_API_KEY=실제키 형태로 채운 뒤 서버를 재시작하세요.",
     };
   }
@@ -44,11 +44,14 @@ ${logSnippet}
 `;
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": GEMINI_API_KEY,
+      },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
@@ -101,16 +104,19 @@ async function summarizeForManager(prompt) {
   }
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": GEMINI_API_KEY, // URL 쿼리 파라미터 대신 헤더로 (analyzeAlert와 동일하게 통일)
+      },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 1200, // thinkingConfig 미지원 모델이라, thinking 소비분까지 감안해 상향
+          maxOutputTokens: 2000, // 1200 -> 2000: thinking 소비분 감안, 응답 중간에 끊기는 문제 대응
         },
       }),
     });
@@ -122,7 +128,21 @@ async function summarizeForManager(prompt) {
     }
 
     const data = await res.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "(빈 응답)";
+    const candidate = data?.candidates?.[0];
+    const text = candidate?.content?.parts?.[0]?.text?.trim();
+
+    if (candidate?.finishReason === "MAX_TOKENS") {
+      console.error(
+          `[gemini] 매니저 요약이 MAX_TOKENS로 잘림 (maxOutputTokens=2000). 원본 일부: ${
+              text?.slice(0, 100) || "(텍스트 없음, thinking에 토큰 전부 소비 추정)"
+          }`
+      );
+      return text
+          ? `${text} (…이하 생략, 토큰 제한으로 잘림)`
+          : "(AI 요약 실패 - 토큰 제한으로 응답이 비어 있음)";
+    }
+
+    return text || "(빈 응답)";
   } catch (err) {
     console.error("[gemini] 매니저 요약 중 예외 발생:", err.message);
     return "(AI 요약 중 오류 발생)";
