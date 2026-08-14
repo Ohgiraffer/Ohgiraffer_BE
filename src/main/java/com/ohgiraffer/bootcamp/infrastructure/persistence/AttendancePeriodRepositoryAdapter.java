@@ -42,4 +42,13 @@ public class AttendancePeriodRepositoryAdapter implements AttendancePeriodReposi
                 .map(AttendancePeriodJpaEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    public List<AttendancePeriod> findActivePeriods(LocalDate referenceDate) {
+        return springDataAttendancePeriodRepository
+                .findByPeriodStartLessThanEqualAndPeriodEndGreaterThanEqual(referenceDate, referenceDate)
+                .stream()
+                .map(AttendancePeriodJpaEntity::toDomain)
+                .toList();
+    }
 }

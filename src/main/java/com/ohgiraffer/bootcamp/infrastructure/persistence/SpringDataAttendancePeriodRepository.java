@@ -11,4 +11,7 @@ public interface SpringDataAttendancePeriodRepository extends JpaRepository<Atte
     void deleteAllByBootcampId(Long bootcampId);
 
     List<AttendancePeriodJpaEntity> findAllByPeriodStart(LocalDate periodStart);
+
+    List<AttendancePeriodJpaEntity> findByPeriodStartLessThanEqualAndPeriodEndGreaterThanEqual(
+            LocalDate periodStart, LocalDate periodEnd);
 }

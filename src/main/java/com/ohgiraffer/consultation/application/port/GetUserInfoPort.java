@@ -16,4 +16,6 @@ public interface GetUserInfoPort {
     Map<Long, String> getNames(List<Long> userIds);
 
     Optional<UserSummary> getUserSummary(Long userId);
+
+    boolean existsById(Long userId);
 }

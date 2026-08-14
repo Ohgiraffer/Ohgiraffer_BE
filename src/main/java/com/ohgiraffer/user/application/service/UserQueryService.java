@@ -22,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -117,19 +116,11 @@ public class UserQueryService implements UserQueryUsecase {
     }
 
     @Override
-    public Map<String, Long> getStudentNameToIdMapByBootcampId(Long bootcampId) {
+    public Map<String, Long> getStudentEmailToIdMapByBootcampId(Long bootcampId) {
         List<User> students = userRepository.findAllByBootcampIdAndRole(bootcampId, Role.STUDENT);
 
-        Map<String, List<Long>> idsByName = students.stream()
-                .collect(Collectors.groupingBy(User::getName, Collectors.mapping(User::getId, Collectors.toList())));
-
-        Map<String, Long> result = new HashMap<>();
-        idsByName.forEach((name, ids) -> {
-            if (ids.size() == 1) {
-                result.put(name, ids.get(0));
-            }
-        });
-        return result;
+        return students.stream()
+                .collect(Collectors.toMap(User::getEmail, User::getId, (a, b) -> a));
     }
 
     @Override

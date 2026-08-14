@@ -18,6 +18,6 @@ public interface UserQueryUsecase {
     List<Long> getStudentIdsByBootcampId(Long bootcampId);
     List<StudentStatusView> getStudentStatusesByBootcampId(Long bootcampId);
     List<UserListResponse> getUsers(Long requesterId);
-    Map<String, Long> getStudentNameToIdMapByBootcampId(Long bootcampId);
+    Map<String, Long> getStudentEmailToIdMapByBootcampId(Long bootcampId);
     Long getAnyActiveBootcampId();
 }

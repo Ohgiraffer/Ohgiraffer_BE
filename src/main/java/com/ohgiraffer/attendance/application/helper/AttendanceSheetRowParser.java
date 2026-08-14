@@ -28,7 +28,7 @@ public class AttendanceSheetRowParser {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private static final Set<String> REQUIRED_COLUMN_FIELDS = Set.of(
-            "name", "trainingStatus", "attendanceStatus",
+            "email", "name", "trainingStatus", "attendanceStatus",
             "checkIn", "checkOut", "outing", "return", "trainingDate"
     );
 
@@ -52,7 +52,8 @@ public class AttendanceSheetRowParser {
                 .collect(java.util.stream.Collectors.toSet());
 
         if (!missing.isEmpty()) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "컬럼매핑에 누락된 항목이 있습니다: " + missing);
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE,
+                    "컬럼매핑에 누락된 항목이 있습니다: " + missing + " — 재등록이 필요합니다.");
         }
 
         return result;
