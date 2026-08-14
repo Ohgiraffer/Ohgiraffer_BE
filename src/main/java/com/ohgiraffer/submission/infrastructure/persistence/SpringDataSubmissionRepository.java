@@ -22,12 +22,14 @@ public interface SpringDataSubmissionRepository
             Long teamId
     );
 
+    @EntityGraph(attributePaths = "itemValues")
     Optional<SubmissionJpaEntity>
     findBySubmissionBoxIdAndOwnerUserId(
             Long submissionBoxId,
             Long ownerUserId
     );
 
+    @EntityGraph(attributePaths = "itemValues")
     Optional<SubmissionJpaEntity>
     findBySubmissionBoxIdAndTeamId(
             Long submissionBoxId,
