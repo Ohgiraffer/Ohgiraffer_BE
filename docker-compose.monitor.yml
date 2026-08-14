@@ -9,6 +9,8 @@ services:
       - prometheus-data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+      - "--storage.tsdb.retention.size=5GB"
     restart: unless-stopped
 
   loki:
@@ -16,10 +18,18 @@ services:
     container_name: loki
     ports:
       - "3100:3100"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=ap-northeast-2
     volumes:
-      - ./docker/loki/loki-config.yml:/etc/loki/local-config.yaml
-      - loki-data:/loki
-    command: -config.file=/etc/loki/local-config.yaml
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/loki/local-config.yml
+    depends_on:
+      - loki
     restart: unless-stopped
 
   promtail:
