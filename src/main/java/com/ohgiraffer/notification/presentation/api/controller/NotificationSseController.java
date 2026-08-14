@@ -49,7 +49,7 @@ public class NotificationSseController {
      * 티켓이 없거나 만료/사용됐으면 401 반환
      */
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public ResponseEntity<SseEmitter> subscribe(@RequestParam String ticket) {
+   public ResponseEntity<SseEmitter> subscribe(@RequestParam(required = false) String ticket) {
         Long userId = sseTicketService.validateAndConsume(ticket);
 
         if (userId == null) {
