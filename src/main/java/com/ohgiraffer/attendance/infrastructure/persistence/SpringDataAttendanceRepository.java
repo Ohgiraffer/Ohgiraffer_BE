@@ -32,17 +32,17 @@ public interface SpringDataAttendanceRepository extends JpaRepository<Attendance
 
     @Query("""
     SELECT
-        COALESCE(SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END), 0)     AS presentDays,
-        COALESCE(SUM(CASE WHEN a.status = 'LATE' THEN 1 ELSE 0 END), 0)        AS lateCount,
-        COALESCE(SUM(CASE WHEN a.status = 'EARLY_LEAVE' THEN 1 ELSE 0 END), 0) AS earlyLeaveCount,
-        COALESCE(SUM(CASE WHEN a.status = 'OUTING' THEN 1 ELSE 0 END), 0)      AS outingCount,
-        COALESCE(SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END), 0)      AS absentDays,
-        COALESCE(SUM(CASE WHEN a.status = 'LEAVE' THEN 1 ELSE 0 END), 0)       AS leaveDays,
-        COALESCE(SUM(CASE WHEN a.status = 'SICK' THEN 1 ELSE 0 END), 0)        AS sickDays
+        COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.PRESENT THEN 1 ELSE 0 END), 0)     AS presentDays,
+        COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.LATE THEN 1 ELSE 0 END), 0)        AS lateCount,
+        COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.EARLY_LEAVE THEN 1 ELSE 0 END), 0) AS earlyLeaveCount,
+        COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.OUTING THEN 1 ELSE 0 END), 0)      AS outingCount,
+        COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.ABSENT THEN 1 ELSE 0 END), 0)      AS absentDays,
+        COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.LEAVE THEN 1 ELSE 0 END), 0)       AS leaveDays,
+        COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.SICK THEN 1 ELSE 0 END), 0)        AS sickDays
     FROM AttendanceJpaEntity a
     WHERE a.userId = :userId
-      AND a.attendanceDate BETWEEN :start AND :end
-      AND FUNCTION('WEEKDAY', a.attendanceDate) < 5
+        AND a.attendanceDate BETWEEN :start AND :end
+        AND FUNCTION('WEEKDAY', a.attendanceDate) < 5
     """)
     AttendanceSummaryProjection countByUserAndDateRange(
             @Param("userId") Long userId,
@@ -95,14 +95,14 @@ public interface SpringDataAttendanceRepository extends JpaRepository<Attendance
     @Query("""
     SELECT new com.ohgiraffer.attendance.domain.dto.StudentAttendanceCountsView(
         a.userId,
-        COALESCE(SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END), 0),
-        COALESCE(SUM(CASE WHEN a.status = 'LATE' THEN 1 ELSE 0 END), 0),
-        COALESCE(SUM(CASE WHEN a.status = 'EARLY_LEAVE' THEN 1 ELSE 0 END), 0),
-        COALESCE(SUM(CASE WHEN a.status = 'OUTING' THEN 1 ELSE 0 END), 0),
-        COALESCE(SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END), 0),
-        COALESCE(SUM(CASE WHEN a.status = 'LEAVE' THEN 1 ELSE 0 END), 0),
-        COALESCE(SUM(CASE WHEN a.status = 'SICK' THEN 1 ELSE 0 END), 0)
-    )
+            COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.PRESENT THEN 1 ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.LATE THEN 1 ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.EARLY_LEAVE THEN 1 ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.OUTING THEN 1 ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.ABSENT THEN 1 ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.LEAVE THEN 1 ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN a.status = com.ohgiraffer.attendance.domain.model.AttendanceStatus.SICK THEN 1 ELSE 0 END), 0)
+         )
     FROM AttendanceJpaEntity a
     WHERE a.userId IN :userIds
       AND a.attendanceDate BETWEEN :start AND :end

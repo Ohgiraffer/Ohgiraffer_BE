@@ -164,6 +164,8 @@ public class ConsultationQueryService implements ConsultationQueryUsecase {
         }
 
         return consultationRepository.findByRequesterId(studentId).stream()
+                .sorted(Comparator.comparing(Consultation::getScheduledAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(this::toStudentHistoryItem)
                 .toList();
     }

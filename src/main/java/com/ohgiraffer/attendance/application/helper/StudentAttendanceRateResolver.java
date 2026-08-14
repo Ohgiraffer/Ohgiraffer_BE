@@ -27,10 +27,19 @@ public class StudentAttendanceRateResolver {
     private final BootcampQueryUsecase bootcampQueryUsecase;
 
     public Map<Long, StudentAttendanceRateResult> resolve(Long bootcampId, List<Long> userIds) {
-        AttendancePolicyResult policy = bootcampQueryUsecase.getPolicy(bootcampId);
         BootcampPeriodResult bootcampPeriod = bootcampQueryUsecase.getPeriod(bootcampId);
-
         LocalDate today = LocalDate.now();
+
+        if (today.isBefore(bootcampPeriod.startDate())) {
+            Map<Long, StudentAttendanceRateResult> emptyResult = new LinkedHashMap<>();
+            for (Long userId : userIds) {
+                emptyResult.put(userId, new StudentAttendanceRateResult(
+                        null, null, StudentAttendanceCountsView.empty(userId)));
+            }
+            return emptyResult;
+        }
+
+        AttendancePolicyResult policy = bootcampQueryUsecase.getPolicy(bootcampId);
         LocalDate end = today.isBefore(bootcampPeriod.endDate()) ? today : bootcampPeriod.endDate();
 
         Map<Long, StudentAttendanceCountsView> countsByUserId = attendanceRepository
