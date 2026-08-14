@@ -78,6 +78,7 @@ async function generateManagerSummary(sanitized, phase) {
   const phaseInstruction = {
     RESOLVED: "이미 해결된 이슈에 대한 결과 알림입니다.",
     FAILED: "조치가 실패했거나 팀에서 거부된 이슈입니다. 숨기지 말고 명확히 알리세요.",
+    MANUAL_REQUIRED: "자동/승인 처리로 끝난 것이 아니라 담당자의 수동 대응이 아직 필요한 이슈입니다. 해결된 것처럼 표현하지 말고 후속 조치가 필요하다는 점을 명확히 알리세요.",
   }[phase];
 
   const prompt = `
@@ -100,14 +101,25 @@ async function generateManagerSummary(sanitized, phase) {
 // Sendbird 봇 명의로 고정된 매니저 채널(MANAGER_CHANNEL_URL)에 전송한다.
 // 채널 생성/봇 유저 생성은 scripts/setup-manager-channel.js에서 최초 1회만 처리.
 async function sendToManagerChannel(text) {
-  await sendMessageToManagerChannel(text);
+  try {
+    await sendMessageToManagerChannel(text);
+    return true;
+  } catch (err) {
+    console.error("[notifyManager] 매니저 채널 전송 실패:", err.message);
+    return false;
+  }
 }
 
 // ── 진입점: 실행 결과가 나오는 시점 (성공/실패/거부 모두 호출) ──
 // 반드시 sendToSlack/respondToSlack로 개발팀 통보가 끝난 *다음*에 호출할 것.
 // server.js의 세 곳(AUTO_EXECUTE 실행 직후, handleSingleApproval, handleTeamApproval)에서 호출
+function resolvePhase(result) {
+  if (result.status === "MANUAL_REQUIRED") return "MANUAL_REQUIRED";
+  return result.success ? "RESOLVED" : "FAILED";
+}
+
 async function notifyManagerOnResolve({ alertName, policy, analysis, result }) {
-  const phase = result.success ? "RESOLVED" : "FAILED";
+  const phase = resolvePhase(result);
 
   if (!ESCALATION_TIERS.includes(policy.finalTier)) {
     queueForDigest({ alertName, policy, analysis, result }, phase);
@@ -116,13 +128,14 @@ async function notifyManagerOnResolve({ alertName, policy, analysis, result }) {
 
   const sanitized = sanitizeForManagerReport({ alertName, policy, analysis, result });
   const summary = await generateManagerSummary(sanitized, phase);
-  const icon = result.success ? "✅" : "⚠️";
+  const icon = phase === "RESOLVED" ? "✅" : phase === "MANUAL_REQUIRED" ? "🔧" : "⚠️";
   await sendToManagerChannel(`${icon} [처리 결과]\n${summary}`);
 }
 
 // ── 다이제스트 대기열 ────────────────────────────────────────────
 function queueForDigest(payload, phase) {
   digestQueue.push({
+    id: `${payload.alertName}::${Date.now()}::${Math.random().toString(36).slice(2, 8)}`,
     sanitized: sanitizeForManagerReport(payload),
     phase,
     queuedAt: new Date().toISOString(),
@@ -137,7 +150,8 @@ function queueForDigest(payload, phase) {
 async function sendDailyDigest() {
   if (digestQueue.length === 0) return;
 
-  const items = digestQueue.splice(0, digestQueue.length); // 전송 전에 비우기 (재시도 중복 방지)
+  const items = digestQueue.slice(); // 미리 비우지 않고 스냅샷만
+  const idsToRemove = new Set(items.map((i) => i.id));
 
   const prompt = `
 다음은 오늘 하루 동안 있었던 경미한 시스템 이슈 목록입니다.
@@ -147,8 +161,23 @@ async function sendDailyDigest() {
 ${JSON.stringify(items.map((i) => i.sanitized), null, 2)}
   `.trim();
 
-  const summary = await summarizeForManager(prompt);
-  await sendToManagerChannel(`📋 [오늘의 처리 현황]\n${summary}`);
+  let summary;
+  try {
+    summary = await summarizeForManager(prompt);
+  } catch (err) {
+    console.error("[notifyManager] 다이제스트 요약 실패, 큐 유지하고 다음 실행에 재시도:", err.message);
+    return;
+  }
+
+  const delivered = await sendToManagerChannel(`📋 [오늘의 처리 현황]\n${summary}`);
+  if (!delivered) {
+    console.error("[notifyManager] 다이제스트 전송 실패, 큐 유지하고 다음 실행에 재시도");
+    return;
+  }
+
+  for (let i = digestQueue.length - 1; i >= 0; i--) {
+    if (idsToRemove.has(digestQueue[i].id)) digestQueue.splice(i, 1);
+  }
 }
 
 module.exports = {

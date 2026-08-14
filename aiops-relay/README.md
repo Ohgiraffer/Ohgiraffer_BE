@@ -40,7 +40,7 @@ cp .env.example .env
 | `SLACK_SIGNING_SECRET` | Slack 앱 설정의 Signing Secret (버튼 클릭 서명 검증용) |
 | `LOKI_URL` 등 | 기본값 그대로 두면 됨 |
 | `BACKEND_ADMIN_URL` / `ADMIN_INTERNAL_TOKEN` | 화이트리스트 액션 실행 시 백엔드 호출용 |
-| `SENDBIRD_APP_ID` / `SENDBIRD_API_TOKEN` | Sendbird Platform API 인증 (마스터 API 토�큰) |
+| `SENDBIRD_APP_ID` / `SENDBIRD_API_TOKEN` | Sendbird Platform API 인증 (마스터 API 토큰) |
 | `SENDBIRD_BOT_USER_ID` | 매니저 채널에 메시지를 보낼 봇 유저 ID (기본 `aiops-bot`) |
 | `MANAGER_CHANNEL_URL` | 아래 2번 셋업 후 채울 것. 비워두면 매니저 알림은 로그만 찍고 스킵됨 |
 
