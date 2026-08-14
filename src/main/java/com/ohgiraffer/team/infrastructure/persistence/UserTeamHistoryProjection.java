@@ -1,6 +1,7 @@
 package com.ohgiraffer.team.infrastructure.persistence;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public interface UserTeamHistoryProjection {
 
@@ -8,7 +9,9 @@ public interface UserTeamHistoryProjection {
 
     String getTeamName();
 
-    LocalDate getStartDate();
+    LocalDateTime getJoinedAt();
 
-    LocalDate getEndDate();
+    LocalDateTime getLeftAt();
+
+    LocalDate getPeriodEndDate();
 }
