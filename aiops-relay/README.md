@@ -17,6 +17,10 @@ Slack 승인/거부 버튼 클릭 (별도 요청, /slack/interactions)
     → 서명 검증 → 정책 재계산 → 실행/거부
     → Slack 메시지 갱신 (항상 먼저)
     → Sendbird로 매니저 통보 (그 다음)
+
+CloudWatch Alarm 상태 변경 (별도 요청, SNS -> /webhook/cloudwatch-alarm)
+    → SNS 서명 검증 → Grafana 알럿 형태로 변환 → 위 흐름과 동일한 파이프라인 재사용
+    (알람명이 config/actions.js에 없으면 안전하게 HIGH/팀전체승인으로 처리됨)
 ```
 
 **매니저 알림 원칙**: 항상 "개발팀 Slack 통보/갱신이 끝난 뒤"에만 나간다. 감지 시점에
@@ -45,6 +49,7 @@ cp .env.example .env
 | `SENDBIRD_APP_ID` / `SENDBIRD_API_TOKEN` | Sendbird Platform API 인증 (마스터 API 토큰) |
 | `SENDBIRD_BOT_USER_ID` | 매니저 채널에 메시지를 보낼 봇 유저 ID (기본 `aiops-bot`) |
 | `MANAGER_CHANNEL_URL` | 아래 2번 셋업 후 채울 것. 비워두면 매니저 알림은 로그만 찍고 스킵됨 |
+| `CLOUDWATCH_METRICS_NAMESPACE` | Gemini 호출 메트릭을 보낼 CloudWatch 네임스페이스. 기본값 `campflow-aiops-relay` |
 
 ## 2. 매니저 채널 최초 1회 생성
 
@@ -97,7 +102,10 @@ aiops-relay/
 │   ├── executor.js                  # 화이트리스트 기반 액션 실행기
 │   ├── approvalTracker.js           # 팀 승인 현황 추적
 │   ├── sendbird.js                  # Sendbird Platform API 호출 (매니저)
-│   └── notifyManager.js             # 매니저 알림 라우팅 (즉시 발송 vs 다이제스트)
+│   ├── notifyManager.js             # 매니저 알림 라우팅 (즉시 발송 vs 다이제스트)
+│   ├── reasoningLogClient.js        # AI 판단 근거(reasoning_summary) 백엔드 감사 로그 전송
+│   ├── cloudwatchMetrics.js         # Gemini 호출 성공률/레이턴시 CloudWatch 커스텀 메트릭 전송
+│   └── snsVerify.js                 # CloudWatch Alarm(SNS) 웹훅 서명 검증
 ├── scripts/
 │   └── setup-manager-channel.js     # 매니저 채널 최초 1회 생성용
 ├── package.json

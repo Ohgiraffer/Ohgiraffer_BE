@@ -9,6 +9,8 @@ const { runAction } = require("./lib/executor");
 const { verifySlackSignature } = require("./lib/slackVerify");
 const approvalTracker = require("./lib/approvalTracker");
 const { notifyManagerOnResolve, sendDailyDigest, DIGEST_CRON } = require("./lib/notifyManager");
+const { logAgentReasoning } = require("./lib/reasoningLogClient");
+const { validateSnsMessage } = require("./lib/snsVerify");
 
 const app = express();
 
@@ -78,17 +80,27 @@ async function handleSingleAlert(alert) {
   const policy = evaluateAlert(alertName);
   console.log("[webhook] 등급 판정:", policy);
 
+  // SINGLE_APPROVAL / TEAM_APPROVAL 인 경우, 나중에 Slack 버튼 클릭이 왔을 때
+  // "무엇에 대한 승인인지" 추적할 고유 ID를 만들어둔다. (AUTO_EXECUTE 로깅에서도 재사용)
+  const instanceId = `${alertName}::${Date.now()}`;
+  analysisStore.set(instanceId, analysis);
+
   let executionResult = null;
   if (policy.route === "AUTO_EXECUTE" && policy.autoExecutable) {
     console.log(`[webhook] 저위험 판정 → 자동 실행 시도: ${policy.scriptId}`);
+    const startedAt = Date.now();
     executionResult = await runAction(policy.scriptId, { alertName, value, labels });
     console.log("[webhook] 자동 실행 결과:", executionResult);
-  }
 
-  // SINGLE_APPROVAL / TEAM_APPROVAL 인 경우, 나중에 Slack 버튼 클릭이 왔을 때
-  // "무엇에 대한 승인인지" 추적할 고유 ID를 만들어둔다.
-  const instanceId = `${alertName}::${Date.now()}`;
-  analysisStore.set(instanceId, analysis);
+    logAgentReasoning({
+      sessionId: alertName,
+      turnId: instanceId,
+      functionName: policy.scriptId,
+      analysis,
+      success: executionResult.success,
+      latencyMs: Date.now() - startedAt,
+    });
+  }
 
   // 1. 개발팀 Slack 통보가 먼저
   await sendToSlack({ alertName, status, value, labels, analysis, policy, executionResult, instanceId });
@@ -107,11 +119,95 @@ async function handleSingleAlert(alert) {
 function formatValues(values) {
   if (!values) return null;
   return Object.entries(values)
-    .map(([k, v]) => `${k}=${v}`)
-    .join(", ");
+      .map(([k, v]) => `${k}=${v}`)
+      .join(", ");
 }
 
 app.get("/health", (req, res) => res.json({ status: "ok" }));
+
+/**
+ * CloudWatch Alarm -> SNS -> 이 엔드포인트로 들어오는 웹훅.
+ * SNS Topic의 HTTPS 구독 대상으로 등록: https://<이-서버>/aiops/webhook/cloudwatch-alarm
+ *
+ * SNS는 Content-Type을 text/plain으로 보내면서 JSON 문자열을 담아 보내는 경우가 많아
+ * express.json() 대신 express.text()로 원본을 받아 직접 파싱한다.
+ *
+ * 서명 검증(validateSnsMessage)을 반드시 통과해야 처리한다 - 이게 없으면 외부에서
+ * 이 URL만 알아도 가짜 알람을 흉내 내어 AUTO_EXECUTE 화이트리스트 액션을 실행시킬 수 있다.
+ */
+app.post("/webhook/cloudwatch-alarm", express.text({ type: "*/*" }), async (req, res) => {
+  let message;
+  try {
+    message = JSON.parse(req.body);
+  } catch (err) {
+    console.error("[cloudwatch-alarm] JSON 파싱 실패:", err.message);
+    return res.status(400).send("invalid json");
+  }
+
+  try {
+    await validateSnsMessage(message);
+  } catch (err) {
+    console.error("[cloudwatch-alarm] SNS 서명 검증 실패:", err.message);
+    return res.status(401).send("invalid signature");
+  }
+
+  res.status(200).send("ok");
+
+  const messageType = req.header("x-amz-sns-message-type") || message.Type;
+
+  if (messageType === "SubscriptionConfirmation") {
+    try {
+      await fetch(message.SubscribeURL);
+      console.log("[cloudwatch-alarm] SNS 구독 확인 완료");
+    } catch (err) {
+      console.error("[cloudwatch-alarm] SNS 구독 확인 요청 실패:", err.message);
+    }
+    return;
+  }
+
+  if (messageType === "Notification") {
+    let alarmData;
+    try {
+      alarmData = JSON.parse(message.Message);
+    } catch (err) {
+      console.error("[cloudwatch-alarm] Message 파싱 실패:", err.message);
+      return;
+    }
+
+    try {
+      await handleCloudWatchAlarm(alarmData);
+    } catch (err) {
+      console.error("[cloudwatch-alarm] 알람 처리 중 오류:", err);
+    }
+  }
+});
+
+/**
+ * CloudWatch Alarm 상태 변경 데이터를, 기존 handleSingleAlert()가 기대하는
+ * Grafana 알럿 형태로 변환해서 동일한 Slack/승인/매니저 알림 파이프라인을 그대로 재사용한다.
+ * config/actions.js의 ALERT_POLICY에 등록 안 된 알람명은 DEFAULT_POLICY(HIGH, 팀 전체 승인)로
+ * 안전하게 처리되므로, 새 CloudWatch 알람을 추가할 때마다 정책을 반드시 등록할 필요는 없다.
+ */
+async function handleCloudWatchAlarm(alarmData) {
+  const alertName = alarmData.AlarmName || "이름없는CloudWatch알람";
+  const newState = alarmData.NewStateValue; // "ALARM" | "OK" | "INSUFFICIENT_DATA"
+
+  if (newState === "INSUFFICIENT_DATA") {
+    console.log(`[cloudwatch-alarm] 데이터 부족 상태, 무시: ${alertName}`);
+    return;
+  }
+
+  const status = newState === "ALARM" ? "firing" : "resolved";
+  const reason = alarmData.NewStateReason || "-";
+
+  console.log(`[cloudwatch-alarm] 처리 시작: ${alertName} (${status})`);
+
+  await handleSingleAlert({
+    status,
+    labels: { alertname: alertName },
+    values: { reason },
+  });
+}
 
 /**
  * Slack Interactivity & Shortcuts 의 Request URL로 등록하는 엔드포인트.
@@ -187,9 +283,21 @@ async function handleSingleApproval({ action, approver, alertName, value, policy
 
   if (action.action_id === "approve_action") {
     console.log(`[slack-interactions] ${approver}님이 승인함: ${alertName} (${policy.scriptId})`);
+    const startedAt = Date.now();
     const result = policy.scriptId
-      ? await runAction(policy.scriptId, { alertName, value })
-      : { success: false, message: "실행 가능한 조치가 등록되어 있지 않습니다." };
+        ? await runAction(policy.scriptId, { alertName, value })
+        : { success: false, message: "실행 가능한 조치가 등록되어 있지 않습니다." };
+
+    if (policy.scriptId) {
+      logAgentReasoning({
+        sessionId: alertName,
+        turnId: instanceId,
+        functionName: policy.scriptId,
+        analysis,
+        success: result.success,
+        latencyMs: Date.now() - startedAt,
+      });
+    }
 
     // 1. 개발팀 Slack 갱신이 먼저
     await respondToSlack(responseUrl, {
@@ -251,28 +359,40 @@ async function handleTeamApproval({ action, approver, alertName, value, policy, 
     const approvedCount = approvalTracker.addApproval(instanceId, approver);
     const approvers = approvalTracker.getApprovers(instanceId);
     console.log(
-      `[slack-interactions] ${approver}님이 승인함 (${approvedCount}/${policy.requiredApprovals}): ${alertName}`
+        `[slack-interactions] ${approver}님이 승인함 (${approvedCount}/${policy.requiredApprovals}): ${alertName}`
     );
 
     if (approvedCount >= policy.requiredApprovals) {
       approvalTracker.markFinalized(instanceId);
       const finalizedAnalysis = analysisStore.get(instanceId);
       analysisStore.delete(instanceId);
+      const startedAt = Date.now();
       const result = policy.scriptId
-        ? await runAction(policy.scriptId, { alertName, value })
-        : {
+          ? await runAction(policy.scriptId, { alertName, value })
+          : {
             success: false,
             status: "MANUAL_REQUIRED",
             message: "이 알럿은 자동 실행 조치가 없습니다. 팀 승인 완료 후 수동 대응이 필요합니다.",
           };
 
+      if (policy.scriptId) {
+        logAgentReasoning({
+          sessionId: alertName,
+          turnId: instanceId,
+          functionName: policy.scriptId,
+          analysis: finalizedAnalysis,
+          success: result.success,
+          latencyMs: Date.now() - startedAt,
+        });
+      }
+
       // 1. 개발팀 Slack 갱신이 먼저
       await respondToSlack(responseUrl, {
         replace_original: true,
         text:
-          `✅ *팀 승인 완료* (${approvers.join(", ")})\n` +
-          `조치: ${policy.action}\n` +
-          `실행 결과: ${result.message}`,
+            `✅ *팀 승인 완료* (${approvers.join(", ")})\n` +
+            `조치: ${policy.action}\n` +
+            `실행 결과: ${result.message}`,
       });
 
       // 2. 그 다음 매니저 알림: 팀 승인 완료 후 최종 처리 결과 통보
@@ -290,8 +410,8 @@ async function handleTeamApproval({ action, approver, alertName, value, policy, 
         policy,
       });
       baseBlocks.push(
-        buildTeamProgressSection({ approvedCount, requiredApprovals: policy.requiredApprovals }),
-        buildActionButtons({ alertName, value, instanceId })
+          buildTeamProgressSection({ approvedCount, requiredApprovals: policy.requiredApprovals }),
+          buildActionButtons({ alertName, value, instanceId })
       );
       await respondToSlack(responseUrl, { replace_original: true, blocks: baseBlocks });
     }

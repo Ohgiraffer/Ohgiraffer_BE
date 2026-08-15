@@ -1,3 +1,5 @@
+const { recordGeminiCallMetric } = require("./cloudwatchMetrics");
+
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
@@ -44,6 +46,7 @@ ${logSnippet}
 `;
 
   try {
+    const startedAt = Date.now();
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
     const res = await fetch(url, {
@@ -65,6 +68,7 @@ ${logSnippet}
     if (!res.ok) {
       const text = await res.text();
       console.error(`[gemini] API 호출 실패: HTTP ${res.status} - ${text}`);
+      recordGeminiCallMetric({ operation: "analyzeAlert", success: false, latencyMs: Date.now() - startedAt });
       return {
         발생: `${alertName} 알럿이 ${status} 상태입니다.`,
         why: "AI 분석 실패 (API 오류)",
@@ -76,12 +80,19 @@ ${logSnippet}
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     try {
-      return JSON.parse(rawText);
+      const parsed = JSON.parse(rawText);
+      recordGeminiCallMetric({ operation: "analyzeAlert", success: true, latencyMs: Date.now() - startedAt });
+      return parsed;
     } catch {
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        recordGeminiCallMetric({ operation: "analyzeAlert", success: true, latencyMs: Date.now() - startedAt });
+        return parsed;
+      }
 
       console.error("[gemini] JSON 파싱 실패, 원본:", rawText);
+      recordGeminiCallMetric({ operation: "analyzeAlert", success: false, latencyMs: Date.now() - startedAt });
       return {
         발생: `${alertName} 알럿이 ${status} 상태입니다.`,
         why: "AI 응답 파싱 실패",
@@ -90,6 +101,7 @@ ${logSnippet}
     }
   } catch (err) {
     console.error("[gemini] 호출 중 예외 발생:", err.message);
+    recordGeminiCallMetric({ operation: "analyzeAlert", success: false, latencyMs: 0 });
     return {
       발생: `${alertName} 알럿이 ${status} 상태입니다.`,
       why: "AI 분석 중 오류 발생",
@@ -104,6 +116,7 @@ async function summarizeForManager(prompt) {
   }
 
   try {
+    const startedAt = Date.now();
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
     const res = await fetch(url, {
@@ -124,6 +137,7 @@ async function summarizeForManager(prompt) {
     if (!res.ok) {
       const text = await res.text();
       console.error(`[gemini] 매니저 요약 호출 실패: HTTP ${res.status} - ${text}`);
+      recordGeminiCallMetric({ operation: "summarizeForManager", success: false, latencyMs: Date.now() - startedAt });
       return "(AI 요약 실패 - 중계서버 로그 확인 필요)";
     }
 
@@ -137,14 +151,18 @@ async function summarizeForManager(prompt) {
               text?.slice(0, 100) || "(텍스트 없음, thinking에 토큰 전부 소비 추정)"
           }`
       );
+      // 잘린 응답이라도 텍스트 자체는 받아왔으니 success로 기록 (완전 실패와는 구분)
+      recordGeminiCallMetric({ operation: "summarizeForManager", success: !!text, latencyMs: Date.now() - startedAt });
       return text
           ? `${text} (…이하 생략, 토큰 제한으로 잘림)`
           : "(AI 요약 실패 - 토큰 제한으로 응답이 비어 있음)";
     }
 
+    recordGeminiCallMetric({ operation: "summarizeForManager", success: !!text, latencyMs: Date.now() - startedAt });
     return text || "(빈 응답)";
   } catch (err) {
     console.error("[gemini] 매니저 요약 중 예외 발생:", err.message);
+    recordGeminiCallMetric({ operation: "summarizeForManager", success: false, latencyMs: 0 });
     return "(AI 요약 중 오류 발생)";
   }
 }
