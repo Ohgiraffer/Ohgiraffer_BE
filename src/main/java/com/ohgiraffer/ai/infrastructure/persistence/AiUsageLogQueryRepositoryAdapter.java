@@ -29,12 +29,6 @@ public class AiUsageLogQueryRepositoryAdapter implements AiUsageLogQueryReposito
     }
 
     @Override
-    public Optional<AiUsageLastCall> findLastCall() {
-        return aiUsageLogJpaRepository.findTopByOrderByCreatedAtDesc()
-                .map(e -> new AiUsageLastCall(e.getCreatedAt(), e.isSuccess(), e.getFailReason()));
-    }
-
-    @Override
     public List<FeatureCallCount> aggregateByFeature(LocalDateTime start, LocalDateTime end) {
         return aiUsageLogJpaRepository.aggregateByFeatureToday(start, end);
     }
@@ -47,5 +41,13 @@ public class AiUsageLogQueryRepositoryAdapter implements AiUsageLogQueryReposito
     @Override
     public List<HourlyCallCount> aggregateHourly(LocalDateTime start, LocalDateTime end) {
         return aiUsageLogJpaRepository.aggregateHourlyToday(start, end);
+    }
+
+    @Override
+    public Optional<AiUsageLastCall> findLastCallBetween(LocalDateTime start, LocalDateTime end) {
+        return aiUsageLogJpaRepository
+                .findTopByCreatedAtBetweenOrderByCreatedAtDesc(start, end)
+                .map(entity -> new AiUsageLastCall(
+                        entity.getCreatedAt(), entity.isSuccess(), entity.getFailReason()));
     }
 }

@@ -18,8 +18,6 @@ public interface SpringDataAiUsageLogJpaRepository extends JpaRepository<AiUsage
 
     long countBySuccessFalseAndCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
-    Optional<AiUsageLogEntity> findTopByOrderByCreatedAtDesc();
-
     @Query("""
         SELECT new com.ohgiraffer.ai.domain.dto.FeatureCallCount(
             a.featureName,
@@ -64,4 +62,6 @@ public interface SpringDataAiUsageLogJpaRepository extends JpaRepository<AiUsage
     @Modifying
     @Query("DELETE FROM AiUsageLogEntity a WHERE a.createdAt < :cutoff")
     int deleteByCreatedAtBefore(@Param("cutoff") LocalDateTime cutoff);
+
+    Optional<AiUsageLogEntity> findTopByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime start, LocalDateTime end);
 }

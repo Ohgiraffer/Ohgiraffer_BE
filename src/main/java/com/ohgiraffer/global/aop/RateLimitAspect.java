@@ -27,7 +27,6 @@ import java.util.concurrent.TimeUnit;
 public class RateLimitAspect {
 
     private static final long LOCK_WAIT_SECONDS = 2L;
-    private static final long LOCK_LEASE_SECONDS = 3L;
 
     private final RedisTemplate<String, String> redisTemplate;
     private final RedissonClient redissonClient;
@@ -49,14 +48,13 @@ public class RateLimitAspect {
 
         boolean acquired;
         try {
-            acquired = lock.tryLock(LOCK_WAIT_SECONDS, LOCK_LEASE_SECONDS, TimeUnit.SECONDS);
+            acquired = lock.tryLock(LOCK_WAIT_SECONDS, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new BusinessException(ErrorCode.LOCK_WAIT_INTERRUPTED);
         }
 
         if (!acquired) {
-            // 락 자체를 못 잡은 경우 안전하게 거부 (한도 초과와 동일하게 처리)
             return false;
         }
 

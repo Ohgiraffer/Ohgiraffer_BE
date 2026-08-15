@@ -15,11 +15,11 @@ public interface AiUsageLogQueryRepository {
 
     long countFailuresBetween(LocalDateTime start, LocalDateTime end);
 
-    Optional<AiUsageLastCall> findLastCall();
-
     List<FeatureCallCount> aggregateByFeature(LocalDateTime start, LocalDateTime end);
 
     List<FailReasonCount> aggregateFailReasons(LocalDateTime start, LocalDateTime end);
 
     List<HourlyCallCount> aggregateHourly(LocalDateTime start, LocalDateTime end);
+
+    Optional<AiUsageLastCall> findLastCallBetween(LocalDateTime start, LocalDateTime end);
 }

@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.time.Duration;
@@ -89,10 +90,15 @@ public class GeminiClient {
         }
 
         Map<?, ?> response = callGemini(body);
-
+        String text;
+        try {
+            text = extractText(response);
+        } catch (BusinessException e) {
+            aiUsageRecorder.recordFailure(resolveFeatureName(), properties.getModel(), FailReason.EMPTY_RESPONSE);
+            throw e;
+        }
         recordUsage(response);
-
-        return extractText(response);
+        return text;
     }
 
     private List<Map<String, Object>> createUserContents(
@@ -194,6 +200,9 @@ public class GeminiClient {
             FailReason reason = resolveFailReason(e.getStatusCode());
             aiUsageRecorder.recordFailure(resolveFeatureName(), properties.getModel(), reason);
             throw mapToBusinessException(reason);
+        } catch (RestClientException e) {
+            aiUsageRecorder.recordFailure(resolveFeatureName(), properties.getModel(), FailReason.SERVER_ERROR);
+            throw new BusinessException(ErrorCode.AI_API_CALL_FAILED);
         }
     }
 

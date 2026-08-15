@@ -16,12 +16,16 @@ public class AiUsageStatusQueryService {
     private final AiUsageLogQueryRepository aiUsageLogQueryRepository;
 
     public AiUsageStatusResult getTodayStatus() {
-        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
         LocalDateTime now = LocalDateTime.now();
+        LocalDate today = now.toLocalDate();
+        LocalDateTime start = today.atStartOfDay();
+        LocalDateTime end = now;
 
-        long totalCallsToday = aiUsageLogQueryRepository.countCallsBetween(todayStart, now);
-        long failCallsToday = aiUsageLogQueryRepository.countFailuresBetween(todayStart, now);
-        AiUsageLastCall lastCall = aiUsageLogQueryRepository.findLastCall().orElse(null);
+        long totalCallsToday = aiUsageLogQueryRepository.countCallsBetween(start, now);
+        long failCallsToday = aiUsageLogQueryRepository.countFailuresBetween(start, now);
+        AiUsageLastCall lastCall = aiUsageLogQueryRepository
+                .findLastCallBetween(start, now)
+                .orElse(null);
 
         return new AiUsageStatusResult(
                 totalCallsToday,
@@ -38,7 +42,7 @@ public class AiUsageStatusQueryService {
             return "오늘 호출 기록 없음 -> GeminiClient가 아예 호출되지 않았을 가능성";
         }
         if (!lastCall.success() && failCallsToday >= 3) {
-            return "최근 연속 실패 -> fail_reason 확인 (RATE_LIMIT=팀 쿼터 소진, AUTH_INVALID=키 설정 문제, BAD_REQUEST=코드 문제)";
+            return "최근 실패 발생, 당일 실패 " + failCallsToday + "건 -> fail_reason 확인 (RATE_LIMIT=팀 쿼터 소진, AUTH_INVALID=키 설정 문제, BAD_REQUEST=코드 문제)";
         }
         return "정상 동작 중";
     }

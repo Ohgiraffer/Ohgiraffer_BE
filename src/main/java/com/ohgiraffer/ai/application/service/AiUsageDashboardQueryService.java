@@ -16,8 +16,10 @@ public class AiUsageDashboardQueryService {
     private final AiUsageLogQueryRepository aiUsageLogQueryRepository;
 
     public AiUsageDashboardResult getTodayDashboard() {
-        LocalDateTime start = LocalDate.now().atStartOfDay();
-        LocalDateTime end = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDate today = now.toLocalDate();
+        LocalDateTime start = today.atStartOfDay();
+        LocalDateTime end = now;
 
         var byFeature = aiUsageLogQueryRepository.aggregateByFeature(start, end);
         var failReasons = aiUsageLogQueryRepository.aggregateFailReasons(start, end);
@@ -26,6 +28,6 @@ public class AiUsageDashboardQueryService {
         long totalCalls = byFeature.stream().mapToLong(f -> f.successCount() + f.failCount()).sum();
         long failCount = failReasons.stream().mapToLong(FailReasonCount::count).sum();
 
-        return new AiUsageDashboardResult(LocalDate.now(), byFeature, failReasons, hourly, totalCalls, failCount);
+        return new AiUsageDashboardResult(today, byFeature, failReasons, hourly, totalCalls, failCount);
     }
 }

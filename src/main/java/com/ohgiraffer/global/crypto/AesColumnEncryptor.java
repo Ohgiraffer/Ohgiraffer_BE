@@ -19,6 +19,7 @@ public class AesColumnEncryptor {
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128;
 
+    private static final String VERSION_PREFIX = "v1:";
     private final SecretKeySpec secretKeySpec;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -49,7 +50,7 @@ public class AesColumnEncryptor {
             System.arraycopy(iv, 0, combined, 0, iv.length);
             System.arraycopy(cipherBytes, 0, combined, iv.length, cipherBytes.length);
 
-            return Base64.getEncoder().encodeToString(combined);
+            return VERSION_PREFIX + Base64.getEncoder().encodeToString(combined);
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.ENCRYPTION_FAILED, e);
         }
@@ -59,9 +60,13 @@ public class AesColumnEncryptor {
         if (encryptedText == null) {
             return null;
         }
+        if (!encryptedText.startsWith(VERSION_PREFIX)) {
+            throw new BusinessException(ErrorCode.DECRYPTION_FAILED);
+        }
 
         try {
-            byte[] combined = Base64.getDecoder().decode(encryptedText);
+            String payload = encryptedText.substring(VERSION_PREFIX.length());
+            byte[] combined = Base64.getDecoder().decode(payload);
 
             byte[] iv = new byte[GCM_IV_LENGTH];
             System.arraycopy(combined, 0, iv, 0, GCM_IV_LENGTH);
@@ -75,6 +80,8 @@ public class AesColumnEncryptor {
 
             byte[] plainBytes = cipher.doFinal(cipherBytes);
             return new String(plainBytes, StandardCharsets.UTF_8);
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.DECRYPTION_FAILED, e);
         }
