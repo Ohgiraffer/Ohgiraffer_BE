@@ -4,6 +4,7 @@ import com.ohgiraffer.consultation.domain.model.Consultation;
 import com.ohgiraffer.consultation.domain.model.ConsultationStatus;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 

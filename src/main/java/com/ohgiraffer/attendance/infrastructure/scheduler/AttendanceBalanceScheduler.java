@@ -24,17 +24,16 @@ public class AttendanceBalanceScheduler {
     @Scheduled(cron = "0 5 0 * * *")
     public void rolloverBalances() {
         LocalDate today = LocalDate.now();
-        List<AttendancePeriodStartResult> startingPeriods = bootcampQueryUsecase.getPeriodsStartingOn(today);
+        List<AttendancePeriodStartResult> activePeriods = bootcampQueryUsecase.getActivePeriods(today);
 
-        if (startingPeriods.isEmpty()) {
-            log.info("[rolloverBalances] 오늘 시작하는 단위기간 없음 | date={}", today);
+        if (activePeriods.isEmpty()) {
+            log.info("[rolloverBalances] 진행 중인 단위기간 없음 | date={}", today);
             return;
         }
 
         int totalFailCount = 0;
 
-        for (AttendancePeriodStartResult period : startingPeriods) {
-            List<Long> studentIds = userQueryUsecase.getStudentIdsByBootcampId(period.bootcampId());
+        for (AttendancePeriodStartResult period : activePeriods) {            List<Long> studentIds = userQueryUsecase.getStudentIdsByBootcampId(period.bootcampId());
             int successCount = 0;
             int failCount = 0;
 

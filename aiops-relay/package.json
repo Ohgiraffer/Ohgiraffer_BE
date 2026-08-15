@@ -1,15 +1,17 @@
 {
   "name": "aiops-relay",
   "version": "1.0.0",
-  "description": "Grafana alert -> Loki log context -> Claude 분석 -> Slack 전송 중계서버",
+  "description": "Grafana alert -> Loki log context -> Gemini 분석 -> Slack(개발팀)/Sendbird(매니저) 통보 중계서버",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "setup:manager-channel": "node scripts/setup-manager-channel.js"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3"
   }
 }

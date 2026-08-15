@@ -1,6 +1,8 @@
 spring:
   application:
     name: ohgiraffer
+  config:
+    import: application-resilience4j.yaml
 
   # ===== Database (MySQL) =====
   datasource:
@@ -161,46 +163,6 @@ management:
       # → RED 방법론의 Duration(응답시간) 지표를 나중에 바로 쓸 수 있음
       percentiles-histogram:
         http.server.requests: true
-
-resilience4j:
-  circuitbreaker:
-    instances:
-      geminiApi:
-        sliding-window-type: COUNT_BASED
-        sliding-window-size: 10
-        minimum-number-of-calls: 5
-        failure-rate-threshold: 50
-        slow-call-duration-threshold: 30s
-        slow-call-rate-threshold: 50
-        wait-duration-in-open-state: 60s
-        permitted-number-of-calls-in-half-open-state: 3
-        automatic-transition-from-open-to-half-open-enabled: true
-        record-exceptions:
-          - org.springframework.web.client.RestClientException
-          - com.ohgiraffer.global.exception.BusinessException
-      # Notion Circuit Breaker
-      teamNotion:
-        sliding-window-type: COUNT_BASED
-        sliding-window-size: 10
-        minimum-number-of-calls: 5
-        failure-rate-threshold: 50
-        slow-call-duration-threshold: 10s
-        slow-call-rate-threshold: 50
-        wait-duration-in-open-state: 30s
-        permitted-number-of-calls-in-half-open-state: 2
-      geminiApiChatbot: # 신규 - 챗봇 전용, 값은 초기 추정치(운영 관찰 후 튜닝 필요)
-        sliding-window-type: COUNT_BASED
-        sliding-window-size: 20
-        minimum-number-of-calls: 10
-        failure-rate-threshold: 50
-        slow-call-duration-threshold: 15s
-        slow-call-rate-threshold: 50
-        wait-duration-in-open-state: 30s
-        permitted-number-of-calls-in-half-open-state: 3
-        automatic-transition-from-open-to-half-open-enabled: true
-        record-exceptions:
-          - org.springframework.web.client.RestClientException
-          - com.ohgiraffer.global.exception.BusinessException
 
 admin:
   internal-token: ${ADMIN_INTERNAL_TOKEN:changeme}

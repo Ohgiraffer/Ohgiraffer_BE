@@ -29,7 +29,7 @@ final class ScheduleExtractionPromptBuilder {
                 배열의 각 원소는 이런 모양이다.
                 {
                   "title": "일정명",
-                  "eventType": "CLASS | PRESENTATION | ASSIGNMENT | EVENT | null",
+                  "eventType": "CLASS | EVENT | null",
                   "startDate": "2026-08-05",
                   "startTime": "10:00" 또는 null,
                   "endDate": "2026-08-05",
@@ -44,8 +44,8 @@ final class ScheduleExtractionPromptBuilder {
                   "오전 중" 처럼 범위가 흐릿한 표현도 null 이다. 임의로 09:00 같은 값을 넣지 마라.
                 - eventType 은 확신이 설 때만 채워라. 애매하면 null 로 둬라.
                   사람이 고르면 되는 값이라, 틀린 값을 채우는 것보다 비우는 편이 낫다.
-                  수업/강의는 CLASS, 발표는 PRESENTATION, 과제 제출 마감은 ASSIGNMENT,
-                  그 밖의 행사는 EVENT 다.
+                  수업, 강의, 발표, 시험, 과제 제출 마감처럼 교육 과정에 속하는 일정은 CLASS 다.
+                  그 밖의 행사와 안내는 EVENT 다.
                 - 장소가 적혀 있지 않으면 location 을 null 로 둬라.
                 - 접수 기간, 신청 마감처럼 훈련생이 날짜를 챙겨야 하는 것도 일정으로 본다.
 

@@ -20,4 +20,5 @@ public interface BootcampQueryUsecase {
     List<AttendancePeriodResult> getAttendancePeriods(Long bootcampId);
     BootcampLoginBasicResponse getBasicInfo(Long userId);
     List<AttendancePeriodStartResult> getPeriodsStartingOn(LocalDate date);
+    List<AttendancePeriodStartResult> getActivePeriods(LocalDate referenceDate);
 }

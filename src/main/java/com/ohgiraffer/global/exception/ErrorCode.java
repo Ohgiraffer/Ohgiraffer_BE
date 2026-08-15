@@ -62,6 +62,7 @@ public enum ErrorCode {
     CHAT_SENDBIRD_API_ERROR(HttpStatus.BAD_GATEWAY, "CHAT_006", "Sendbird API 호출 중 오류가 발생했습니다."),
     CHAT_WEBHOOK_SIGNATURE_INVALID(HttpStatus.BAD_REQUEST, "CHAT_007", "웹훅 서명 검증에 실패했습니다."),
     CHAT_CANNOT_REPLY_TO_REPLY(HttpStatus.BAD_REQUEST, "CHAT_008", "답글에는 답글을 작성할 수 없습니다."),
+    CHAT_SENDBIRD_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "CHAT_009", "채팅 서비스가 일시적으로 원활하지 않습니다. 잠시 후 다시 시도해주세요."),
 
     NOTI_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTI_001", "알림을 찾을 수 없습니다."),
     NOTI_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTI_002", "본인의 알림만 접근할 수 있습니다."),
@@ -169,6 +170,7 @@ public enum ErrorCode {
     CALENDAR_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CALENDAR_001", "존재하지 않는 일정입니다."),
     CALENDAR_EVENT_NOT_CREATOR(HttpStatus.FORBIDDEN, "CALENDAR_002", "일정을 등록한 사람만 삭제할 수 있습니다."),
     AI_API_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI_001", "AI API 호출 중 오류가 발생했습니다."),
+    AI_CREDENTIAL_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "AI_002", "AI 설정이 준비되지 않았습니다. 관리자에게 문의해주세요."),
 
     AI_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI_002", "AI 비서 서비스가 일시적으로 원활하지 않습니다. 잠시 후 다시 시도해주세요."),
     LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "LOCK_001", "다른 요청이 처리 중입니다. 잠시 후 다시 시도해주세요.");

@@ -180,8 +180,11 @@ public class GeminiScheduleExtractionAdapter implements ScheduleExtractionPort {
     }
 
     /**
-     * 유형은 비어 있어도 된다. 모델이 목록에 없는 값을 지어내면 비운 것으로 본다.
-     * 사람이 화면에서 고르면 되는 값이라, 틀린 값을 넘기는 것보다 낫다.
+     * 유형은 비어 있어도 된다. 모델이 화면에 없는 값을 골라 오면 비운 것으로 본다.
+     * 사람이 화면에서 고르면 되는 값이라, 화면에 없는 값을 넘기는 것보다 낫다.
+     *
+     * <p>화면 드롭다운은 수업/발표·행사·개인 셋뿐이고, 공지에서 뽑은 일정은 개인 일정일 수 없어
+     * 두 가지만 남는다. 프롬프트에도 둘만 알려주지만 모델이 다른 값을 지어낼 수 있어 한 번 더 본다.
      */
     private EventType toEventType(String value) {
         if (value == null) {
@@ -191,7 +194,8 @@ public class GeminiScheduleExtractionAdapter implements ScheduleExtractionPort {
         try {
             EventType eventType = EventType.from(value);
 
-            if (eventType.isPersonal() || eventType.isSystemOnly()) {
+            if (eventType != EventType.CLASS && eventType != EventType.EVENT) {
+                log.warn("공지 일정 추출에서 화면에 없는 유형을 받아 비웁니다. 값={}", value);
                 return null;
             }
 
