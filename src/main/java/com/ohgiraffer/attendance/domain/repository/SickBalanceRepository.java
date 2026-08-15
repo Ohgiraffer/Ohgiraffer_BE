@@ -8,6 +8,7 @@ import java.util.Optional;
 public interface SickBalanceRepository {
     Optional<SickBalance> findCurrentByUserId(Long userId, LocalDate referenceDate);
     Optional<SickBalance> findByUserIdAndPeriodEnd(Long userId, LocalDate periodEnd);
+    Optional<SickBalance> findByUserIdAndPeriodStart(Long userId, LocalDate periodStart);
     boolean existsByUserIdAndPeriodStart(Long userId, LocalDate periodStart);
     SickBalance save(SickBalance sickBalance);
 }

@@ -2,6 +2,7 @@ package com.ohgiraffer.consultation.infrastructure.persistence;
 
 import com.ohgiraffer.consultation.domain.model.Consultation;
 import com.ohgiraffer.consultation.domain.model.ConsultationStatus;
+import com.ohgiraffer.consultation.infrastructure.converter.ConsultationNoteConverter;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -32,10 +33,12 @@ public class ConsultationJpaEntity {
     @Column(name = "content")
     private String content;
 
-    @Column(name = "counselor_note")
+    @Convert(converter = ConsultationNoteConverter.class)
+    @Column(name = "counselor_note", columnDefinition = "TEXT")
     private String counselorNote;
 
-    @Column(name = "ai_brief")
+    @Convert(converter = ConsultationNoteConverter.class)
+    @Column(name = "ai_brief", columnDefinition = "TEXT")
     private String aiBrief;
 
     @Column(name = "record_version", nullable = false)

@@ -6,7 +6,7 @@ spring:
 
   # ===== Database (MySQL) =====
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:campflow}?characterEncoding=UTF-8&useUnicode=true&serverTimezone=UTC
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:campflow}?characterEncoding=UTF-8&useUnicode=true&serverTimezone=Asia/Seoul
     username: ${MYSQL_USERNAME:campflow}
     password: ${MYSQL_PASSWORD:1234}   # 본인 로컬 비밀번호로 교체
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -141,6 +141,8 @@ ai:
       nickname: ${CHATBOT_BOT_NICKNAME:AI비서}
       callback-url: ${CHATBOT_BOT_CALLBACK_URL:}
       token: ${CHATBOT_BOT_TOKEN:}
+  usage:
+    retention-days: 30
 
       
 # ==== management =====
@@ -179,3 +181,14 @@ team:
   outbox:
     retry-fixed-delay-ms: 60000
     retry-initial-delay-ms: 30000
+
+# ===== hashchain =====
+audit:
+  hash:
+    secret-key: ${AUDIT_HASH_SECRET_KEY:this-is-ohgiraffer-campflow-audit-hash-key-for-auditlog}
+
+# ===== AES =====
+encryption:
+  aes:
+    secret-key: ${AES_SECRET_KEY:aes128-secretkey}
+

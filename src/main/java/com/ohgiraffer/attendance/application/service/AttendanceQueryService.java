@@ -10,9 +10,11 @@ import com.ohgiraffer.attendance.domain.model.*;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.domain.repository.LeaveBalanceRepository;
 import com.ohgiraffer.attendance.domain.repository.SickBalanceRepository;
+import com.ohgiraffer.attendance.infrastructure.scheduler.AttendanceBalanceProcessor;
 import com.ohgiraffer.attendance.presentation.api.response.*;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePeriodResult;
+import com.ohgiraffer.bootcamp.domain.model.AttendancePeriodStartResult;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
@@ -25,6 +27,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -41,6 +44,7 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
     private final SickBalanceRepository sickBalanceRepository;
     private final UserQueryUsecase userQueryUsecase;
     private final BootcampQueryUsecase bootcampQueryUsecase;
+    private final AttendanceBalanceProcessor attendanceBalanceProcessor;
 
     private final AttendanceSummaryCache attendanceSummaryCache;
     private final AttendanceListCache attendanceListCache;
@@ -118,16 +122,32 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
 
     private AttendanceBalanceResponse buildBalance(Long userId) {
         LocalDate today = LocalDate.now();
+        Long bootcampId = userQueryUsecase.getBootcampId(userId);
+        LocalDate joinDate = userQueryUsecase.getJoinDate(userId);
 
-        int remainingLeave = leaveBalanceRepository.findCurrentByUserId(userId, today)
-                .map(LeaveBalance::remainingDays)
-                .orElse(0);
+        List<AttendancePeriodResult> targetPeriods = bootcampQueryUsecase.getAttendancePeriods(bootcampId).stream()
+                .filter(p -> !today.isBefore(p.periodStart()))
+                .filter(p -> !p.periodEnd().isBefore(joinDate)) // joinDate 이전에 끝난 기간 제외
+                .sorted((a, b) -> a.periodNo().compareTo(b.periodNo()))
+                .toList();
 
-        int remainingSick = sickBalanceRepository.findCurrentByUserId(userId, today)
-                .map(SickBalance::remainingDays)
-                .orElse(0);
+        LeaveBalance lastLeave = null;
+        SickBalance lastSick = null;
 
-        return AttendanceBalanceResponse.of(remainingLeave, remainingSick);
+        for (AttendancePeriodResult p : targetPeriods) {
+            AttendancePeriodStartResult start = toStartResult(bootcampId, p);
+            lastLeave = attendanceBalanceProcessor.createLeaveBalanceIfAbsent(userId, start);
+            lastSick = attendanceBalanceProcessor.createSickBalanceIfAbsent(userId, start);
+        }
+
+        return AttendanceBalanceResponse.of(
+                lastLeave != null ? lastLeave.remainingDays() : 0,
+                lastSick != null ? lastSick.remainingDays() : 0
+        );
+    }
+
+    private AttendancePeriodStartResult toStartResult(Long bootcampId, AttendancePeriodResult period) {
+        return new AttendancePeriodStartResult(period.id(), bootcampId, period.periodNo(), period.periodStart(), period.periodEnd());
     }
 
     private MonthlyAttendanceResponse buildMonthlyAttendance(Long userId, YearMonth yearMonth) {
