@@ -1,4 +1,3 @@
-// com.ohgiraffer.auth.application.service.AuthCommandService (수정본)
 package com.ohgiraffer.auth.application.service;
 
 import com.ohgiraffer.auth.application.policy.LogoutPolicy;
@@ -58,14 +57,16 @@ public class AuthCommandService implements AuthCommandUsecase {
 
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> {
-                    log.warn("[login] 존재하지 않는 이메일로 로그인 시도 | email={} | ip={}", request.email(), clientIp);
+                    log.warn("[login] 존재하지 않는 이메일로 로그인 시도 | email={} | ip={}",
+                            maskEmail(request.email()), maskIp(clientIp));
                     failureCountGuard.recordFailure(LOGIN_FAILURE_SCOPE, request.email(),
                             LOGIN_MAX_FAILURE_COUNT, LOGIN_FAILURE_WINDOW, LOGIN_LOCK_DURATION);
                     return new BusinessException(ErrorCode.LOGIN_FAILED);
                 });
 
         if (user.getStatus() != UserStatus.ACTIVE && user.getStatus() != UserStatus.COMPLETED) {
-            log.warn("[login] 비활성 계정 로그인 시도 | email={} | status={}", request.email(), user.getStatus());
+            log.warn("[login] 비활성 계정 로그인 시도 | email={} | status={}",
+                    maskEmail(request.email()), user.getStatus());
             ErrorCode errorCode = switch (user.getStatus()) {
                 case WITHDRAWN -> ErrorCode.WITHDRAWN_MEMBER;
                 case EXPELLED -> ErrorCode.EXPELLED_MEMBER;
@@ -81,7 +82,7 @@ public class AuthCommandService implements AuthCommandUsecase {
             );
         } catch (BadCredentialsException | DisabledException | LockedException e) {
             log.warn("[login] 인증 실패 | email={} | ip={} | reason={}",
-                    request.email(), clientIp, e.getClass().getSimpleName());
+                    maskEmail(request.email()), maskIp(clientIp), e.getClass().getSimpleName());
             failureCountGuard.recordFailure(LOGIN_FAILURE_SCOPE, request.email(),
                     LOGIN_MAX_FAILURE_COUNT, LOGIN_FAILURE_WINDOW, LOGIN_LOCK_DURATION);
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
@@ -152,5 +153,19 @@ public class AuthCommandService implements AuthCommandUsecase {
         String newAccessToken = jwtTokenProvider.createAccessToken(userId);
 
         return new TokenResponse(user.getId(), newAccessToken, user.getRole(), user.getStatus(), user.getBootcampId());
+    }
+
+    private String maskEmail(String email) {
+        if (email == null) return null;
+        int at = email.indexOf('@');
+        if (at <= 2) return "***" + email.substring(Math.max(at, 0));
+        return email.substring(0, 2) + "***" + email.substring(at);
+    }
+
+    private String maskIp(String ip) {
+        if (ip == null) return null;
+        int lastDot = ip.lastIndexOf('.');
+        if (lastDot < 0) return "***";
+        return ip.substring(0, lastDot) + ".*";
     }
 }

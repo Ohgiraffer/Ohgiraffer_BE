@@ -3,19 +3,20 @@ package com.ohgiraffer.global.aop;
 import com.ohgiraffer.global.annotation.RateLimited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.security.user.CustomUserPrincipal;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
-import com.ohgiraffer.security.user.CustomUserPrincipal;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.springframework.core.DefaultParameterNameDiscoverer;
-import org.springframework.core.ParameterNameDiscoverer;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.expression.ExpressionParser;
-import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -25,14 +26,15 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class RateLimitAspect {
 
-    private final RedisTemplate<String, String> redisTemplate;
+    private static final long LOCK_WAIT_SECONDS = 2L;
+    private static final long LOCK_LEASE_SECONDS = 3L;
 
-    private final ExpressionParser parser = new SpelExpressionParser();
-    private final ParameterNameDiscoverer discoverer = new DefaultParameterNameDiscoverer();
+    private final RedisTemplate<String, String> redisTemplate;
+    private final RedissonClient redissonClient;
 
     @Around("@annotation(rateLimited)")
     public Object around(ProceedingJoinPoint joinPoint, RateLimited rateLimited) throws Throwable {
-        String identifier = resolveIdentifier(joinPoint, rateLimited);
+        String identifier = resolveIdentifier();
         String redisKey = "rate_limit:" + rateLimited.key() + ":" + identifier;
 
         if (!tryConsume(redisKey, rateLimited.limit(), rateLimited.windowSeconds())) {
@@ -43,29 +45,50 @@ public class RateLimitAspect {
     }
 
     private boolean tryConsume(String redisKey, int limit, int windowSeconds) {
-        long now = System.currentTimeMillis();
-        long windowStartMillis = now - (windowSeconds * 1000L);
+        RLock lock = redissonClient.getLock("rate_limit_lock:" + redisKey);
 
-        redisTemplate.opsForZSet().removeRangeByScore(redisKey, 0, windowStartMillis);
+        boolean acquired;
+        try {
+            acquired = lock.tryLock(LOCK_WAIT_SECONDS, LOCK_LEASE_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BusinessException(ErrorCode.LOCK_WAIT_INTERRUPTED);
+        }
 
-        Long count = redisTemplate.opsForZSet().zCard(redisKey);
-        if (count != null && count >= limit) {
+        if (!acquired) {
+            // 락 자체를 못 잡은 경우 안전하게 거부 (한도 초과와 동일하게 처리)
             return false;
         }
 
-        String member = now + ":" + UUID.randomUUID();
-        redisTemplate.opsForZSet().add(redisKey, member, now);
-        redisTemplate.expire(redisKey, windowSeconds, TimeUnit.SECONDS);
+        try {
+            long now = System.currentTimeMillis();
+            long windowStartMillis = now - (windowSeconds * 1000L);
 
-        return true;
+            redisTemplate.opsForZSet().removeRangeByScore(redisKey, 0, windowStartMillis);
+
+            Long count = redisTemplate.opsForZSet().zCard(redisKey);
+            if (count != null && count >= limit) {
+                return false;
+            }
+
+            String member = now + ":" + UUID.randomUUID();
+            redisTemplate.opsForZSet().add(redisKey, member, now);
+            redisTemplate.expire(redisKey, windowSeconds, TimeUnit.SECONDS);
+
+            return true;
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
     }
 
-    private String resolveIdentifier(ProceedingJoinPoint joinPoint, RateLimited rateLimited) {
+    private String resolveIdentifier() {
         Long userId = resolveUserId();
         if (userId != null) {
             return "user:" + userId;
         }
-        return "ip:" + resolveClientIp(joinPoint);
+        return "ip:" + resolveClientIp();
     }
 
     private Long resolveUserId() {
@@ -76,10 +99,15 @@ public class RateLimitAspect {
         return principal.getId();
     }
 
-    private String resolveClientIp(ProceedingJoinPoint joinPoint) {
-        // 인증 안 된 요청(로그인 등)은 IP 기준으로 제한 — 실제 요청 컨텍스트는
-        // HttpServletRequest를 인자로 받거나 RequestContextHolder로 꺼내야 함
-        // (컨트롤러 시그니처 확인 후 구체 구현 조정 필요)
-        return "unknown";
+    private String resolveClientIp() {
+        HttpServletRequest request =
+                ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes())
+                        .getRequest();
+
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

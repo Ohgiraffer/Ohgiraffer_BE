@@ -59,7 +59,7 @@ public class AttendanceBalanceProcessor {
         long weekdays = AttendanceMetricsCalculator.countWeekdays(period.periodStart(), period.periodEnd());
         return BigDecimal.valueOf(weekdays)
                 .multiply(SICK_DAY_RATE)
-                .setScale(1, RoundingMode.HALF_UP);
+                .setScale(0, RoundingMode.HALF_UP); // 소수 1자리 -> 정수로 반올림
     }
 
     private BigDecimal resolveCarriedOverLeaveDays(Long userId, AttendancePeriodStartResult period) {

@@ -1,5 +1,7 @@
 package com.ohgiraffer.auditlog.infrastructure.crypto;
 
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +28,7 @@ public class AuditHashSigner {
             byte[] signed = mac.doFinal(rawPayload.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(signed);
         } catch (Exception e) {
-            throw new IllegalStateException("감사로그 해시 서명에 실패했습니다.", e);
+            throw new BusinessException(ErrorCode.AUDIT_LOG_SIGNING_FAILED, e);
         }
     }
 }

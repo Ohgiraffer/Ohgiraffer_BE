@@ -123,9 +123,11 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
     private AttendanceBalanceResponse buildBalance(Long userId) {
         LocalDate today = LocalDate.now();
         Long bootcampId = userQueryUsecase.getBootcampId(userId);
+        LocalDate joinDate = userQueryUsecase.getJoinDate(userId);
 
         List<AttendancePeriodResult> targetPeriods = bootcampQueryUsecase.getAttendancePeriods(bootcampId).stream()
                 .filter(p -> !today.isBefore(p.periodStart()))
+                .filter(p -> !p.periodEnd().isBefore(joinDate)) // joinDate 이전에 끝난 기간 제외
                 .sorted((a, b) -> a.periodNo().compareTo(b.periodNo()))
                 .toList();
 

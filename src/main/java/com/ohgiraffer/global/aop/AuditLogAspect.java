@@ -12,7 +12,9 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.context.expression.MethodBasedEvaluationContext;
 import org.springframework.core.DefaultParameterNameDiscoverer;
+import org.springframework.core.Ordered;
 import org.springframework.core.ParameterNameDiscoverer;
+import org.springframework.core.annotation.Order;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
@@ -27,6 +29,7 @@ import java.lang.reflect.Method;
 @Aspect
 @Component
 @RequiredArgsConstructor
+@Order(Ordered.LOWEST_PRECEDENCE)
 public class AuditLogAspect {
 
     private final RecordAuditLogUsecase recordAuditLogUsecase;
@@ -36,21 +39,17 @@ public class AuditLogAspect {
 
     @Around("@annotation(audited)")
     public Object around(ProceedingJoinPoint joinPoint, Audited audited) throws Throwable {
+        String beforeValue = evaluate(audited.beforeValue(), joinPoint, null);
+
         Object result = joinPoint.proceed();
 
-        try {
-            recordAuditLogUsecase.record(new RecordAuditLogCommand(
-                    audited.domain(),
-                    audited.eventType(),
-                    resolveActorId(),
-                    evaluate(audited.targetId(), joinPoint, result),
-                    evaluate(audited.beforeValue(), joinPoint, result),
-                    evaluate(audited.afterValue(), joinPoint, result)
-            ));
-        } catch (Exception e) {
-            log.error("[AuditLog] 감사로그 기록 실패 - domain: {}, eventType: {}",
-                    audited.domain(), audited.eventType(), e);
-        }
+        String targetId = evaluate(audited.targetId(), joinPoint, result);
+        String afterValue = evaluate(audited.afterValue(), joinPoint, result);
+
+        recordAuditLogUsecase.record(new RecordAuditLogCommand(
+                audited.domain(), audited.eventType(), resolveActorId(),
+                targetId, beforeValue, afterValue
+        ));
 
         return result;
     }

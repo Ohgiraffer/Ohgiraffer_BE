@@ -1,5 +1,6 @@
 package com.ohgiraffer.auditlog.domain.model;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 
 public class AuditLog {
@@ -38,16 +39,19 @@ public class AuditLog {
     }
 
     public String buildRawPayload() {
-        return String.join("|",
-                previousHash,
-                domainName,
-                eventType,
-                String.valueOf(actorId),
-                nullToEmpty(targetId),
-                nullToEmpty(beforeValue),
-                nullToEmpty(afterValue),
-                occurredAt.toString()
-        );
+        return lengthPrefixed(previousHash)
+                + lengthPrefixed(domainName)
+                + lengthPrefixed(eventType)
+                + lengthPrefixed(String.valueOf(actorId))
+                + lengthPrefixed(nullToEmpty(targetId))
+                + lengthPrefixed(nullToEmpty(beforeValue))
+                + lengthPrefixed(nullToEmpty(afterValue))
+                + lengthPrefixed(occurredAt.toString());
+    }
+
+    private String lengthPrefixed(String value) {
+        int byteLen = value.getBytes(StandardCharsets.UTF_8).length;
+        return byteLen + ":" + value;
     }
 
     private String nullToEmpty(String value) {

@@ -1,5 +1,7 @@
 package com.ohgiraffer.global.crypto;
 
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -49,7 +51,7 @@ public class AesColumnEncryptor {
 
             return Base64.getEncoder().encodeToString(combined);
         } catch (Exception e) {
-            throw new IllegalStateException("AES 암호화에 실패했습니다.", e);
+            throw new BusinessException(ErrorCode.ENCRYPTION_FAILED, e);
         }
     }
 
@@ -74,7 +76,7 @@ public class AesColumnEncryptor {
             byte[] plainBytes = cipher.doFinal(cipherBytes);
             return new String(plainBytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            throw new IllegalStateException("AES 복호화에 실패했습니다.", e);
+            throw new BusinessException(ErrorCode.DECRYPTION_FAILED, e);
         }
     }
 }
