@@ -141,6 +141,8 @@ ai:
       nickname: ${CHATBOT_BOT_NICKNAME:AI비서}
       callback-url: ${CHATBOT_BOT_CALLBACK_URL:}
       token: ${CHATBOT_BOT_TOKEN:}
+  usage:
+    retention-days: 30
 
       
 # ==== management =====

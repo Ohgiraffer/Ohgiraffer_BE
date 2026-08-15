@@ -176,6 +176,11 @@ public enum ErrorCode {
 
     RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMIT_EXCEEDED", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
     ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "로그인 실패 횟수 초과로 일시적으로 잠긴 계정입니다. 15분 후 다시 시도해주세요."),
+
+    AI_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AI-001", "AI API 호출 한도(429)를 초과했습니다. 팀 공용 키 쿼터가 소진되었을 수 있습니다."),
+    AI_API_KEY_INVALID(HttpStatus.UNAUTHORIZED, "AI-002", "AI API 키가 유효하지 않습니다. 환경변수를 확인하세요."),
+    AI_REQUEST_INVALID(HttpStatus.BAD_REQUEST, "AI-003", "AI API 요청 형식이 잘못되었습니다."),
+
     LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "LOCK_001", "다른 요청이 처리 중입니다. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus status;
