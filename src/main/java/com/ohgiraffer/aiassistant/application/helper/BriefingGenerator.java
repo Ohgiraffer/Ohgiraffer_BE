@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /* comment.
  *  BriefingQueryService/BriefingCommandService가 공유하는 생성 오케스트레이션
@@ -49,7 +49,7 @@ public class BriefingGenerator {
         try {
             String summaryText = briefingGenerationPort.generate(sourceData);  // 서킷 브레이커 적용된 호출
 
-            BriefingSummary summary = new BriefingSummary(userId, summaryText, LocalDateTime.now());
+            BriefingSummary summary = new BriefingSummary(userId, summaryText, Instant.now());
             briefingCachePort.save(summary);  // 정상 생성된 경우에만 캐싱
 
             log.info("[Briefing] 생성 완료 | userId={}, role={}", userId, role);
@@ -59,7 +59,7 @@ public class BriefingGenerator {
             // Gemini 서킷 OPEN 또는 API 장애로 인한 fallback인 경우 - 캐싱하지 않고 안내 응답만 리턴
             if (e.getErrorCode() == ErrorCode.AI_SERVICE_UNAVAILABLE) {
                 log.warn("[Briefing] Gemini 서킷 오픈 또는 API 장애로 fallback 응답 반환 (캐싱 안 함) | userId={}", userId);
-                return new BriefingSummary(userId, AI_UNAVAILABLE_MESSAGE, LocalDateTime.now());
+                return new BriefingSummary(userId, AI_UNAVAILABLE_MESSAGE, Instant.now());
             }
             throw e;  // AI_SERVICE_UNAVAILABLE 외의 BusinessException은 그대로 상위로 전파
         }
