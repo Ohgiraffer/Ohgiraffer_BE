@@ -2,7 +2,7 @@ spring:
   application:
     name: ohgiraffer
   config:
-    import: application-resilience4j.yml
+    import: application-resilience4j.yaml
 
   # ===== Database (MySQL) =====
   datasource:
