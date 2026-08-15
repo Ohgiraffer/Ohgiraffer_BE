@@ -14,6 +14,8 @@ import com.ohgiraffer.chat.domain.repository.ChatMessageMirrorRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.user.domain.repository.UserRepository;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -47,12 +49,13 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
     private final ChatChannelMemberRepository chatChannelMemberRepository;
     // mentionedUserIds 실존 검증용
     private final UserRepository userRepository;
-    // 메시지 전송 완료 이벤트 발행용 - chatbot 등 후속 처리는 리스너가 각자 구독해서 담당
-    private final ApplicationEventPublisher eventPublisher;
+
 
     // 메시지 전송 - Sendbird 반영 성공 후 즉시 미러링 저장 (parentMessageId=null이라 일반 메시지로 저장됨)
+    // name은 팀 도메인의 "teamNotion"과 겹치지 않는 채팅 전용 서킷 인스턴스
     @Override
     @Transactional
+    @CircuitBreaker(name = "chatSendbirdApi", fallbackMethod = "fallbackOnSendMessageFailure")
     public SendbirdMessageResult sendMessage(SendMessageCommand command) {
 
         // channelId 실존 검증 + senderId 활성 멤버십 검증 (IDOR 방지, ChatAttachmentController와 동일 패턴)
@@ -77,15 +80,22 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
                 command.content(), result.attachmentUrl(), null, result.sentAt()
         ));
 
-        // 조건 없이 무조건 발행 - AI비서 채널인지 판단은 이 서비스가 아니라 chatbot 리스너가 함
-        // AFTER_COMMIT 리스너에서 처리되므로 이 트랜잭션 커밋 이후에만 실제로 소비됨
-        eventPublisher.publishEvent(new ChatMessageSentEvent(
-                command.channelId(), command.senderId(), command.content()
-        ));
-
         log.info("[Chat] 메시지 전송 완료 | channelId={}, messageId={}", command.channelId(), result.sendbirdMessageId());
 
         return result;
+    }
+
+    // sendMessage 서킷 OPEN 또는 Sendbird 장애 시 실행 - 메시지 전송은 대체할 데이터가 없으므로 빠른 실패 알림만 목적
+    private SendbirdMessageResult fallbackOnSendMessageFailure(SendMessageCommand command, Throwable t) {
+        if (isSendbirdApiFailure(t)) {
+            log.warn("[Chat] Sendbird 메시지 전송 실패 또는 서킷 오픈 - fallback 실행. channelId={}, cause={}",
+                    command.channelId(), t.toString());
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_SERVICE_UNAVAILABLE);
+        }
+        if (t instanceof RuntimeException re) {
+            throw re;
+        }
+        throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, t);
     }
 
     // 멘션 대상이 해당 채널 멤버가 아니면 차단
@@ -107,6 +117,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
     // 메시지/답글 수정 - 본인 확인 + 이미 삭제된 메시지인지 검증 후 Sendbird 반영, 성공하면 미러링도 갱신
     @Override
     @Transactional
+    @CircuitBreaker(name = "chatSendbirdApi", fallbackMethod = "fallbackOnUpdateMessageFailure")
     public void updateMessage(UpdateMessageCommand command) {
         ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageId(command.sendbirdMessageId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
@@ -152,13 +163,25 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
 
         sendbirdApiPort.updateMessage(command.channelId(), command.sendbirdMessageId(), messageType, normalizedContent, effectiveUrl);
 
-        // 사용자 직접 수정은 Sendbird API 호출이 성공한 이 시점 자체가 "이벤트 발생 시각"임 -
-        // 어떤 지연된 웹훅보다도 항상 최신으로 취급되어야 하므로 Instant.now() 사용
+        // 사용자 직접 수정은 Sendbird API 호출이 성공한 이 시점 자체가 "이벤트 발생 시각"임 - 어떤 지연된 웹훅보다도 최신으로 취급
         chatMessageMirrorCommandUseCase.mirrorUpdated(
                 new MirrorMessageUpdatedCommand(command.sendbirdMessageId(), normalizedContent, effectiveUrl, Instant.now())
         );
 
         log.info("[Chat] 메시지 수정 완료 | channelId={}, messageId={}", command.channelId(), command.sendbirdMessageId());
+    }
+
+    // updateMessage 서킷 OPEN 또는 Sendbird 장애 시 실행
+    private void fallbackOnUpdateMessageFailure(UpdateMessageCommand command, Throwable t) {
+        if (isSendbirdApiFailure(t)) {
+            log.warn("[Chat] Sendbird 메시지 수정 실패 또는 서킷 오픈 - fallback 실행. sendbirdMessageId={}, cause={}",
+                    command.sendbirdMessageId(), t.toString());
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_SERVICE_UNAVAILABLE);
+        }
+        if (t instanceof RuntimeException re) {
+            throw re;
+        }
+        throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, t);
     }
 
     // null/blank/"null" 문자열/host 없는 반쪽 URL(예: "https://")은 전부 null(첨부파일 없음/제거)로 통일
@@ -179,6 +202,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
     // 메시지/답글 삭제 - 본인 확인 + 중복 삭제 방지 검증 후 Sendbird 반영, 성공하면 미러링도 소프트삭제
     @Override
     @Transactional
+    @CircuitBreaker(name = "chatSendbirdApi", fallbackMethod = "fallbackOnDeleteMessageFailure")
     public void deleteMessage(DeleteMessageCommand command) {
         ChatMessageMirror message = chatMessageMirrorRepository.findBySendbirdMessageId(command.sendbirdMessageId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
@@ -200,5 +224,28 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
 
         log.info("[Chat] 메시지 삭제 완료 | channelId={}, messageId={}", command.channelId(), command.sendbirdMessageId());
     }
+
+    // deleteMessage 서킷 OPEN 또는 Sendbird 장애 시 실행
+    private void fallbackOnDeleteMessageFailure(DeleteMessageCommand command, Throwable t) {
+        if (isSendbirdApiFailure(t)) {
+            log.warn("[Chat] Sendbird 메시지 삭제 실패 또는 서킷 오픈 - fallback 실행. sendbirdMessageId={}, cause={}",
+                    command.sendbirdMessageId(), t.toString());
+            throw new BusinessException(ErrorCode.CHAT_SENDBIRD_SERVICE_UNAVAILABLE);
+        }
+        if (t instanceof RuntimeException re) {
+            throw re;
+        }
+        throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, t);
+    }
+
+    // Sendbird 관련 실패(서킷 오픈 포함)인지 판단 - SendbirdApiAdapter는 모든 실패를 이 코드로 감싸서 던짐
+    private boolean isSendbirdApiFailure(Throwable throwable) {
+        if (throwable instanceof CallNotPermittedException) {
+            return true;
+        }
+        return throwable instanceof BusinessException be
+                && be.getErrorCode() == ErrorCode.CHAT_SENDBIRD_API_ERROR;
+    }
+
 
 }
