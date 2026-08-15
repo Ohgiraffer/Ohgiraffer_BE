@@ -2,6 +2,7 @@ package com.ohgiraffer.evaluation.application.service;
 
 import com.ohgiraffer.evaluation.application.port.StaffLookupPort;
 import com.ohgiraffer.evaluation.domain.model.SheetSyncLog;
+import com.ohgiraffer.evaluation.domain.model.TraineeChangeSummary;
 import com.ohgiraffer.evaluation.domain.repository.SheetSyncLogRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
@@ -25,6 +26,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -92,7 +94,12 @@ class EvaluationSyncNotifyServiceTest {
                 (NotificationRequestedEvent) captor.getAllValues().get(0);
 
         assertEquals(NotificationType.EVALUATION, event.notificationType());
-        assertEquals(SUMMARY, event.content());
+
+        /*
+         * 알림은 카드를 그릴 수 없어 한 덩어리 글로 바꿔 보낸다.
+         */
+        assertTrue(event.content().contains("박민준"));
+        assertTrue(event.content().contains("70 → 95"));
         assertEquals("EVALUATION_SYNC_LOG", event.relatedEntityType());
         assertEquals(SYNC_LOG_ID, event.relatedEntityId());
         assertNotEquals(REQUESTER_ID, event.userId());
@@ -132,7 +139,12 @@ class EvaluationSyncNotifyServiceTest {
 
     private SheetSyncLog syncLog() {
         return SheetSyncLog.restore(
-                SYNC_LOG_ID, 1L, REQUESTER_ID, 3, SUMMARY,
+                SYNC_LOG_ID,
+                1L,
+                REQUESTER_ID,
+                3,
+                List.of(new TraineeChangeSummary(
+                        "박민준", "중간평가", "발표", "70 → 95", "변경 없음", null)),
                 Instant.parse("2026-08-10T09:31:33Z")
         );
     }
