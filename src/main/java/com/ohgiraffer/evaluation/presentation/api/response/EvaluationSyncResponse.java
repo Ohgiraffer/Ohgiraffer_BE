@@ -27,10 +27,12 @@ public record EvaluationSyncResponse(
         int changedCount,
 
         @Schema(
-                description = "변경 내용 요약. 동기화 직후 화면에 그대로 보여주면 된다",
-                example = "[수정] 박민준 · 중간평가 · 코드 품질 — 점수 70 → 88"
+                description = """
+                        훈련생별 변경 카드. 동기화 직후 'AI 수정사항 요약' 에 그대로 그리면 된다.
+                        한 사람이 여러 항목에서 바뀌어도 카드는 하나다.
+                        """
         )
-        String diffSummary,
+        List<TraineeChangeSummaryResponse> summaries,
 
         @Schema(
                 description = """
@@ -47,7 +49,9 @@ public record EvaluationSyncResponse(
                 result.addedCount(),
                 result.updatedCount(),
                 result.changedCount(),
-                result.diffSummary(),
+                result.summaries().stream()
+                        .map(TraineeChangeSummaryResponse::from)
+                        .toList(),
                 result.skipped().stream()
                         .map(SkippedRowResponse::from)
                         .toList()

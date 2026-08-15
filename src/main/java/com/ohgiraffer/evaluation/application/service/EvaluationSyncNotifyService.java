@@ -67,7 +67,7 @@ public class EvaluationSyncNotifyService implements EvaluationSyncNotifyUseCase 
                     target,
                     NotificationType.EVALUATION,
                     TITLE,
-                    syncLog.getDiffSummary(),
+                    syncLog.toSummaryText(),
                     RELATED_ENTITY_TYPE,
                     syncLog.getId()
             ));
