@@ -14,5 +14,7 @@ public interface SpringDataSickBalanceRepository extends JpaRepository<SickBalan
 
     Optional<SickBalanceJpaEntity> findByUserIdAndPeriodEnd(Long userId, LocalDate periodEnd);
 
+    Optional<SickBalanceJpaEntity> findByUserIdAndPeriodStart(Long userId, LocalDate periodStart);
+
     boolean existsByUserIdAndPeriodStart(Long userId, LocalDate periodStart);
 }

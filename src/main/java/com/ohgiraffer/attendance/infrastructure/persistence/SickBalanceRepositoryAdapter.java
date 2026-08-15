@@ -29,6 +29,13 @@ public class SickBalanceRepositoryAdapter implements SickBalanceRepository {
     }
 
     @Override
+    public Optional<SickBalance> findByUserIdAndPeriodStart(Long userId, LocalDate periodStart) {
+        return springDataSickBalanceRepository
+                .findByUserIdAndPeriodStart(userId, periodStart)
+                .map(this::toDomain);
+    }
+
+    @Override
     public boolean existsByUserIdAndPeriodStart(Long userId, LocalDate periodStart) {
         return springDataSickBalanceRepository.existsByUserIdAndPeriodStart(userId, periodStart);
     }
