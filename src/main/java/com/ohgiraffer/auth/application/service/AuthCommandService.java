@@ -134,6 +134,6 @@ public class AuthCommandService implements AuthCommandUsecase {
 
         String newAccessToken = jwtTokenProvider.createAccessToken(userId);
 
-        return new TokenResponse(user.getId(),newAccessToken, user.getRole(), user.getStatus());
+        return new TokenResponse(user.getId(), newAccessToken, user.getRole(), user.getStatus(), user.getBootcampId());
     }
 }
