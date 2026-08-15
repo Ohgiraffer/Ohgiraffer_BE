@@ -22,6 +22,34 @@ const PORT = process.env.PORT || 4000;
 // approvalTracker와 마찬가지로 프로세스 재시작 시 유실되는 휘발성 저장소).
 const analysisStore = new Map();
 
+// SNS는 최소 1회 전송을 보장하므로 같은 알림이 중복으로 올 수 있다. MessageId 기준으로
+// 이미 처리한 건은 다시 실행하지 않는다 (analysisStore/approvalTracker와 마찬가지로
+// 프로세스 재시작 시 유실되는 휘발성 저장소 - 이 정도 volatility는 기존 코드베이스 전례를 따름).
+const processedSnsMessageIds = new Map(); // messageId -> 처리 시각(ms)
+const SNS_MESSAGE_ID_TTL_MS = 60 * 60 * 1000; // 1시간 지나면 정리 대상
+
+function isDuplicateSnsMessage(messageId) {
+  if (!messageId) return false; // MessageId가 없는 비정상 메시지는 중복 판단 자체를 건너뜀
+
+  pruneExpiredSnsMessageIds();
+
+  if (processedSnsMessageIds.has(messageId)) {
+    return true;
+  }
+
+  processedSnsMessageIds.set(messageId, Date.now());
+  return false;
+}
+
+function pruneExpiredSnsMessageIds() {
+  const now = Date.now();
+  for (const [messageId, processedAt] of processedSnsMessageIds) {
+    if (now - processedAt > SNS_MESSAGE_ID_TTL_MS) {
+      processedSnsMessageIds.delete(messageId);
+    }
+  }
+}
+
 /**
  * Grafana Alerting > Contact points 에서
  * Integration: Webhook, URL: http://<이-서버>:4000/webhook/grafana 로 등록하면
@@ -127,13 +155,18 @@ app.get("/health", (req, res) => res.json({ status: "ok" }));
 
 /**
  * CloudWatch Alarm -> SNS -> 이 엔드포인트로 들어오는 웹훅.
- * SNS Topic의 HTTPS 구독 대상으로 등록: https://<이-서버>/aiops/webhook/cloudwatch-alarm
+ * 이 라우트 자체의 경로는 /webhook/cloudwatch-alarm (Express 기준).
+ * SNS Topic의 HTTPS 구독 엔드포인트로 등록할 값은 nginx가 /aiops/ 경로를 이 서버(4000번 포트)로
+ * 리버스 프록시하고 있는 걸 반영한 외부 접근 주소다: https://<모니터링서버 도메인>/aiops/webhook/cloudwatch-alarm
+ * (nginx 프록시 설정이 바뀌면 이 프리픽스도 같이 확인할 것)
  *
  * SNS는 Content-Type을 text/plain으로 보내면서 JSON 문자열을 담아 보내는 경우가 많아
  * express.json() 대신 express.text()로 원본을 받아 직접 파싱한다.
  *
  * 서명 검증(validateSnsMessage)을 반드시 통과해야 처리한다 - 이게 없으면 외부에서
  * 이 URL만 알아도 가짜 알람을 흉내 내어 AUTO_EXECUTE 화이트리스트 액션을 실행시킬 수 있다.
+ * 다만 서명 검증은 "진짜 AWS SNS가 보낸 메시지"라는 것만 증명하지 "우리가 만든 그 토픽에서
+ * 온 메시지"라는 것까진 보장 안 한다 - 그래서 TopicArn까지 허용 목록으로 한 번 더 검증한다.
  */
 app.post("/webhook/cloudwatch-alarm", express.text({ type: "*/*" }), async (req, res) => {
   let message;
@@ -151,11 +184,23 @@ app.post("/webhook/cloudwatch-alarm", express.text({ type: "*/*" }), async (req,
     return res.status(401).send("invalid signature");
   }
 
-  res.status(200).send("ok");
+  // 서명 검증만으론 "우리 토픽에서 온 메시지"라는 게 증명 안 됨 - 공격자가 자기 SNS 토픽을
+  // 만들어서 이 URL을 구독시키고 알럿명을 흉내 낸 가짜 알림을 보내는 걸 여기서 차단한다.
+  const allowedTopicArn = process.env.SNS_ALLOWED_TOPIC_ARN;
+  if (allowedTopicArn && message.TopicArn !== allowedTopicArn) {
+    console.error(`[cloudwatch-alarm] 허용되지 않은 TopicArn, 거부: ${message.TopicArn}`);
+    return res.status(403).send("topic not allowed");
+  }
+  if (!allowedTopicArn) {
+    console.error("[cloudwatch-alarm] SNS_ALLOWED_TOPIC_ARN 미설정 - TopicArn 검증 없이 통과시키는 중 (배포 전 반드시 설정할 것)");
+  }
 
-  const messageType = req.header("x-amz-sns-message-type") || message.Type;
+  // 라우팅 판단은 반드시 서명 검증 대상인 body의 Type 필드로만 한다.
+  // req.header()는 SNS 서명 검증 범위 밖이라 위조 가능하므로 신뢰하지 않는다.
+  const messageType = message.Type;
 
   if (messageType === "SubscriptionConfirmation") {
+    res.status(200).send("ok");
     try {
       await fetch(message.SubscribeURL);
       console.log("[cloudwatch-alarm] SNS 구독 확인 완료");
@@ -166,6 +211,15 @@ app.post("/webhook/cloudwatch-alarm", express.text({ type: "*/*" }), async (req,
   }
 
   if (messageType === "Notification") {
+    // SNS는 최소 1회 전송을 보장하므로 같은 알림이 중복으로 올 수 있다.
+    // MessageId 기준으로 이미 처리한 건은 다시 실행하지 않는다 (AUTO_EXECUTE 중복 실행 방지).
+    if (isDuplicateSnsMessage(message.MessageId)) {
+      console.log(`[cloudwatch-alarm] 이미 처리한 MessageId, 무시: ${message.MessageId}`);
+      return res.status(200).send("duplicate");
+    }
+
+    res.status(200).send("ok");
+
     let alarmData;
     try {
       alarmData = JSON.parse(message.Message);
@@ -179,7 +233,10 @@ app.post("/webhook/cloudwatch-alarm", express.text({ type: "*/*" }), async (req,
     } catch (err) {
       console.error("[cloudwatch-alarm] 알람 처리 중 오류:", err);
     }
+    return;
   }
+
+  res.status(200).send("ok");
 });
 
 /**

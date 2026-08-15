@@ -50,6 +50,7 @@ cp .env.example .env
 | `SENDBIRD_BOT_USER_ID` | 매니저 채널에 메시지를 보낼 봇 유저 ID (기본 `aiops-bot`) |
 | `MANAGER_CHANNEL_URL` | 아래 2번 셋업 후 채울 것. 비워두면 매니저 알림은 로그만 찍고 스킵됨 |
 | `CLOUDWATCH_METRICS_NAMESPACE` | Gemini 호출 메트릭을 보낼 CloudWatch 네임스페이스. 기본값 `campflow-aiops-relay` |
+| `SNS_ALLOWED_TOPIC_ARN` | CloudWatch Alarm SNS 웹훅이 허용할 TopicArn. **반드시 설정할 것** - 없으면 서명만 유효하면 아무 SNS 토픽에서 온 알림이나 받아들임 |
 
 ## 2. 매니저 채널 최초 1회 생성
 

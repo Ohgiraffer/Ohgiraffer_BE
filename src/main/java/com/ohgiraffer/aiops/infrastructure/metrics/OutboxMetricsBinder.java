@@ -38,7 +38,7 @@ public class OutboxMetricsBinder implements MeterBinder {
     }
 
     private double countFailedOutbox() {
-        Integer count = jdbcTemplate.queryForObject(COUNT_FAILED_OUTBOX_SQL, Integer.class);
+        Long count = jdbcTemplate.queryForObject(COUNT_FAILED_OUTBOX_SQL, Long.class);
         return count == null ? 0 : count;
     }
 

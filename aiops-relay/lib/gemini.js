@@ -45,8 +45,9 @@ async function analyzeAlert({ alertName, status, value, labels, logs }) {
 ${logSnippet}
 `;
 
+  const startedAt = Date.now();
+
   try {
-    const startedAt = Date.now();
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
     const res = await fetch(url, {
@@ -101,7 +102,7 @@ ${logSnippet}
     }
   } catch (err) {
     console.error("[gemini] 호출 중 예외 발생:", err.message);
-    recordGeminiCallMetric({ operation: "analyzeAlert", success: false, latencyMs: 0 });
+    recordGeminiCallMetric({ operation: "analyzeAlert", success: false, latencyMs: Date.now() - startedAt });
     return {
       발생: `${alertName} 알럿이 ${status} 상태입니다.`,
       why: "AI 분석 중 오류 발생",
@@ -115,8 +116,9 @@ async function summarizeForManager(prompt) {
     return "(GEMINI_API_KEY 미설정 - 요약 생략됨. .env 확인 필요)";
   }
 
+  const startedAt = Date.now();
+
   try {
-    const startedAt = Date.now();
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
     const res = await fetch(url, {
@@ -162,7 +164,7 @@ async function summarizeForManager(prompt) {
     return text || "(빈 응답)";
   } catch (err) {
     console.error("[gemini] 매니저 요약 중 예외 발생:", err.message);
-    recordGeminiCallMetric({ operation: "summarizeForManager", success: false, latencyMs: 0 });
+    recordGeminiCallMetric({ operation: "summarizeForManager", success: false, latencyMs: Date.now() - startedAt });
     return "(AI 요약 중 오류 발생)";
   }
 }
