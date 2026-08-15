@@ -5,57 +5,216 @@
     <title>AI 사용량 - CampFlow</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <style>
-        body { font-family: system-ui, sans-serif; margin: 24px; }
-        table { border-collapse: collapse; width: 100%; margin-bottom: 32px; }
-        th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: right; }
-        th { background: #f2f2f2; }
+        :root {
+            --bg: #111217;
+            --panel-bg: #181b1f;
+            --panel-border: #2c3235;
+            --text-primary: #d8d9da;
+            --text-secondary: #8e9297;
+            --accent-blue: #5794f2;
+            --accent-green: #73bf69;
+            --accent-red: #f2495c;
+            --accent-orange: #ff9830;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Roboto', 'Helvetica Neue', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            font-size: 13px;
+        }
+
+        h2.dashboard-title {
+            font-size: 18px;
+            font-weight: 500;
+            margin: 0 0 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        h2.dashboard-title .badge {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            padding: 2px 10px;
+            border-radius: 3px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 4px;
+            padding: 16px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-panel::before {
+            content: "";
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 3px;
+            background: var(--accent-blue);
+        }
+
+        .stat-panel.is-fail::before { background: var(--accent-red); }
+
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+        }
+
+        .stat-value.fail { color: var(--accent-red); }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 4px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--panel-border);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .panel-header::before {
+            content: "▤";
+            color: var(--accent-blue);
+            font-size: 11px;
+        }
+
+        .panel-body { padding: 4px 16px 16px; }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 12.5px;
+        }
+
+        th, td {
+            padding: 8px 12px;
+            text-align: right;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-weight: 400;
+            text-transform: uppercase;
+            font-size: 10.5px;
+            letter-spacing: 0.04em;
+        }
+
         td:first-child, th:first-child { text-align: left; }
-        .summary { display: flex; gap: 24px; margin-bottom: 24px; }
-        .summary div { border: 1px solid #ccc; padding: 12px 20px; }
-        canvas { max-width: 700px; margin-bottom: 32px; }
-        .fail { color: #c00; }
+
+        tbody tr:hover { background: rgba(255,255,255,0.03); }
+
+        td.fail { color: var(--accent-red); font-weight: 500; }
+        td.empty { text-align: center; color: var(--text-secondary); padding: 20px; }
+
+        .chart-wrap {
+            padding: 16px;
+            height: 320px;
+        }
+
+        canvas { max-height: 100%; }
     </style>
 </head>
 <body>
 
-<h2>AI 사용량 대시보드 (<span th:text="${today}"></span>)</h2>
+<h2 class="dashboard-title">
+    AI 사용량 대시보드
+    <span class="badge" th:text="${today}"></span>
+</h2>
 
-<div class="summary">
-    <div>오늘 총 호출: <b th:text="${totalCalls}"></b></div>
-    <div>실패: <b class="fail" th:text="${failCount}"></b></div>
+<div class="grid">
+    <div class="stat-panel">
+        <div class="stat-label">오늘 총 호출</div>
+        <div class="stat-value" th:text="${totalCalls}"></div>
+    </div>
+    <div class="stat-panel is-fail">
+        <div class="stat-label">실패</div>
+        <div class="stat-value fail" th:text="${failCount}"></div>
+    </div>
 </div>
 
-<h3>기능별 호출 현황</h3>
-<table>
-    <thead>
-    <tr><th>기능</th><th>성공</th><th>실패</th><th>총 토큰</th></tr>
-    </thead>
-    <tbody>
-    <tr th:each="f : ${byFeature}">
-        <td th:text="${f.featureName}"></td>
-        <td th:text="${f.successCount}"></td>
-        <td class="fail" th:text="${f.failCount}"></td>
-        <td th:text="${f.totalTokens}"></td>
-    </tr>
-    </tbody>
-</table>
+<div class="panel">
+    <div class="panel-header">기능별 호출 현황</div>
+    <div class="panel-body">
+        <table>
+            <thead>
+            <tr><th>기능</th><th>성공</th><th>실패</th><th>총 토큰</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="f : ${byFeature}">
+                <td th:text="${f.featureName}"></td>
+                <td th:text="${f.successCount}"></td>
+                <td class="fail" th:text="${f.failCount}"></td>
+                <td th:text="${f.totalTokens}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
-<h3>실패 원인 분포 (오늘)</h3>
-<table>
-    <thead><tr><th>원인</th><th>건수</th></tr></thead>
-    <tbody>
-    <tr th:each="r : ${failReasons}">
-        <td th:text="${r.failReason}"></td>
-        <td th:text="${r.count}"></td>
-    </tr>
-    <tr th:if="${failReasons.isEmpty()}">
-        <td colspan="2">오늘 실패 없음</td>
-    </tr>
-    </tbody>
-</table>
+<div class="panel">
+    <div class="panel-header">실패 원인 분포 (오늘)</div>
+    <div class="panel-body">
+        <table>
+            <thead><tr><th>원인</th><th>건수</th></tr></thead>
+            <tbody>
+            <tr th:each="r : ${failReasons}">
+                <td th:text="${r.failReason}"></td>
+                <td th:text="${r.count}"></td>
+            </tr>
+            <tr th:if="${failReasons.isEmpty()}">
+                <td colspan="2" class="empty">오늘 실패 없음</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
-<h3>시간대별 호출 추이 (429 스파이크 확인용)</h3>
-<canvas id="hourlyChart"></canvas>
+<div class="panel">
+    <div class="panel-header">시간대별 호출 추이 (429 스파이크 확인용)</div>
+    <div class="panel-body chart-wrap">
+        <canvas id="hourlyChart"></canvas>
+    </div>
+</div>
 
 <script th:inline="javascript">
     const hourly = /*[[${hourly}]]*/ [];
@@ -63,18 +222,39 @@
     const success = hourly.map(h => h.successCount);
     const fail = hourly.map(h => h.failCount);
 
+    const gridColor = 'rgba(255, 255, 255, 0.07)';
+    const textColor = '#8e9297';
+
     new Chart(document.getElementById('hourlyChart'), {
         type: 'bar',
         data: {
             labels: labels,
             datasets: [
-                { label: '성공', data: success, backgroundColor: '#4a90d9' },
-                { label: '실패', data: fail, backgroundColor: '#d94a4a' }
+                { label: '성공', data: success, backgroundColor: '#73bf69' },
+                { label: '실패', data: fail, backgroundColor: '#f2495c' }
             ]
         },
         options: {
             responsive: true,
-            scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: textColor, boxWidth: 12, font: { size: 11 } }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: { color: gridColor },
+                    ticks: { color: textColor, font: { size: 11 } }
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    grid: { color: gridColor },
+                    ticks: { color: textColor, font: { size: 11 } }
+                }
+            }
         }
     });
 </script>
