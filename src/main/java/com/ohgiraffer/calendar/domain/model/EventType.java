@@ -19,13 +19,21 @@ import java.util.Arrays;
  */
 public enum EventType {
 
-    /** 수업 */
+    /** 수업. 화면의 '수업/발표' 이고, 발표와 과제 제출도 여기에 들어간다 */
     CLASS(false, false),
 
-    /** 발표 */
+    /**
+     * 발표.
+     *
+     * <p>화면이 수업과 같은 색으로 그리고 유형별 조회도 없어, 나눠 둔 값을 읽는 곳이 없었다.
+     * 드롭다운을 '수업/발표' 하나로 합치면서 더 이상 새로 만들지 않는다.
+     * 값을 지우지 않는 이유는 이미 저장된 일정을 읽지 못하게 되기 때문이다.
+     */
+    @Deprecated
     PRESENTATION(false, false),
 
-    /** 과제 제출 */
+    /** 과제 제출. {@link #PRESENTATION} 과 같은 이유로 더 이상 새로 만들지 않는다 */
+    @Deprecated
     ASSIGNMENT(false, false),
 
     /** 행사 */

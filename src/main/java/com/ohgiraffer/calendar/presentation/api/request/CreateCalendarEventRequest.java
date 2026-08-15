@@ -28,11 +28,13 @@ public record CreateCalendarEventRequest(
 
         @Schema(
                 description = """
-                        일정 유형. CLASS(수업) / PRESENTATION(발표)
-                        / ASSIGNMENT(과제 제출) / EVENT(행사)
-                        훈련생이 등록하면 이 값과 무관하게 PERSONAL(개인)로 저장된다.
+                        일정 유형. 화면 드롭다운과 이렇게 대응한다.
+                        수업/발표 -> CLASS, 행사 -> EVENT, 개인 -> PERSONAL
+                        훈련생이 등록하면 이 값과 무관하게 PERSONAL 로 저장된다.
+                        PERSONAL 은 유형을 고른 사람이 누구든 등록자에게만 보인다.
                         """,
-                example = "CLASS"
+                example = "CLASS",
+                allowableValues = {"CLASS", "EVENT", "PERSONAL"}
         )
         String eventType,
 
