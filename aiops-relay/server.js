@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const cron = require("node-cron"); // npm install node-cron 필요
 const { fetchRecentLogs } = require("./lib/loki");
 const { analyzeAlert } = require("./lib/gemini");
 const { sendToSlack, buildBaseBlocks, buildActionButtons, buildTeamProgressSection } = require("./lib/slack");
@@ -7,10 +8,17 @@ const { evaluateAlert } = require("./config/actions");
 const { runAction } = require("./lib/executor");
 const { verifySlackSignature } = require("./lib/slackVerify");
 const approvalTracker = require("./lib/approvalTracker");
+const { notifyManagerOnResolve, sendDailyDigest, DIGEST_CRON } = require("./lib/notifyManager");
 
 const app = express();
 
 const PORT = process.env.PORT || 4000;
+
+// SINGLE_APPROVAL/TEAM_APPROVAL 경로는 Slack 버튼 클릭이라는 별도 요청으로 들어오기 때문에
+// handleSingleAlert()에서 만든 원본 analysis를 잃어버린다. instanceId를 키로 임시 보관했다가
+// 승인/거부가 최종 확정되는 시점에 꺼내 쓰고 즉시 지운다 (승인 안 되고 방치된 건은 남을 수 있음 -
+// approvalTracker와 마찬가지로 프로세스 재시작 시 유실되는 휘발성 저장소).
+const analysisStore = new Map();
 
 /**
  * Grafana Alerting > Contact points 에서
@@ -80,9 +88,20 @@ async function handleSingleAlert(alert) {
   // SINGLE_APPROVAL / TEAM_APPROVAL 인 경우, 나중에 Slack 버튼 클릭이 왔을 때
   // "무엇에 대한 승인인지" 추적할 고유 ID를 만들어둔다.
   const instanceId = `${alertName}::${Date.now()}`;
+  analysisStore.set(instanceId, analysis);
 
+  // 1. 개발팀 Slack 통보가 먼저
   await sendToSlack({ alertName, status, value, labels, analysis, policy, executionResult, instanceId });
   console.log(`[webhook] 처리 완료: ${alertName} (경로: ${policy.route}, instanceId: ${instanceId})`);
+
+  // 2. 자동 실행(AUTO_EXECUTE)은 이 시점에 이미 해결/실패가 결정된 상태이므로,
+  //    Slack 통보 다음 순서로 매니저 알림을 보낸다.
+  //    SINGLE_APPROVAL/TEAM_APPROVAL은 아직 결과가 없으므로 여기서는 아무것도 보내지 않고,
+  //    handleSingleApproval()/handleTeamApproval()에서 결과가 나온 뒤에 보낸다.
+  if (executionResult) {
+    analysisStore.delete(instanceId); // 이 경로는 여기서 바로 최종 확정되므로 저장해둘 필요 없음
+    await notifyManagerOnResolve({ alertName, policy, analysis, result: executionResult });
+  }
 }
 
 function formatValues(values) {
@@ -152,7 +171,7 @@ app.post("/slack/interactions", express.raw({ type: "application/x-www-form-urle
   }
 
   if (policy.route === "SINGLE_APPROVAL") {
-    await handleSingleApproval({ action, approver, alertName, value, policy, responseUrl });
+    await handleSingleApproval({ action, approver, alertName, value, policy, instanceId, responseUrl });
     approvalTracker.markFinalized(instanceId);
   } else if (policy.route === "TEAM_APPROVAL") {
     await handleTeamApproval({ action, approver, alertName, value, policy, instanceId, responseUrl });
@@ -161,21 +180,38 @@ app.post("/slack/interactions", express.raw({ type: "application/x-www-form-urle
   }
 });
 
-async function handleSingleApproval({ action, approver, alertName, value, policy, responseUrl }) {
+async function handleSingleApproval({ action, approver, alertName, value, policy, instanceId, responseUrl }) {
+  // 이 건은 여기서 최종 확정되므로 저장된 analysis를 꺼내고 바로 지운다.
+  const analysis = analysisStore.get(instanceId);
+  analysisStore.delete(instanceId);
+
   if (action.action_id === "approve_action") {
     console.log(`[slack-interactions] ${approver}님이 승인함: ${alertName} (${policy.scriptId})`);
     const result = policy.scriptId
       ? await runAction(policy.scriptId, { alertName, value })
       : { success: false, message: "실행 가능한 조치가 등록되어 있지 않습니다." };
+
+    // 1. 개발팀 Slack 갱신이 먼저
     await respondToSlack(responseUrl, {
       replace_original: true,
       text: `✅ *${approver}님이 승인했습니다*\n조치: ${policy.action}\n실행 결과: ${result.message}`,
     });
+
+    // 2. 그 다음 매니저 알림 (등급이 낮으면 다이제스트로 쌓임)
+    await notifyManagerOnResolve({ alertName, policy, analysis, result });
   } else if (action.action_id === "reject_action") {
     console.log(`[slack-interactions] ${approver}님이 거부함: ${alertName}`);
+
     await respondToSlack(responseUrl, {
       replace_original: true,
       text: `❌ *${approver}님이 거부했습니다*\n조치: ${policy.action}\n실행되지 않았습니다.`,
+    });
+
+    await notifyManagerOnResolve({
+      alertName,
+      policy,
+      analysis,
+      result: { success: false, message: `${approver}님이 거부하여 실행되지 않음` },
     });
   }
 }
@@ -186,9 +222,22 @@ async function handleTeamApproval({ action, approver, alertName, value, policy, 
     approvalTracker.addRejection(instanceId, approver);
     approvalTracker.markFinalized(instanceId);
     console.log(`[slack-interactions] ${approver}님이 거부함(고위험, 즉시 중단): ${alertName}`);
+
+    const rejectedAnalysis = analysisStore.get(instanceId);
+    analysisStore.delete(instanceId);
+
+    // 1. 개발팀 Slack 갱신이 먼저
     await respondToSlack(responseUrl, {
       replace_original: true,
       text: `❌ *${approver}님이 거부하여 조치가 중단되었습니다*\n조치: ${policy.action}`,
+    });
+
+    // 2. 그 다음 매니저 알림: HIGH 등급이라 거부되어도 즉시 통보 (숨기지 않음)
+    await notifyManagerOnResolve({
+      alertName,
+      policy,
+      analysis: rejectedAnalysis,
+      result: { success: false, message: `${approver}님이 거부하여 조치가 중단됨` },
     });
     return;
   }
@@ -207,10 +256,17 @@ async function handleTeamApproval({ action, approver, alertName, value, policy, 
 
     if (approvedCount >= policy.requiredApprovals) {
       approvalTracker.markFinalized(instanceId);
+      const finalizedAnalysis = analysisStore.get(instanceId);
+      analysisStore.delete(instanceId);
       const result = policy.scriptId
         ? await runAction(policy.scriptId, { alertName, value })
-        : { success: true, message: "이 알럿은 자동 실행 조치가 없습니다. 팀 승인 완료 후 수동 대응이 필요합니다." };
+        : {
+            success: false,
+            status: "MANUAL_REQUIRED",
+            message: "이 알럿은 자동 실행 조치가 없습니다. 팀 승인 완료 후 수동 대응이 필요합니다.",
+          };
 
+      // 1. 개발팀 Slack 갱신이 먼저
       await respondToSlack(responseUrl, {
         replace_original: true,
         text:
@@ -218,6 +274,9 @@ async function handleTeamApproval({ action, approver, alertName, value, policy, 
           `조치: ${policy.action}\n` +
           `실행 결과: ${result.message}`,
       });
+
+      // 2. 그 다음 매니저 알림: 팀 승인 완료 후 최종 처리 결과 통보
+      await notifyManagerOnResolve({ alertName, policy, analysis: finalizedAnalysis, result });
     } else {
       // 아직 정족수 미달 — 진행 현황만 갱신하고 버튼은 그대로 유지해서
       // 다른 팀원이 계속 승인할 수 있게 한다.
@@ -258,6 +317,10 @@ async function respondToSlack(responseUrl, body) {
     console.error("[slack-interactions] response_url 전송 중 오류:", err.message);
   }
 }
+
+// 매니저용 다이제스트: LOW/MEDIUM 등급으로 쌓인 알림을 하루 한 번 요약해서 전송
+cron.schedule(DIGEST_CRON, sendDailyDigest);
+
 
 app.listen(PORT, () => {
   console.log(`AIOps 중계서버가 http://localhost:${PORT} 에서 실행 중`);
