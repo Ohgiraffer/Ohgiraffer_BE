@@ -1,4 +1,4 @@
-package com.ohgiraffer.global.auditlog;
+package com.ohgiraffer.global.annotation;
 
 import java.lang.annotation.*;
 
