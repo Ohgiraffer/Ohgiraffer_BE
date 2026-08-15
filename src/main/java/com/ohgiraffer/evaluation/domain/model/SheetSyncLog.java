@@ -4,6 +4,7 @@ import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * 동기화 한 번의 기록. JPA와 무관한 순수 객체다.
@@ -20,7 +21,7 @@ public class SheetSyncLog {
     private final Long sheetLinkId;
     private final Long executedBy;
     private final int changedCount;
-    private final String diffSummary;
+    private final List<TraineeChangeSummary> summaries;
     private final Instant syncedAt;
 
     private SheetSyncLog(
@@ -28,14 +29,14 @@ public class SheetSyncLog {
             Long sheetLinkId,
             Long executedBy,
             int changedCount,
-            String diffSummary,
+            List<TraineeChangeSummary> summaries,
             Instant syncedAt
     ) {
         this.id = id;
         this.sheetLinkId = sheetLinkId;
         this.executedBy = executedBy;
         this.changedCount = changedCount;
-        this.diffSummary = diffSummary;
+        this.summaries = summaries == null ? List.of() : List.copyOf(summaries);
         this.syncedAt = syncedAt;
     }
 
@@ -43,7 +44,7 @@ public class SheetSyncLog {
             Long sheetLinkId,
             Long executedBy,
             int changedCount,
-            String diffSummary
+            List<TraineeChangeSummary> summaries
     ) {
         if (sheetLinkId == null) {
             throw new BusinessException(
@@ -68,7 +69,7 @@ public class SheetSyncLog {
                 sheetLinkId,
                 executedBy,
                 changedCount,
-                diffSummary,
+                summaries,
                 Instant.now()
         );
     }
@@ -81,21 +82,23 @@ public class SheetSyncLog {
             Long sheetLinkId,
             Long executedBy,
             int changedCount,
-            String diffSummary,
+            List<TraineeChangeSummary> summaries,
             Instant syncedAt
     ) {
         return new SheetSyncLog(
-                id, sheetLinkId, executedBy, changedCount, diffSummary, syncedAt
+                id, sheetLinkId, executedBy, changedCount, summaries, syncedAt
         );
     }
 
+    public List<TraineeChangeSummary> getSummaries() {
+        return summaries;
+    }
+
     /**
-     * 요약문을 갈아끼운 기록을 만든다. AI 요약을 붙일 때 쓴다.
+     * 알림 본문처럼 카드를 그릴 수 없는 곳에서 쓸 한 덩어리 글.
      */
-    public SheetSyncLog withSummary(String summary) {
-        return new SheetSyncLog(
-                id, sheetLinkId, executedBy, changedCount, summary, syncedAt
-        );
+    public String toSummaryText() {
+        return EvaluationDiffSummaryWriter.toText(summaries);
     }
 
     public Long getId() {
@@ -112,10 +115,6 @@ public class SheetSyncLog {
 
     public int getChangedCount() {
         return changedCount;
-    }
-
-    public String getDiffSummary() {
-        return diffSummary;
     }
 
     public Instant getSyncedAt() {

@@ -50,10 +50,11 @@ public record RegisterNoticeSchedulesRequest(
             @Schema(
                     description = """
                             일정 유형. AI 가 비워 보낸 경우 화면에서 사용자가 골라야 한다.
+                            CLASS 는 화면의 '수업/발표', EVENT 는 '행사' 다.
                             개인 일정과 공휴일은 이 경로로 등록할 수 없다.
                             """,
                     example = "CLASS",
-                    allowableValues = {"CLASS", "PRESENTATION", "ASSIGNMENT", "EVENT"}
+                    allowableValues = {"CLASS", "EVENT"}
             )
             @NotBlank(message = "일정 유형을 선택해주세요.")
             String eventType,
