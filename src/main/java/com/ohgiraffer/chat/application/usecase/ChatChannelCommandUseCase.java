@@ -19,4 +19,6 @@ public interface ChatChannelCommandUseCase {
 
     ChatChannelResult createTeamChannel(Long teamId, List<Long> memberUserIds);
 
+    ChatChannelResult createTeamChannel(Long teamId, String teamName, List<Long> memberUserIds);
+
 }

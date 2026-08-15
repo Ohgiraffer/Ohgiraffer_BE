@@ -10,12 +10,14 @@ import com.ohgiraffer.team.application.usecase.DeleteTeamPeriodUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamHistoryUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamListUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamPeriodListUseCase;
+import com.ohgiraffer.team.application.usecase.GetTeamWorkspaceUseCase;
 import com.ohgiraffer.team.application.usecase.GetUnassignedStudentUseCase;
 import com.ohgiraffer.team.application.usecase.GetUserTeamHistoryUseCase;
 import com.ohgiraffer.team.application.usecase.SaveTeamConfigurationUseCase;
 import com.ohgiraffer.team.application.usecase.TeamHistoryResult;
 import com.ohgiraffer.team.application.usecase.TeamListResult;
 import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
+import com.ohgiraffer.team.application.usecase.TeamWorkspaceResult;
 import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
 import com.ohgiraffer.team.application.usecase.UpdateTeamPeriodUseCase;
 import com.ohgiraffer.team.application.usecase.UserTeamHistoryResult;
@@ -26,6 +28,7 @@ import com.ohgiraffer.team.presentation.api.response.CreateTeamPeriodResponse;
 import com.ohgiraffer.team.presentation.api.response.TeamHistoryResponse;
 import com.ohgiraffer.team.presentation.api.response.TeamListResponse;
 import com.ohgiraffer.team.presentation.api.response.TeamPeriodListResponse;
+import com.ohgiraffer.team.presentation.api.response.TeamWorkspaceResponse;
 import com.ohgiraffer.team.presentation.api.response.UnassignedStudentListResponse;
 import com.ohgiraffer.team.presentation.api.response.UpdateTeamPeriodResponse;
 import com.ohgiraffer.team.presentation.api.response.UserTeamHistoryListResponse;
@@ -59,6 +62,7 @@ public class TeamController {
     private final GetTeamHistoryUseCase getTeamHistoryUseCase;
     private final GetTeamPeriodListUseCase getTeamPeriodListUseCase;
     private final GetUserTeamHistoryUseCase getUserTeamHistoryUseCase;
+    private final GetTeamWorkspaceUseCase getTeamWorkspaceUseCase;
     private final CreateTeamPeriodUseCase createTeamPeriodUseCase;
     private final UpdateTeamPeriodUseCase updateTeamPeriodUseCase;
     private final DeleteTeamPeriodUseCase deleteTeamPeriodUseCase;
@@ -238,6 +242,26 @@ public class TeamController {
         return ResponseEntity.ok(
                 UnassignedStudentListResponse.from(
                         results
+                )
+        );
+    }
+
+    @GetMapping("/{teamId:\\d+}/workspace")
+    @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<TeamWorkspaceResponse> getTeamWorkspace(
+            @PathVariable Long teamId,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        TeamWorkspaceResult result =
+                getTeamWorkspaceUseCase.getTeamWorkspace(
+                        principal.getId(),
+                        principal.getRole(),
+                        teamId
+                );
+
+        return ResponseEntity.ok(
+                TeamWorkspaceResponse.from(
+                        result
                 )
         );
     }

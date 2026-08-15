@@ -1,14 +1,29 @@
 # AIOps 중계서버 (aiops-relay)
 
-Grafana 알럿 → Loki 로그 컨텍스트 수집 → Claude API로 발생/why/how 추론 → Slack 전송까지 이어주는 중계서버.
+Grafana 알럿 → Loki 로그 컨텍스트 수집 → Gemini API로 발생/why/how 추론 →
+Slack(개발팀, 승인 버튼)으로 통보 → 해결/실패 결과가 나온 뒤 Sendbird(매니저)로 요약 통보.
 
-```
-Grafana 알럿 발동
+```text
+Grafana 알럿 발동 (firing)
   → POST /webhook/grafana
-    → (firing이면) Loki에서 최근 로그 조회
-    → Claude API 호출 (발생/why/how)
-    → Slack으로 결과 전송
+    → Loki에서 최근 로그 조회
+    → Gemini 호출 (발생/why/how)
+    → 위험 등급 판정 (LOW=자동실행 / MEDIUM=1인승인 / HIGH=팀전체승인)
+    → (AUTO_EXECUTE면 이 시점에 바로 실행)
+    → Slack으로 개발팀 통보 (항상 먼저)
+    → (해결됐으면) Sendbird로 매니저 통보 (그 다음)
+
+Slack 승인/거부 버튼 클릭 (별도 요청, /slack/interactions)
+    → 서명 검증 → 정책 재계산 → 실행/거부
+    → Slack 메시지 갱신 (항상 먼저)
+    → Sendbird로 매니저 통보 (그 다음)
 ```
+
+**매니저 알림 원칙**: 항상 "개발팀 Slack 통보/갱신이 끝난 뒤"에만 나간다. 감지 시점에
+매니저를 먼저 또는 동시에 알리는 경로는 없다. HIGH 등급은 결과가 나오는 즉시 매니저에게도
+바로 전송되고, LOW/MEDIUM 등급은 다이제스트로 모아서 매일 09시에 한 번에 전송된다. 이 시각은
+`.env`가 아니라 `lib/notifyManager.js`의 `DIGEST_CRON` 상수(`"0 9 * * *"`)에 코드로 고정되어
+있으며, 바꾸려면 이 상수를 직접 수정해야 한다.
 
 ## 1. 설치
 
@@ -18,101 +33,80 @@ npm install
 cp .env.example .env
 ```
 
-`.env` 파일을 열어서 값 채우기:
+`.env`를 채운다 (아래 표 참고).
 
 | 변수 | 설명 |
 |---|---|
-| `ANTHROPIC_API_KEY` | https://console.anthropic.com 에서 발급 |
-| `SLACK_WEBHOOK_URL` | 아까 만든 CampFlow Alert Bot의 Incoming Webhook URL |
-| `LOKI_URL` | 기본값 `http://localhost:3100` 그대로 두면 됨 |
-| `LOKI_QUERY_LABEL` / `LOKI_QUERY_VALUE` | 아래 "중요 제약" 참고 |
+| `GEMINI_API_KEY` | https://aistudio.google.com 에서 발급 |
+| `SLACK_WEBHOOK_URL` | 개발팀 채널의 Incoming Webhook URL |
+| `SLACK_SIGNING_SECRET` | Slack 앱 설정의 Signing Secret (버튼 클릭 서명 검증용) |
+| `LOKI_URL` 등 | 기본값 그대로 두면 됨 |
+| `BACKEND_ADMIN_URL` / `ADMIN_INTERNAL_TOKEN` | 화이트리스트 액션 실행 시 백엔드 호출용 |
+| `SENDBIRD_APP_ID` / `SENDBIRD_API_TOKEN` | Sendbird Platform API 인증 (마스터 API 토큰) |
+| `SENDBIRD_BOT_USER_ID` | 매니저 채널에 메시지를 보낼 봇 유저 ID (기본 `aiops-bot`) |
+| `MANAGER_CHANNEL_URL` | 아래 2번 셋업 후 채울 것. 비워두면 매니저 알림은 로그만 찍고 스킵됨 |
 
-## 2. 실행
+## 2. 매니저 채널 최초 1회 생성
+
+매니저들만 있는 그룹 채널이 아직 없으므로, 서버 실행 전에 딱 한 번만 만든다.
+
+```bash
+node scripts/setup-manager-channel.js <매니저1_sendbirdUserId> <매니저2_sendbirdUserId>
+```
+
+콘솔에 출력되는 `MANAGER_CHANNEL_URL` 값을 `.env`에 복사해 넣는다.
+**이미 `.env`에 값이 있으면 스크립트가 중복 생성을 막기 위해 스스로 실행을 거부한다.**
+
+## 3. 실행
 
 ```bash
 npm start
 ```
 
-`http://localhost:4000` 에서 뜨는지 확인:
 ```bash
 curl http://localhost:4000/health
 # {"status":"ok"}
 ```
 
-## 3. Grafana에 웹훅 Contact point 추가
+## 4. Grafana 웹훅 Contact point
 
-지금까지는 Grafana가 **Slack으로 직접** 알럿을 보냈는데, 이제는 **이 중계서버로 먼저 보내고**, 중계서버가 AI 분석을 거쳐서 Slack으로 보내는 구조로 바꿔야 해요.
+1. Grafana → Alerting → Notification configuration → Contact points → + Add contact point
+2. Name: `AI Relay Webhook`, Integration: `Webhook`
+3. URL: `http://host.docker.internal:4000/webhook/grafana` (Grafana가 Docker, 중계서버가 로컬인 경우)
+4. Notification policies에서 기존 알럿 규칙의 Contact point를 이걸로 변경
 
-1. Grafana → **Alerting → Notification configuration → Contact points → + Add contact point**
-2. Name: `AI Relay Webhook`
-3. Integration: **Webhook**
-4. URL:
-   - 맥에서 Grafana가 Docker 컨테이너로 떠 있고, 중계서버는 로컬(호스트)에서 `npm start`로 띄웠다면:
-     ```
-     http://host.docker.internal:4000/webhook/grafana
-     ```
-   - (중계서버도 나중에 Docker로 옮기면 컨테이너명으로 바꿔야 함)
-5. **Save contact point**
+## 5. Slack Interactivity
 
-## 4. 알럿 규칙이 이 새 Contact point를 쓰도록 변경
-
-기존 3개 알럿 규칙(`DB Connection Pool Saturation`, `HTTP 5xx Error Rate Spike`, `JVM Heap Memory High Usage`)이 지금 **CampFlow Alert Bot**(Slack 직접)을 쓰고 있을 거예요. 이걸 **AI Relay Webhook**으로 바꿔야 해요.
-
-- 가장 쉬운 방법: **Notification policies** 탭에서 `campflow-group`(또는 default policy)의 Contact point를 `AI Relay Webhook`으로 변경
-- 또는 각 알럿 규칙 Edit → Notifications 섹션에서 개별적으로 Contact point 변경
-
-**주의**: 이렇게 바꾸면 Grafana가 더 이상 Slack에 직접 안 보내요. 대신 중계서버가 (분석 결과를 담아서) Slack에 보내니, 최종적으로 Slack에 오는 메시지 자체는 끊기지 않고 오히려 더 풍부해져요.
-
-## 5. 테스트
-
-이전에 썼던 강제 500 에러 트리거 방법 등으로 알럿을 다시 발동시켜보고:
-- 중계서버 터미널 로그에 `[webhook] 처리 시작 → 로그 N줄 수집됨 → AI 분석 완료 → 처리 완료`가 순서대로 찍히는지 확인
-- Slack에 "🔍 발생 / ❓ Why / 🛠 How" 3단 구성으로 메시지가 오는지 확인
-
-## ⚠️ 중요 제약: 지금 로그 컨텍스트가 비어있을 수 있음
-
-`promtail-config.yml`은 **Docker 컨테이너의 로그만** 수집하도록 되어 있어요 (`docker_sd_configs`). 그런데 지금 `campflow-app`은 Docker가 아니라 **로컬에서 `./gradlew bootRun`으로 직접 실행 중**이라, Loki에 이 앱의 로그가 전혀 안 쌓여 있어요.
-
-즉 지금 상태로는 `fetchRecentLogs()`가 항상 빈 배열을 반환하고, Claude에게 "로그를 가져오지 못했다"는 문구가 그대로 전달돼요. **파이프라인 자체는 안 죽고 정상 작동**하지만, "로그 기반 원인 추론"이라는 핵심 가치는 로그가 있어야 제대로 살아나요.
-
-### 해결 옵션 (택 1)
-
-**옵션 A — 가장 간단: 로그를 파일로 남기고 promtail이 그 파일을 보게 하기**
-1. `application.yaml`에 로그를 파일로도 남기게 설정:
-   ```yaml
-   logging:
-     file:
-       name: logs/campflow-app.log
-   ```
-2. `promtail-config.yml`에 파일 기반 scrape_config 추가:
-   ```yaml
-   scrape_configs:
-     - job_name: campflow-app-file
-       static_configs:
-         - targets: [localhost]
-           labels:
-             container: campflow-app
-             __path__: /var/log/campflow-app.log   # 마운트 경로에 맞게 조정
-   ```
-3. `docker-compose-monitoring.yml`의 promtail 볼륨에 프로젝트의 `logs/` 폴더를 추가 마운트
-
-**옵션 B — 나중에: campflow-app 자체를 Docker 컨테이너로 옮기기**
-- 그러면 지금 있는 `docker_sd_configs` 방식 그대로 자동으로 로그가 잡힘
-- 지금 로컬 개발 단계에서는 굳이 서두를 필요 없음
-
-**옵션 C — 지금 데모 목적에는 이걸로 충분: 로그 없이 진행**
-- Claude가 "로그 근거가 부족하니 확실하지 않음"이라고 답하는 것도 사실 정직한 AI 응답이라, 데모에서는 "로그 연동이 안 된 상태에서도 AI가 불확실성을 인정하며 답한다"는 것 자체를 보여줄 수도 있음
-- 시간이 없으면 이대로 두고, 발표에서는 "옵션 A로 확장 가능"이라고 언급하는 것도 방법
+Slack 앱 설정 → Interactivity & Shortcuts → Request URL을
+`http://<서버>:4000/slack/interactions`로 등록해야 승인/거부 버튼이 동작한다.
 
 ## 파일 구조
 
-```
+```text
 aiops-relay/
-├── server.js         # 웹훅 수신 + 파이프라인 오케스트레이션
+├── server.js                        # 웹훅 수신 + 파이프라인 오케스트레이션
+├── config/
+│   └── actions.js                   # 위험 등급 판정 정책 (LOW/MEDIUM/HIGH)
+├── docs/
+│   └── action-risk-policy.md        # 등급 판정 기준 문서
 ├── lib/
-│   ├── loki.js       # Loki 로그 조회
-│   ├── claude.js     # Claude API 호출 (발생/why/how 추론)
-│   └── slack.js      # Slack 메시지 포맷 및 전송
+│   ├── loki.js                      # Loki 로그 조회
+│   ├── gemini.js                    # Gemini 호출 (알럿 분석 + 매니저 요약)
+│   ├── slack.js                     # Slack 메시지 포맷/전송 (개발팀)
+│   ├── slackVerify.js               # Slack 서명 검증
+│   ├── executor.js                  # 화이트리스트 기반 액션 실행기
+│   ├── approvalTracker.js           # 팀 승인 현황 추적
+│   ├── sendbird.js                  # Sendbird Platform API 호출 (매니저)
+│   └── notifyManager.js             # 매니저 알림 라우팅 (즉시 발송 vs 다이제스트)
+├── scripts/
+│   └── setup-manager-channel.js     # 매니저 채널 최초 1회 생성용
 ├── package.json
 └── .env.example
 ```
+
+## ⚠️ 로그 컨텍스트 관련 제약
+
+`promtail-config.yml`이 Docker 컨테이너 로그만 수집하는 구조라, `campflow-app`을
+로컬에서 `./gradlew bootRun`으로 직접 띄운 상태면 `fetchRecentLogs()`가 빈 배열을
+반환한다. 파이프라인 자체는 정상 동작하지만 로그 기반 원인 추론의 정확도가 떨어진다.
+해결하려면 파일 기반 promtail scrape_config를 추가하거나, 앱 자체를 Docker로 옮긴다.

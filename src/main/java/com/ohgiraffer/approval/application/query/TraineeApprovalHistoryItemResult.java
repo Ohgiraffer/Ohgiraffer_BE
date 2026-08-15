@@ -8,6 +8,8 @@ public record TraineeApprovalHistoryItemResult(
         Long approvalId,
         LocalDate requestedDate,
         String typeName,
+        Long approverId,
+        String approverName,
         LocalDate startDate,
         LocalDate endDate,
         Long leaveDays,

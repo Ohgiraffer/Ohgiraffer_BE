@@ -27,6 +27,10 @@ public interface ApprovalRequestRepository {
             Long bootcampId
     );
 
+    List<ApprovalRequest> findManagerProcessingApprovals(
+            Long bootcampId
+    );
+
     List<ApprovalRequest> findByRequesterIdAndRequestTypeAndStatusInOrderByRequestedAtDesc(
             Long requesterId,
             ApprovalType requestType,

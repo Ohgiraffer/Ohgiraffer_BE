@@ -2,11 +2,11 @@ package com.ohgiraffer.aiassistant.presentation.api.response;
 
 import com.ohgiraffer.aiassistant.domain.model.BriefingSummary;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record BriefingResponse(
         String summaryText,
-        LocalDateTime generatedAt
+        Instant generatedAt
 ) {
 
     public static BriefingResponse from(BriefingSummary summary) {
