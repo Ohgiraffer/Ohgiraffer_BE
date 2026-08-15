@@ -6,8 +6,11 @@ import com.ohgiraffer.attendance.domain.policy.AttendanceMetricsCalculator;
 import com.ohgiraffer.attendance.domain.repository.LeaveBalanceRepository;
 import com.ohgiraffer.attendance.domain.repository.SickBalanceRepository;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePeriodStartResult;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,9 +40,16 @@ public class AttendanceBalanceProcessor {
         return leaveBalanceRepository.findByUserIdAndPeriodStart(userId, period.periodStart())
                 .orElseGet(() -> {
                     BigDecimal carriedOver = resolveCarriedOverLeaveDays(userId, period);
-                    return leaveBalanceRepository.save(
-                            LeaveBalance.create(userId, period.periodStart(), period.periodEnd(), BigDecimal.ONE, carriedOver)
-                    );
+                    try {
+                        return leaveBalanceRepository.save(
+                                LeaveBalance.create(userId, period.periodStart(), period.periodEnd(), BigDecimal.ONE, carriedOver)
+                        );
+                    } catch (DataIntegrityViolationException e) {
+                        log.warn("[LeaveBalance] 동시 생성 충돌 감지, 기존 행 재조회 | userId={}, periodStart={}",
+                                userId, period.periodStart());
+                        return leaveBalanceRepository.findByUserIdAndPeriodStart(userId, period.periodStart())
+                                .orElseThrow(() -> new BusinessException(ErrorCode.LEAVE_BALANCE_NOT_FOUND));
+                    }
                 });
     }
 
@@ -49,9 +59,16 @@ public class AttendanceBalanceProcessor {
                 .orElseGet(() -> {
                     BigDecimal carriedOver = resolveCarriedOverSickDays(userId, period);
                     BigDecimal totalDays = resolveSickTotalDays(period);
-                    return sickBalanceRepository.save(
-                            SickBalance.create(userId, period.periodStart(), period.periodEnd(), totalDays, carriedOver)
-                    );
+                    try {
+                        return sickBalanceRepository.save(
+                                SickBalance.create(userId, period.periodStart(), period.periodEnd(), totalDays, carriedOver)
+                        );
+                    } catch (DataIntegrityViolationException e) {
+                        log.warn("[SickBalance] 동시 생성 충돌 감지, 기존 행 재조회 | userId={}, periodStart={}",
+                                userId, period.periodStart());
+                        return sickBalanceRepository.findByUserIdAndPeriodStart(userId, period.periodStart())
+                                .orElseThrow(() -> new BusinessException(ErrorCode.SICK_BALANCE_NOT_FOUND));
+                    }
                 });
     }
 
@@ -59,7 +76,7 @@ public class AttendanceBalanceProcessor {
         long weekdays = AttendanceMetricsCalculator.countWeekdays(period.periodStart(), period.periodEnd());
         return BigDecimal.valueOf(weekdays)
                 .multiply(SICK_DAY_RATE)
-                .setScale(0, RoundingMode.HALF_UP); // 소수 1자리 -> 정수로 반올림
+                .setScale(0, RoundingMode.HALF_UP);
     }
 
     private BigDecimal resolveCarriedOverLeaveDays(Long userId, AttendancePeriodStartResult period) {
