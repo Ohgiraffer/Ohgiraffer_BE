@@ -173,7 +173,19 @@ public enum ErrorCode {
     AI_CREDENTIAL_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "AI_002", "AI 설정이 준비되지 않았습니다. 관리자에게 문의해주세요."),
 
     AI_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI_002", "AI 비서 서비스가 일시적으로 원활하지 않습니다. 잠시 후 다시 시도해주세요."),
-    LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "LOCK_001", "다른 요청이 처리 중입니다. 잠시 후 다시 시도해주세요.");
+
+    RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMIT_EXCEEDED", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
+    ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "로그인 실패 횟수 초과로 일시적으로 잠긴 계정입니다. 15분 후 다시 시도해주세요."),
+
+    AI_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AI-001", "AI API 호출 한도(429)를 초과했습니다. 팀 공용 키 쿼터가 소진되었을 수 있습니다."),
+    AI_API_KEY_INVALID(HttpStatus.UNAUTHORIZED, "AI-002", "AI API 키가 유효하지 않습니다. 환경변수를 확인하세요."),
+    AI_REQUEST_INVALID(HttpStatus.BAD_REQUEST, "AI-003", "AI API 요청 형식이 잘못되었습니다."),
+
+    ENCRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "CRYPTO_001", "데이터 암호화 처리 중 오류가 발생했습니다."),
+    DECRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "CRYPTO_002", "데이터 복호화 처리 중 오류가 발생했습니다."),
+    AUDIT_LOG_SIGNING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "AUDIT_001", "감사 로그 서명 처리 중 오류가 발생했습니다."),
+    LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "LOCK_001", "다른 요청이 처리 중입니다. 잠시 후 다시 시도해주세요."),
+    LOCK_WAIT_INTERRUPTED(HttpStatus.INTERNAL_SERVER_ERROR, "LOCK_002", "락 대기 중 서버 인터럽트가 발생했습니다.");
 
     private final HttpStatus status;
     private final String code;

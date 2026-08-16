@@ -18,6 +18,8 @@ public interface SpringDataLeaveBalanceRepository  extends JpaRepository<LeaveBa
 
     Optional<LeaveBalanceJpaEntity> findByUserIdAndPeriodEnd(Long userId, LocalDate periodEnd);
 
+    Optional<LeaveBalanceJpaEntity> findByUserIdAndPeriodStart(Long userId, LocalDate periodStart);
+
     boolean existsByUserIdAndPeriodStart(Long userId, LocalDate periodStart);
 
     @Modifying(clearAutomatically = true)
