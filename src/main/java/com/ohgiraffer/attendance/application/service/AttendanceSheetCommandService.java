@@ -14,6 +14,7 @@ import com.ohgiraffer.attendance.domain.dto.SyncAttendanceSheetResult;
 import com.ohgiraffer.attendance.domain.model.*;
 import com.ohgiraffer.attendance.domain.repository.AttendanceExternalSheetLinkRepository;
 import com.ohgiraffer.attendance.domain.repository.AttendanceSheetSyncLogRepository;
+import com.ohgiraffer.global.aop.ratelimit.RateLimited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.global.google.sheets.GoogleSheetsClient;
@@ -69,6 +70,7 @@ public class AttendanceSheetCommandService implements AttendanceSheetCommandUsec
 
     @Override
     @Transactional
+    @RateLimited(key = "google_sheets_sync", limit = 10, windowSeconds = 60)
     public SyncAttendanceSheetResult sync(SyncAttendanceSheetCommand command) {
         AttendanceExternalSheetLink link = attendanceExternalSheetLinkRepository.findLatest()
                 .orElseThrow(() -> new BusinessException(ErrorCode.ATTENDANCE_SHEET_LINK_NOT_FOUND));
@@ -134,13 +136,13 @@ public class AttendanceSheetCommandService implements AttendanceSheetCommandUsec
 
                 UserStatus currentStatus = statusMap.get(userId);
                 if (currentStatus == UserStatus.WITHDRAWN || currentStatus == UserStatus.EXPELLED) {
-                    continue; // 자퇴/제적 학생은 조용히 건너뜀
+                    continue;
                 }
 
                 AttendanceSyncOutcome outcome = attendanceSheetRowSyncer.syncOneRow(userId, targetDate, row, columnIndex, provisional);
                 switch (outcome) {
                     case SKIPPED -> totalCount--;
-                    case UNCHANGED -> { /* 처리는 했지만 변동 없음 - totalCount만 유지 */ }
+                    case UNCHANGED -> { }
                     case CHANGED -> {
                         touchedUserIds.add(userId);
                         successCount++;

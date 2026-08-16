@@ -1,6 +1,5 @@
-package com.ohgiraffer.global.aop;
+package com.ohgiraffer.global.aop.ratelimit;
 
-import com.ohgiraffer.global.annotation.RateLimited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
@@ -15,6 +14,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -98,9 +98,12 @@ public class RateLimitAspect {
     }
 
     private String resolveClientIp() {
-        HttpServletRequest request =
-                ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes())
-                        .getRequest();
+        RequestAttributes raw = RequestContextHolder.getRequestAttributes();
+        if (!(raw instanceof ServletRequestAttributes attributes)) {
+            return "system";
+        }
+
+        HttpServletRequest request = attributes.getRequest();
 
         String forwardedFor = request.getHeader("X-Forwarded-For");
         if (forwardedFor != null && !forwardedFor.isBlank()) {

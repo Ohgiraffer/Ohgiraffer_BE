@@ -1,6 +1,6 @@
 package com.ohgiraffer.consultation.application.service;
 
-import com.ohgiraffer.ai.infrastructure.gemini.GeminiClient;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -15,14 +15,17 @@ public class ConsultationAiBriefGenerator {
     private static final int MAX_ATTEMPTS = 3;
     private static final long RETRY_DELAY_MS = 500;
 
-    private final GeminiClient geminiClient;
+    private final ConsultationGeminiCaller consultationGeminiCaller;
 
     public Optional<String> generate(String counselorNote) {
         String prompt = buildPrompt(counselorNote);
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                return Optional.of(geminiClient.generateText(prompt));
+                return Optional.of(consultationGeminiCaller.call(prompt));
+            } catch (CallNotPermittedException e) {
+                log.warn("[상담 AI 요약] 서킷 OPEN으로 재시도 중단 | attempt={}/{}", attempt, MAX_ATTEMPTS);
+                return Optional.empty();
             } catch (Exception e) {
                 log.warn("[상담 AI 요약 실패] {}/{}번째 시도", attempt, MAX_ATTEMPTS, e);
                 if (attempt < MAX_ATTEMPTS) {

@@ -6,7 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Entity
 @Table(name = "leave_balance")
@@ -19,44 +18,27 @@ public class LeaveBalanceJpaEntity {
     @Column(name = "leave_balance_id")
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id", nullable = false, unique = true)
     private Long userId;
 
-    @Column(name = "period_start", nullable = false)
-    private LocalDate periodStart;
-
-    @Column(name = "period_end", nullable = false)
-    private LocalDate periodEnd;
-
-    @Column(name = "total_days", nullable = false, precision = 4, scale = 1)
+    @Column(name = "total_days", nullable = false, precision = 5, scale = 1)
     private BigDecimal totalDays;
 
-    @Column(name = "used_days", nullable = false, precision = 4, scale = 1)
+    @Column(name = "used_days", nullable = false, precision = 5, scale = 1)
     private BigDecimal usedDays;
 
-    @Column(name = "carried_over_days", nullable = false, precision = 4, scale = 1)
-    private BigDecimal carriedOverDays;
-
-    private LeaveBalanceJpaEntity(Long id, Long userId, LocalDate periodStart, LocalDate periodEnd,
-                                  BigDecimal totalDays, BigDecimal usedDays, BigDecimal carriedOverDays) {
+    private LeaveBalanceJpaEntity(Long id, Long userId, BigDecimal totalDays, BigDecimal usedDays) {
         this.id = id;
         this.userId = userId;
-        this.periodStart = periodStart;
-        this.periodEnd = periodEnd;
         this.totalDays = totalDays;
         this.usedDays = usedDays;
-        this.carriedOverDays = carriedOverDays;
     }
 
-    // 신규 생성용
-    public static LeaveBalanceJpaEntity of(Long userId, LocalDate periodStart, LocalDate periodEnd,
-                                           BigDecimal totalDays, BigDecimal usedDays, BigDecimal carriedOverDays) {
-        return new LeaveBalanceJpaEntity(null, userId, periodStart, periodEnd, totalDays, usedDays, carriedOverDays);
+    public static LeaveBalanceJpaEntity of(Long userId, BigDecimal totalDays, BigDecimal usedDays) {
+        return new LeaveBalanceJpaEntity(null, userId, totalDays, usedDays);
     }
 
-    // 수정용
-    public static LeaveBalanceJpaEntity reconstitute(Long id, Long userId, LocalDate periodStart, LocalDate periodEnd,
-                                                     BigDecimal totalDays, BigDecimal usedDays, BigDecimal carriedOverDays) {
-        return new LeaveBalanceJpaEntity(id, userId, periodStart, periodEnd, totalDays, usedDays, carriedOverDays);
+    public static LeaveBalanceJpaEntity reconstitute(Long id, Long userId, BigDecimal totalDays, BigDecimal usedDays) {
+        return new LeaveBalanceJpaEntity(id, userId, totalDays, usedDays);
     }
 }

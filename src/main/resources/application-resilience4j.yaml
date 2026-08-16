@@ -55,3 +55,18 @@ resilience4j:
         permitted-number-of-calls-in-half-open-state: 3
         record-exceptions:
           - com.ohgiraffer.global.exception.BusinessException
+
+      # 상담 도메인 - 상담 기록 AI 요약용 Gemini 호출
+      geminiApiConsultation:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 15s
+        slow-call-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - org.springframework.web.client.RestClientException
+          - com.ohgiraffer.global.exception.BusinessException
