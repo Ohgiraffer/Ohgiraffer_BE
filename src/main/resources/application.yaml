@@ -165,6 +165,14 @@ management:
       # → RED 방법론의 Duration(응답시간) 지표를 나중에 바로 쓸 수 있음
       percentiles-histogram:
         http.server.requests: true
+    export:
+      cloudwatch:
+        # CloudWatch로 커스텀 메트릭(Gemini 성공률/레이턴시, Circuit Breaker 전환,
+        # Outbox 재시도 실패 등) 전송. namespace는 Prometheus의 application 태그와
+        # 헷갈리지 않게 CloudWatch 콘솔에서 바로 알아볼 수 있는 이름으로 지정.
+        namespace: campflow-app
+        batch-size: 20
+        step: 1m
 
 admin:
   internal-token: ${ADMIN_INTERNAL_TOKEN:changeme}
