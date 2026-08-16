@@ -8,6 +8,7 @@ import java.util.Optional;
 public interface LeaveBalanceRepository {
     Optional<LeaveBalance> findCurrentByUserId(Long userId, LocalDate referenceDate);
     Optional<LeaveBalance> findByUserIdAndPeriodEnd(Long userId, LocalDate periodEnd);
+    Optional<LeaveBalance> findByUserIdAndPeriodStart(Long userId, LocalDate periodStart);
     boolean existsByUserIdAndPeriodStart(Long userId, LocalDate periodStart);
     LeaveBalance save(LeaveBalance leaveBalance);
 

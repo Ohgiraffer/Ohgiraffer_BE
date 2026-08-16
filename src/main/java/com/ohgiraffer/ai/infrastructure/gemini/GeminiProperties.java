@@ -9,7 +9,7 @@ public class GeminiProperties {
 
     private String apiKey;
     private String model;
-    private String baseUrl;
+    private String baseUrl = "https://generativelanguage.googleapis.com/v1beta";
     private int timeoutSeconds = 90;
 
     public String getApiKey() {

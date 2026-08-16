@@ -15,7 +15,9 @@ public record UserResponse(
         String profileImgUrl,
         LocalDate joinDate,
         UserStatus status,
-        boolean notificationOn
+        boolean notificationOn,
+        Long bootcampId,
+        boolean needResetPw
 ) {
     public static UserResponse from(User user, String profileImgUrl) {
         return new UserResponse(
@@ -27,7 +29,9 @@ public record UserResponse(
                 profileImgUrl,
                 user.getJoinDate(),
                 user.getStatus(),
-                user.isNotificationOn()
+                user.isNotificationOn(),
+                user.getBootcampId(),
+                user.isNeedResetPw()
         );
     }
 }

@@ -30,6 +30,13 @@ public class LeaveBalanceRepositoryAdapter implements LeaveBalanceRepository {
     }
 
     @Override
+    public Optional<LeaveBalance> findByUserIdAndPeriodStart(Long userId, LocalDate periodStart) {
+        return springDataLeaveBalanceRepository
+                .findByUserIdAndPeriodStart(userId, periodStart)
+                .map(this::toDomain);
+    }
+
+    @Override
     public boolean existsByUserIdAndPeriodStart(Long userId, LocalDate periodStart) {
         return springDataLeaveBalanceRepository.existsByUserIdAndPeriodStart(userId, periodStart);
     }
