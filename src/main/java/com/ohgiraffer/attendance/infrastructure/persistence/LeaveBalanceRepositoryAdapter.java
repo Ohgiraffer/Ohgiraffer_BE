@@ -35,6 +35,11 @@ public class LeaveBalanceRepositoryAdapter implements LeaveBalanceRepository {
         return springDataLeaveBalanceRepository.tryConsume(userId, amount) > 0;
     }
 
+    @Override
+    public int accrueTo(Long userId, BigDecimal targetTotalDays) {
+        return springDataLeaveBalanceRepository.accrueTo(userId, targetTotalDays);
+    }
+
     private LeaveBalance toDomain(LeaveBalanceJpaEntity entity) {
         return LeaveBalance.reconstitute(entity.getId(), entity.getUserId(), entity.getTotalDays(), entity.getUsedDays());
     }

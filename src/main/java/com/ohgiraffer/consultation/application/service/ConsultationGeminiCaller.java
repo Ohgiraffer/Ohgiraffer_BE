@@ -11,15 +11,8 @@ public class ConsultationGeminiCaller {
 
     private final GeminiClient geminiClient;
 
-    @CircuitBreaker(name = "geminiApiConsultation", fallbackMethod = "fallbackOnCallFailure")
+    @CircuitBreaker(name = "geminiApiConsultation")
     public String call(String prompt) {
         return geminiClient.generateText(prompt);
-    }
-
-    private String fallbackOnCallFailure(String prompt, Throwable t) {
-        if (t instanceof RuntimeException re) {
-            throw re;
-        }
-        throw new IllegalStateException(t);
     }
 }

@@ -9,4 +9,5 @@ public interface LeaveBalanceRepository {
     Optional<LeaveBalance> findByUserId(Long userId);
     LeaveBalance save(LeaveBalance leaveBalance);
     boolean tryConsume(Long userId, BigDecimal amount);
+    int accrueTo(Long userId, BigDecimal targetTotalDays);
 }

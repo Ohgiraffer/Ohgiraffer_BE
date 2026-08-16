@@ -7,6 +7,9 @@ import com.ohgiraffer.attendance.domain.model.AttendanceStatus;
 import com.ohgiraffer.attendance.domain.policy.AttendanceMetricsCalculator;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.domain.repository.LeaveBalanceRepository;
+import com.ohgiraffer.attendance.infrastructure.scheduler.AttendanceBalanceProcessor;
+import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
+import com.ohgiraffer.bootcamp.domain.model.BootcampPeriodResult;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
@@ -30,12 +33,17 @@ public class AttendanceCommandService implements AttendanceCommandUsecase {
     private final LeaveBalanceRepository leaveBalanceRepository;
     private final UserQueryUsecase userQueryUsecase;
     private final AttendanceCacheEvictor attendanceCacheEvictor;
+    private final AttendanceBalanceProcessor attendanceBalanceProcessor;
+    private final BootcampQueryUsecase bootcampQueryUsecase;
 
     @Override
     @Transactional
     public void applyApprovedLeave(Long userId, LocalDate startDate, LocalDate endDate, Long approvalId) {
         Long bootcampId = userQueryUsecase.getBootcampId(userId);
         String externalRefId = String.valueOf(approvalId);
+
+        BootcampPeriodResult bootcampPeriod = bootcampQueryUsecase.getPeriod(bootcampId);
+        attendanceBalanceProcessor.ensureLeaveBalance(userId, bootcampPeriod, LocalDate.now());
 
         for (LocalDate date : AttendanceMetricsCalculator.weekdaysBetween(startDate, endDate)) {
             applyLeaveDay(userId, date, externalRefId);
@@ -44,6 +52,7 @@ public class AttendanceCommandService implements AttendanceCommandUsecase {
         attendanceCacheEvictor.evictSummary(userId);
         attendanceCacheEvictor.evictAllForBootcamp(bootcampId);
     }
+
 
     private void applyLeaveDay(Long userId, LocalDate date, String externalRefId) {
         Optional<Attendance> existing = attendanceRepository.findByUserIdAndDateForUpdate(userId, date);

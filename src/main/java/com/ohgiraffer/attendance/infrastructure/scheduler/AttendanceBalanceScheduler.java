@@ -36,29 +36,33 @@ public class AttendanceBalanceScheduler {
         }
 
         for (Long bootcampId : bootcampIds) {
-            BootcampPeriodResult bootcampPeriod = bootcampQueryUsecase.getPeriod(bootcampId);
-            List<Long> studentIds = userQueryUsecase.getStudentIdsByBootcampId(bootcampId);
+            try {
+                BootcampPeriodResult bootcampPeriod = bootcampQueryUsecase.getPeriod(bootcampId);
+                List<Long> studentIds = userQueryUsecase.getStudentIdsByBootcampId(bootcampId);
 
-            int successCount = 0;
-            int failCount = 0;
+                int successCount = 0;
+                int failCount = 0;
 
-            for (Long studentId : studentIds) {
-                try {
-                    processor.ensureLeaveBalance(studentId, bootcampPeriod, today);
-                    processor.ensureSickBalance(studentId, bootcampPeriod);
-                    successCount++;
-                } catch (Exception e) {
-                    log.error("[rolloverBalances] 처리 실패 | studentId={}, bootcampId={}, error={}",
-                            studentId, bootcampId, e.getMessage());
-                    failCount++;
+                for (Long studentId : studentIds) {
+                    try {
+                        processor.ensureLeaveBalance(studentId, bootcampPeriod, today);
+                        processor.ensureSickBalance(studentId, bootcampPeriod);
+                        successCount++;
+                    } catch (Exception e) {
+                        log.error("[rolloverBalances] 처리 실패 | studentId={}, bootcampId={}",
+                                studentId, bootcampId, e);
+                        failCount++;
+                    }
                 }
-            }
 
-            if (failCount > 0) {
-                log.warn("[rolloverBalances] 처리 완료 (일부 실패) | bootcampId={}, success={}, fail={}",
-                        bootcampId, successCount, failCount);
-            } else {
-                log.info("[rolloverBalances] 처리 완료 | bootcampId={}, success={}", bootcampId, successCount);
+                if (failCount > 0) {
+                    log.warn("[rolloverBalances] 처리 완료 (일부 실패) | bootcampId={}, success={}, fail={}",
+                            bootcampId, successCount, failCount);
+                } else {
+                    log.info("[rolloverBalances] 처리 완료 | bootcampId={}, success={}", bootcampId, successCount);
+                }
+            } catch (Exception e) {
+                log.error("[rolloverBalances] 부트캠프 처리 실패 | bootcampId={}", bootcampId, e);
             }
         }
     }

@@ -12,12 +12,12 @@ public interface SpringDataSickBalanceRepository extends JpaRepository<SickBalan
 
     Optional<SickBalanceJpaEntity> findByUserId(Long userId);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
-    UPDATE SickBalanceJpaEntity s
-    SET s.usedDays = s.usedDays + :amount
-    WHERE s.userId = :userId
-      AND (s.totalDays - s.usedDays) >= :amount
-    """)
+        UPDATE SickBalanceJpaEntity s
+        SET s.usedDays = s.usedDays + :amount
+        WHERE s.userId = :userId
+          AND (s.totalDays - s.usedDays) >= :amount
+        """)
     int tryConsume(@Param("userId") Long userId, @Param("amount") BigDecimal amount);
 }

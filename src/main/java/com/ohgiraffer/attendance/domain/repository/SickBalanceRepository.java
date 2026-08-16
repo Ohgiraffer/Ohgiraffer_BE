@@ -9,5 +9,5 @@ public interface SickBalanceRepository {
     Optional<SickBalance> findByUserId(Long userId);
     SickBalance save(SickBalance sickBalance);
 
-    boolean tryConsume(Long userId, BigDecimal one);
+    boolean tryConsume(Long userId, BigDecimal amount);
 }

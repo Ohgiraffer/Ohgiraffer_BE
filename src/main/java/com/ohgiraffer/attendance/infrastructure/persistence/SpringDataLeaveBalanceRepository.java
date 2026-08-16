@@ -12,12 +12,21 @@ public interface SpringDataLeaveBalanceRepository extends JpaRepository<LeaveBal
 
     Optional<LeaveBalanceJpaEntity> findByUserId(Long userId);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
-    UPDATE LeaveBalanceJpaEntity l
-    SET l.usedDays = l.usedDays + :amount
-    WHERE l.userId = :userId
-      AND (l.totalDays - l.usedDays) >= :amount
-    """)
+        UPDATE LeaveBalanceJpaEntity l
+        SET l.usedDays = l.usedDays + :amount
+        WHERE l.userId = :userId
+          AND (l.totalDays - l.usedDays) >= :amount
+        """)
     int tryConsume(@Param("userId") Long userId, @Param("amount") BigDecimal amount);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        UPDATE LeaveBalanceJpaEntity l
+        SET l.totalDays = :targetTotalDays
+        WHERE l.userId = :userId
+          AND l.totalDays < :targetTotalDays
+        """)
+    int accrueTo(@Param("userId") Long userId, @Param("targetTotalDays") BigDecimal targetTotalDays);
 }
