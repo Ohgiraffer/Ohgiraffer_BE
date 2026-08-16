@@ -161,6 +161,7 @@ public enum ErrorCode {
     CONSULTATION_RECORD_DEADLINE_PASSED(HttpStatus.BAD_REQUEST, "CONSULTATION_006","메모 작성 가능 기한(상담일+1일)이 지났습니다."),
     CONSULTATION_AVAILABLE_DATE_CONFLICT(HttpStatus.CONFLICT, "CONSULTATION_007", "동시 요청으로 처리에 실패했습니다. 다시 시도해주세요."),
     CONSULTATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CONSULTATION_008", "해당 상담에 접근할 권한이 없습니다."),
+    CONSULTATION_TIME_IN_PAST(HttpStatus.BAD_REQUEST, "CONSULTATION_009", "지난 시간에는 상담을 신청할 수 없습니다."),
 
     EVALUATION_SHEET_LINK_NOT_FOUND(HttpStatus.NOT_FOUND, "EVALUATION_001", "연동된 평가 시트가 없습니다."),
     EVALUATION_SHEET_COLUMN_NOT_FOUND(HttpStatus.BAD_REQUEST, "EVALUATION_002", "시트에서 지정한 컬럼을 찾을 수 없습니다."),

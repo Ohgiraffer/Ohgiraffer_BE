@@ -7,6 +7,7 @@ import com.ohgiraffer.approval.domain.model.approval.*;
 import com.ohgiraffer.approval.domain.repository.ApprovalHistoryRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalLeaveDetailRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;
+import com.ohgiraffer.global.aop.auditlog.Audited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.user.domain.model.Role;
@@ -39,6 +40,12 @@ public class ApproveApprovalService implements ApproveApprovalUseCase {
 
     @Override
     @Transactional
+    @Audited(
+            domain = "approval",
+            eventType = "APPROVAL_APPROVE",
+            targetId = "#approvalId",
+            afterValue = "#result.status"
+    )
     public CreateApprovalResult approve(
             Long loginUserId,
             Role loginUserRole,

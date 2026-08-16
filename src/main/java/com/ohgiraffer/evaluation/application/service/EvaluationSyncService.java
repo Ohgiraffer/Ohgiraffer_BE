@@ -15,6 +15,7 @@ import com.ohgiraffer.evaluation.domain.model.TraineeChangeSummary;
 import com.ohgiraffer.evaluation.domain.repository.EvaluationRecordRepository;
 import com.ohgiraffer.evaluation.domain.repository.EvaluationSheetLinkRepository;
 import com.ohgiraffer.evaluation.domain.repository.SheetSyncLogRepository;
+import com.ohgiraffer.global.aop.ratelimit.RateLimited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import org.slf4j.Logger;
@@ -77,6 +78,7 @@ public class EvaluationSyncService implements EvaluationSyncUseCase {
 
     @Override
     @Transactional
+    @RateLimited(key = "google_sheets_sync", limit = 10, windowSeconds = 60)
     public EvaluationSyncResult sync(Long executedBy) {
         EvaluationSheetLink sheetLink = evaluationSheetLinkRepository.find()
                 .orElseThrow(() -> new BusinessException(
