@@ -3,6 +3,8 @@ package com.ohgiraffer.submissionbox.infrastructure.persistence;
 import com.ohgiraffer.submissionbox.domain.model.SubmissionBox;
 import com.ohgiraffer.submissionbox.domain.repository.SubmissionBoxRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.dao.DataIntegrityViolationException;
+
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 
@@ -126,8 +128,21 @@ public class SubmissionBoxRepositoryAdapter implements SubmissionBoxRepository {
     public void deleteById(
             Long submissionBoxId
     ) {
-        repository.deleteById(submissionBoxId);
-        repository.flush();
+        try {
+            repository.deleteById(submissionBoxId);
+
+            /*
+             * DELETE SQL을 트랜잭션 종료 전 즉시 실행하여
+             * 외래 키 위반을 이 메서드 안에서 처리합니다.
+             */
+            repository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(
+                    ErrorCode.SUBMISSION_BOX_HAS_SUBMISSIONS,
+                    "제출 데이터가 연결된 제출함은 삭제할 수 없습니다.",
+                    exception
+            );
+        }
     }
 
     @Override
