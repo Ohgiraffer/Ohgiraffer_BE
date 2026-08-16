@@ -5,9 +5,7 @@ import com.ohgiraffer.attendance.domain.model.SickBalance;
 import com.ohgiraffer.attendance.domain.policy.AttendanceMetricsCalculator;
 import com.ohgiraffer.attendance.domain.repository.LeaveBalanceRepository;
 import com.ohgiraffer.attendance.domain.repository.SickBalanceRepository;
-import com.ohgiraffer.bootcamp.domain.model.AttendancePeriodStartResult;
-import com.ohgiraffer.global.exception.BusinessException;
-import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.bootcamp.domain.model.BootcampPeriodResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -18,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.Period;
 
 @Slf4j
 @Component
@@ -30,68 +29,54 @@ public class AttendanceBalanceProcessor {
     private final SickBalanceRepository sickBalanceRepository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void processStudent(Long studentId, AttendancePeriodStartResult period) {
-        createLeaveBalanceIfAbsent(studentId, period);
-        createSickBalanceIfAbsent(studentId, period);
+    public LeaveBalance ensureLeaveBalance(Long userId, BootcampPeriodResult bootcampPeriod, LocalDate today) {
+        LeaveBalance current = leaveBalanceRepository.findByUserId(userId)
+                .orElseGet(() -> saveNewLeaveBalance(userId));
+
+        int elapsedMonths = elapsedAccrualMonths(bootcampPeriod, today);
+        LeaveBalance updated = current.accrueUpTo(elapsedMonths);
+
+        if (updated == current) {
+            return current;
+        }
+        return leaveBalanceRepository.save(updated);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public LeaveBalance createLeaveBalanceIfAbsent(Long userId, AttendancePeriodStartResult period) {
-        return leaveBalanceRepository.findByUserIdAndPeriodStart(userId, period.periodStart())
+    public SickBalance ensureSickBalance(Long userId, BootcampPeriodResult bootcampPeriod) {
+        return sickBalanceRepository.findByUserId(userId)
                 .orElseGet(() -> {
-                    BigDecimal carriedOver = resolveCarriedOverLeaveDays(userId, period);
+                    BigDecimal totalDays = resolveSickTotalDays(bootcampPeriod);
                     try {
-                        return leaveBalanceRepository.save(
-                                LeaveBalance.create(userId, period.periodStart(), period.periodEnd(), BigDecimal.ONE, carriedOver)
-                        );
+                        return sickBalanceRepository.save(SickBalance.create(userId, totalDays));
                     } catch (DataIntegrityViolationException e) {
-                        log.warn("[LeaveBalance] 동시 생성 충돌 감지, 기존 행 재조회 | userId={}, periodStart={}",
-                                userId, period.periodStart());
-                        return leaveBalanceRepository.findByUserIdAndPeriodStart(userId, period.periodStart())
-                                .orElseThrow(() -> new BusinessException(ErrorCode.LEAVE_BALANCE_NOT_FOUND));
+                        log.warn("[SickBalance] 동시 생성 충돌, 기존 행 재조회 | userId={}", userId);
+                        return sickBalanceRepository.findByUserId(userId).orElseThrow(() -> e);
                     }
                 });
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public SickBalance createSickBalanceIfAbsent(Long userId, AttendancePeriodStartResult period) {
-        return sickBalanceRepository.findByUserIdAndPeriodStart(userId, period.periodStart())
-                .orElseGet(() -> {
-                    BigDecimal carriedOver = resolveCarriedOverSickDays(userId, period);
-                    BigDecimal totalDays = resolveSickTotalDays(period);
-                    try {
-                        return sickBalanceRepository.save(
-                                SickBalance.create(userId, period.periodStart(), period.periodEnd(), totalDays, carriedOver)
-                        );
-                    } catch (DataIntegrityViolationException e) {
-                        log.warn("[SickBalance] 동시 생성 충돌 감지, 기존 행 재조회 | userId={}, periodStart={}",
-                                userId, period.periodStart());
-                        return sickBalanceRepository.findByUserIdAndPeriodStart(userId, period.periodStart())
-                                .orElseThrow(() -> new BusinessException(ErrorCode.SICK_BALANCE_NOT_FOUND));
-                    }
-                });
+    private LeaveBalance saveNewLeaveBalance(Long userId) {
+        try {
+            return leaveBalanceRepository.save(LeaveBalance.createEmpty(userId));
+        } catch (DataIntegrityViolationException e) {
+            log.warn("[LeaveBalance] 동시 생성 충돌, 기존 행 재조회 | userId={}", userId);
+            return leaveBalanceRepository.findByUserId(userId).orElseThrow(() -> e);
+        }
     }
 
-    private BigDecimal resolveSickTotalDays(AttendancePeriodStartResult period) {
-        long weekdays = AttendanceMetricsCalculator.countWeekdays(period.periodStart(), period.periodEnd());
+    private int elapsedAccrualMonths(BootcampPeriodResult bootcampPeriod, LocalDate today) {
+        LocalDate cappedToday = today.isAfter(bootcampPeriod.endDate()) ? bootcampPeriod.endDate() : today;
+        if (cappedToday.isBefore(bootcampPeriod.startDate())) {
+            return 0;
+        }
+        return (int) Period.between(bootcampPeriod.startDate(), cappedToday).toTotalMonths();
+    }
+
+    private BigDecimal resolveSickTotalDays(BootcampPeriodResult bootcampPeriod) {
+        long weekdays = AttendanceMetricsCalculator.countWeekdays(bootcampPeriod.startDate(), bootcampPeriod.endDate());
         return BigDecimal.valueOf(weekdays)
                 .multiply(SICK_DAY_RATE)
                 .setScale(0, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal resolveCarriedOverLeaveDays(Long userId, AttendancePeriodStartResult period) {
-        if (period.periodNo() == 1) return BigDecimal.ZERO;
-        LocalDate previousPeriodEnd = period.periodStart().minusDays(1);
-        return leaveBalanceRepository.findByUserIdAndPeriodEnd(userId, previousPeriodEnd)
-                .map(lb -> BigDecimal.valueOf(lb.remainingDays()))
-                .orElse(BigDecimal.ZERO);
-    }
-
-    private BigDecimal resolveCarriedOverSickDays(Long userId, AttendancePeriodStartResult period) {
-        if (period.periodNo() == 1) return BigDecimal.ZERO;
-        LocalDate previousPeriodEnd = period.periodStart().minusDays(1);
-        return sickBalanceRepository.findByUserIdAndPeriodEnd(userId, previousPeriodEnd)
-                .map(sb -> BigDecimal.valueOf(sb.remainingDays()))
-                .orElse(BigDecimal.ZERO);
     }
 }
