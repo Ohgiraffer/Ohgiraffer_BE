@@ -14,6 +14,7 @@ import com.ohgiraffer.attendance.domain.dto.SyncAttendanceSheetResult;
 import com.ohgiraffer.attendance.domain.model.*;
 import com.ohgiraffer.attendance.domain.repository.AttendanceExternalSheetLinkRepository;
 import com.ohgiraffer.attendance.domain.repository.AttendanceSheetSyncLogRepository;
+import com.ohgiraffer.global.aop.lock.DistributedLock;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.global.google.sheets.GoogleSheetsClient;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +40,7 @@ public class AttendanceSheetCommandService implements AttendanceSheetCommandUsec
     private static final int RETENTION_DAYS = 5;
     private static final String REASON_EMAIL_NOT_FOUND = "이메일로 훈련생을 찾을 수 없음";
     private static final String REASON_UNKNOWN = "처리 중 오류가 발생했습니다";
+    private static final String SYNC_LOCK_KEY = "'attendance-sheet-sync'";
 
     private final AttendanceExternalSheetLinkRepository attendanceExternalSheetLinkRepository;
     private final AttendanceSheetSyncLogRepository attendanceSheetSyncLogRepository;
@@ -67,8 +70,10 @@ public class AttendanceSheetCommandService implements AttendanceSheetCommandUsec
         attendanceExternalSheetLinkRepository.save(toSave);
     }
 
+    // 스케줄러(자동 동기화)와 수동 동기화(또는 더블클릭)가 겹치는 거 방지
     @Override
     @Transactional
+    @DistributedLock(key = SYNC_LOCK_KEY, waitTime = 0L, leaseTime = 120L, timeUnit = TimeUnit.SECONDS)
     public SyncAttendanceSheetResult sync(SyncAttendanceSheetCommand command) {
         AttendanceExternalSheetLink link = attendanceExternalSheetLinkRepository.findLatest()
                 .orElseThrow(() -> new BusinessException(ErrorCode.ATTENDANCE_SHEET_LINK_NOT_FOUND));
