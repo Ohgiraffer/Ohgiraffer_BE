@@ -1,8 +1,7 @@
-package com.ohgiraffer.global.aop;
+package com.ohgiraffer.global.aop.auditlog;
 
 import com.ohgiraffer.auditlog.application.command.RecordAuditLogCommand;
 import com.ohgiraffer.auditlog.application.usecase.RecordAuditLogUsecase;
-import com.ohgiraffer.global.annotation.Audited;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

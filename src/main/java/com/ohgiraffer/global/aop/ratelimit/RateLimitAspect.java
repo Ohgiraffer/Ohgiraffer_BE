@@ -1,6 +1,5 @@
-package com.ohgiraffer.global.aop;
+package com.ohgiraffer.global.aop.ratelimit;
 
-import com.ohgiraffer.global.annotation.RateLimited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
