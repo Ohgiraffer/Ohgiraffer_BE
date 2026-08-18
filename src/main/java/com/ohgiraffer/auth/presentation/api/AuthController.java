@@ -40,10 +40,6 @@ public class AuthController {
     @Value("${app.cookie.domain:}")
     private String cookieDomain;
 
-    @Value("${jwt.refresh-token-validity}")
-    private long refreshTokenValidity;
-
-
     @Operation(summary = "로그인", description = "아이디와 비밀번호를 기입하여 로그인 합니다")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "로그인 성공"),
@@ -60,7 +56,8 @@ public class AuthController {
         String clientIp = ClientIpResolver.resolve(httpRequest);
         LoginResult result = authCommandUsecase.login(request, clientIp);
 
-        ResponseCookie cookie = buildRefreshCookie(result.refreshToken(), Duration.ofMillis(refreshTokenValidity));
+        Duration maxAge = Duration.between(LocalDateTime.now(), result.refreshTokenExpiresAt());
+        ResponseCookie cookie = buildRefreshCookie(result.refreshToken(), maxAge);
         httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
         return ResponseEntity.ok(result.body());

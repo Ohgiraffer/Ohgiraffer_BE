@@ -97,15 +97,18 @@ public class AuthCommandService implements AuthCommandUsecase {
         String accessToken = jwtTokenProvider.createAccessToken(principal.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken(principal.getId());
 
+        LocalDateTime refreshTokenExpiresAt = LocalDate.now().plusDays(1).atStartOfDay();
+
         refreshTokenService.save(
                 principal.getId(),
                 refreshToken,
-                Duration.between(LocalDateTime.now(), LocalDate.now().plusDays(1).atStartOfDay())
+                Duration.between(LocalDateTime.now(), refreshTokenExpiresAt)
         );
 
         return new LoginResult(
                 LoginResponse.of(accessToken, user.getRole(), user.getStatus(), user.getBootcampId(), user.isNeedResetPw()),
-                refreshToken
+                refreshToken,
+                refreshTokenExpiresAt
         );
     }
 
