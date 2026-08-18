@@ -21,11 +21,38 @@ public class SubmissionRepositoryAdapter
     private final SpringDataSubmissionRepository repository;
 
     @Override
-    public Submission save(Submission submission) {
-        SubmissionJpaEntity entity =
-                SubmissionJpaEntity.from(submission);
-
+    public Submission save(
+            Submission submission
+    ) {
         try {
+            SubmissionJpaEntity entity;
+
+            if (submission.getId() == null) {
+                /*
+                 * 최초 제출은 새로운 JPA 엔티티를 생성합니다.
+                 */
+                entity =
+                        SubmissionJpaEntity.from(
+                                submission
+                        );
+            } else {
+                /*
+                 * 재제출은 기존 관리 엔티티를 조회한 뒤
+                 * 값과 자식 컬렉션을 직접 변경합니다.
+                 */
+                entity =
+                        repository.findDetailById(
+                                        submission.getId()
+                                )
+                                .orElseThrow(() ->
+                                        new BusinessException(
+                                                ErrorCode.SUBMISSION_NOT_FOUND
+                                        )
+                                );
+
+                entity.updateFrom(submission);
+            }
+
             SubmissionJpaEntity savedEntity =
                     repository.saveAndFlush(entity);
 

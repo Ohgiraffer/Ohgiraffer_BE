@@ -108,4 +108,34 @@ public class SubmissionItemValueJpaEntity extends BaseTimeEntity {
                 getUpdatedAt()
         );
     }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Long getSubmissionBoxItemId() {
+        return submissionBoxItemId;
+    }
+
+    public void updateFrom(
+            SubmissionItemValue value
+    ) {
+        this.submissionBoxItemId =
+                value.getSubmissionBoxItemId();
+
+        this.fileKey =
+                value.getFileKey();
+
+        this.originalFileName =
+                value.getOriginalFileName();
+
+        this.contentType =
+                value.getContentType();
+
+        this.fileSize =
+                value.getFileSize();
+
+        this.externalUrl =
+                value.getExternalUrl();
+    }
 }
