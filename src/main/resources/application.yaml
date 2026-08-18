@@ -124,6 +124,7 @@ app:
   seed-scale: large
   cookie:
     secure: ${COOKIE_SECURE:false}
+    domain: ${COOKIE_DOMAIN:}
 
 sendbird:
   app-id: ${SENDBIRD_APP_ID}
