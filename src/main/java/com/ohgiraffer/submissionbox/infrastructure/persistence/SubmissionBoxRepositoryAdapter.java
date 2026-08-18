@@ -27,6 +27,7 @@ public class SubmissionBoxRepositoryAdapter implements SubmissionBoxRepository {
 
     private final SpringDataSubmissionBoxRepository repository;
 
+
     public SubmissionBoxRepositoryAdapter(
             SpringDataSubmissionBoxRepository repository
     ) {
@@ -126,13 +127,13 @@ public class SubmissionBoxRepositoryAdapter implements SubmissionBoxRepository {
     }
 
     @Override
-    public boolean hasSubmissions(
-            Long submissionBoxId
-    ) {
-        return repository
-                .existsSubmissionBySubmissionBoxId(
+    public boolean hasSubmissions(Long submissionBoxId) {
+        Long count =
+                repository.countSubmissionsBySubmissionBoxId(
                         submissionBoxId
                 );
+
+        return count != null && count > 0L;
     }
 
     @Override

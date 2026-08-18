@@ -33,17 +33,14 @@ public interface SpringDataSubmissionBoxRepository
 
     @Query(
             value = """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM submission
-                        WHERE submission_box_id = :submissionBoxId
-                    )
-                    """,
+                SELECT COUNT(*)
+                FROM submission
+                WHERE submission_box_id = :submissionBoxId
+                """,
             nativeQuery = true
     )
-    boolean existsSubmissionBySubmissionBoxId(
-            @Param("submissionBoxId")
-            Long submissionBoxId
+    long countSubmissionsBySubmissionBoxId(
+            @Param("submissionBoxId") Long submissionBoxId
     );
 
     @EntityGraph(attributePaths = "items")
