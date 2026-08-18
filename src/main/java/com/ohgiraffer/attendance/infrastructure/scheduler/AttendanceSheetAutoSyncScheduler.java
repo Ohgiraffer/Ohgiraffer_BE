@@ -4,6 +4,8 @@ import com.ohgiraffer.attendance.application.command.SyncAttendanceSheetCommand;
 import com.ohgiraffer.attendance.application.usecase.AttendanceSheetCommandUsecase;
 import com.ohgiraffer.attendance.domain.dto.SyncAttendanceSheetResult;
 import com.ohgiraffer.attendance.domain.model.SyncTriggerType;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -25,6 +27,12 @@ public class AttendanceSheetAutoSyncScheduler {
             );
             log.info("[syncMorning] 자동 동기화 완료 | total={}, success={}, failed={}",
                     result.totalCount(), result.successCount(), result.failedCount());
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == ErrorCode.LOCK_ACQUISITION_FAILED) {
+                log.warn("[syncMorning] 다른 동기화가 진행 중이라 이번 스케줄은 건너뜀");
+                return;
+            }
+            log.error("[syncMorning] 자동 동기화 실패", e);
         } catch (Exception e) {
             log.error("[syncMorning] 자동 동기화 실패", e);
         }

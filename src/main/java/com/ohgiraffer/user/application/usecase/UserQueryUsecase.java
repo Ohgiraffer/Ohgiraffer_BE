@@ -7,6 +7,7 @@ import com.ohgiraffer.user.presentation.api.response.UserResponse;
 import com.ohgiraffer.user.presentation.api.response.UserSheetConnectionResponse;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -20,4 +21,6 @@ public interface UserQueryUsecase {
     List<UserListResponse> getUsers(Long requesterId);
     Map<String, Long> getStudentEmailToIdMapByBootcampId(Long bootcampId);
     Long getAnyActiveBootcampId();
+
+    LocalDate getJoinDate(Long userId);
 }

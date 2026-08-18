@@ -7,6 +7,7 @@ public record TokenResponse(
         Long userId,
         String accessToken,
         Role role,
-        UserStatus status
+        UserStatus status,
+        Long bootcampId
 ) {
 }

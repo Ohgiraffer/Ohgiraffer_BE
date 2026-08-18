@@ -48,7 +48,8 @@ public class SheetSyncLogJpaEntity {
         this.sheetLinkId = syncLog.getSheetLinkId();
         this.executedBy = syncLog.getExecutedBy();
         this.changedCount = syncLog.getChangedCount();
-        this.diffSummary = syncLog.getDiffSummary();
+        this.diffSummary = TraineeChangeSummaryConverter.toJson(
+                syncLog.getSummaries());
         this.syncedAt = syncLog.getSyncedAt();
     }
 
@@ -58,7 +59,12 @@ public class SheetSyncLogJpaEntity {
 
     public SheetSyncLog toDomain() {
         return SheetSyncLog.restore(
-                id, sheetLinkId, executedBy, changedCount, diffSummary, syncedAt
+                id,
+                sheetLinkId,
+                executedBy,
+                changedCount,
+                TraineeChangeSummaryConverter.fromJson(diffSummary),
+                syncedAt
         );
     }
 }

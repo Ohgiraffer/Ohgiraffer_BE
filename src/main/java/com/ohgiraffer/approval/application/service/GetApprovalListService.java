@@ -55,6 +55,7 @@ public class GetApprovalListService implements GetApprovalListUseCase {
 
         List<ApprovalRequest> approvalRequests = findApprovalRequests(
                 loginUserId,
+                loginUserRole,
                 loginUserBootcampId,
                 scope
         );
@@ -158,6 +159,7 @@ public class GetApprovalListService implements GetApprovalListUseCase {
 
     private List<ApprovalRequest> findApprovalRequests(
             Long loginUserId,
+            Role loginUserRole,
             Long loginUserBootcampId,
             ApprovalListScope scope
     ) {
@@ -168,6 +170,12 @@ public class GetApprovalListService implements GetApprovalListUseCase {
         }
 
         if (scope == ApprovalListScope.PROCESSING) {
+            if (loginUserRole == Role.MANAGER) {
+                return approvalRequestRepository.findManagerProcessingApprovals(
+                        loginUserBootcampId
+                );
+            }
+
             return approvalRequestRepository.findProcessingApprovals(
                     loginUserId,
                     loginUserBootcampId

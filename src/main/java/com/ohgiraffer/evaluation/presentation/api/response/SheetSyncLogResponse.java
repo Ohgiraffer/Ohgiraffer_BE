@@ -6,11 +6,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 
 /**
  * 동기화 이력 한 건. 목록과 상세가 같은 형식이다.
  *
- * <p>목록에서는 {@code diffSummary} 를 접어 두고 상세에서 펼치면 된다. 이력이 사람이
+ * <p>목록에서는 {@code summaries} 를 접어 두고 상세에서 펼치면 된다. 이력이 사람이
  * 버튼을 누를 때만, 그것도 변경이 있을 때만 쌓여 목록이 길지 않다.
  */
 @Schema(description = "평가 시트 동기화 이력")
@@ -32,10 +33,15 @@ public record SheetSyncLogResponse(
         int changedCount,
 
         @Schema(
-                description = "변경 내용 요약",
-                example = "[수정] 박민준 · 중간평가 · 코드 품질 — 점수 70 → 88"
+                description = """
+                        그때 저장해 둔 훈련생별 변경 카드. 동기화 실행 화면과 같은 형식이라
+                        이력 상세도 같은 컴포넌트로 그리면 된다.
+
+                        예전 형식으로 저장된 이력은 빈 배열이다. 카드가 생기기 전에 남은 기록이라
+                        되살릴 값이 없다.
+                        """
         )
-        String diffSummary,
+        List<TraineeChangeSummaryResponse> summaries,
 
         @Schema(description = "실행 시각 (KST)", example = "2026-08-10T14:30:00")
         LocalDateTime syncedAt
@@ -48,7 +54,9 @@ public record SheetSyncLogResponse(
                 view.syncLogId(),
                 view.executedByName(),
                 view.changedCount(),
-                view.diffSummary(),
+                view.summaries().stream()
+                        .map(TraineeChangeSummaryResponse::from)
+                        .toList(),
                 toKst(view.syncedAt())
         );
     }

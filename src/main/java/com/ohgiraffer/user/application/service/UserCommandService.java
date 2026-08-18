@@ -2,6 +2,7 @@ package com.ohgiraffer.user.application.service;
 
 import com.ohgiraffer.attendance.application.usecase.AttendanceCacheEvictUsecase;
 import com.ohgiraffer.auth.application.policy.LogoutPolicy;
+import com.ohgiraffer.global.aop.auditlog.Audited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.global.s3.S3KeyGenerator;
@@ -117,6 +118,12 @@ public class UserCommandService implements UserCommandUsecase {
 
     @Override
     @Transactional
+    @Audited(
+            domain = "user",
+            eventType = "USER_STATUS_CHANGE",
+            targetId = "#userId",
+            afterValue = "#newStatus"
+    )
     public void changeUserStatus(Long userId, UserStatus newStatus) {
         if (newStatus != UserStatus.WITHDRAWN && newStatus != UserStatus.EXPELLED) {
             throw new BusinessException(ErrorCode.INVALID_USER_STATUS_TARGET);

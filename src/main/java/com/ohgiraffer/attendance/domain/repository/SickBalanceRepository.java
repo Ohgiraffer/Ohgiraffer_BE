@@ -2,12 +2,12 @@ package com.ohgiraffer.attendance.domain.repository;
 
 import com.ohgiraffer.attendance.domain.model.SickBalance;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.Optional;
 
 public interface SickBalanceRepository {
-    Optional<SickBalance> findCurrentByUserId(Long userId, LocalDate referenceDate);
-    Optional<SickBalance> findByUserIdAndPeriodEnd(Long userId, LocalDate periodEnd);
-    boolean existsByUserIdAndPeriodStart(Long userId, LocalDate periodStart);
+    Optional<SickBalance> findByUserId(Long userId);
     SickBalance save(SickBalance sickBalance);
+
+    boolean tryConsume(Long userId, BigDecimal amount);
 }

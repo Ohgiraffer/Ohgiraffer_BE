@@ -1,8 +1,10 @@
 package com.ohgiraffer.evaluation.application.query;
 
 import com.ohgiraffer.evaluation.domain.model.SheetSyncLog;
+import com.ohgiraffer.evaluation.domain.model.TraineeChangeSummary;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * 이력 화면용 조회 모델.
@@ -15,7 +17,7 @@ public record SheetSyncLogView(
         Long executedBy,
         String executedByName,
         int changedCount,
-        String diffSummary,
+        List<TraineeChangeSummary> summaries,
         Instant syncedAt
 ) {
 
@@ -25,7 +27,7 @@ public record SheetSyncLogView(
                 syncLog.getExecutedBy(),
                 executedByName,
                 syncLog.getChangedCount(),
-                syncLog.getDiffSummary(),
+                syncLog.getSummaries(),
                 syncLog.getSyncedAt()
         );
     }

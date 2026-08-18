@@ -9,6 +9,7 @@ import com.ohgiraffer.auth.presentation.api.response.LoginResponse;
 import com.ohgiraffer.auth.presentation.api.response.TokenResponse;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.global.security.FailureCountGuard;
 import com.ohgiraffer.security.jwt.JwtTokenProvider;
 import com.ohgiraffer.security.token.RefreshTokenService;
 import com.ohgiraffer.security.token.TokenBlacklistService;
@@ -35,6 +36,11 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class AuthCommandService implements AuthCommandUsecase {
 
+    private static final String LOGIN_FAILURE_SCOPE = "login";
+    private static final int LOGIN_MAX_FAILURE_COUNT = 5;
+    private static final Duration LOGIN_FAILURE_WINDOW = Duration.ofMinutes(10);
+    private static final Duration LOGIN_LOCK_DURATION = Duration.ofMinutes(15);
+
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
@@ -42,15 +48,25 @@ public class AuthCommandService implements AuthCommandUsecase {
     private final RefreshTokenService refreshTokenService;
     private final TokenBlacklistService tokenBlacklistService;
     private final ApplicationEventPublisher eventPublisher;
+    private final FailureCountGuard failureCountGuard;
 
     @Override
     public LoginResult login(LoginRequest request, String clientIp) {
 
+        failureCountGuard.checkNotLocked(LOGIN_FAILURE_SCOPE, request.email());
+
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(()->new BusinessException(ErrorCode.LOGIN_FAILED));
+                .orElseThrow(() -> {
+                    log.warn("[login] 존재하지 않는 이메일로 로그인 시도 | email={} | ip={}",
+                            maskEmail(request.email()), maskIp(clientIp));
+                    failureCountGuard.recordFailure(LOGIN_FAILURE_SCOPE, request.email(),
+                            LOGIN_MAX_FAILURE_COUNT, LOGIN_FAILURE_WINDOW, LOGIN_LOCK_DURATION);
+                    return new BusinessException(ErrorCode.LOGIN_FAILED);
+                });
 
         if (user.getStatus() != UserStatus.ACTIVE && user.getStatus() != UserStatus.COMPLETED) {
-            log.warn("[login] 비활성 계정 로그인 시도 | email={} | status={}", request.email(), user.getStatus());
+            log.warn("[login] 비활성 계정 로그인 시도 | email={} | status={}",
+                    maskEmail(request.email()), user.getStatus());
             ErrorCode errorCode = switch (user.getStatus()) {
                 case WITHDRAWN -> ErrorCode.WITHDRAWN_MEMBER;
                 case EXPELLED -> ErrorCode.EXPELLED_MEMBER;
@@ -66,30 +82,35 @@ public class AuthCommandService implements AuthCommandUsecase {
             );
         } catch (BadCredentialsException | DisabledException | LockedException e) {
             log.warn("[login] 인증 실패 | email={} | ip={} | reason={}",
-                    request.email(), clientIp, e.getClass().getSimpleName());
+                    maskEmail(request.email()), maskIp(clientIp), e.getClass().getSimpleName());
+            failureCountGuard.recordFailure(LOGIN_FAILURE_SCOPE, request.email(),
+                    LOGIN_MAX_FAILURE_COUNT, LOGIN_FAILURE_WINDOW, LOGIN_LOCK_DURATION);
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
+
+        failureCountGuard.resetFailure(LOGIN_FAILURE_SCOPE, request.email());
 
         CustomUserPrincipal principal = (CustomUserPrincipal) authentication.getPrincipal();
 
         eventPublisher.publishEvent(new UserLoggedInEvent(principal.getId(), user.getName(), user.getProfileImg()));
 
-
         String accessToken = jwtTokenProvider.createAccessToken(principal.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken(principal.getId());
+
+        LocalDateTime refreshTokenExpiresAt = LocalDate.now().plusDays(1).atStartOfDay();
 
         refreshTokenService.save(
                 principal.getId(),
                 refreshToken,
-                Duration.between(LocalDateTime.now(), LocalDate.now().plusDays(1).atStartOfDay())
+                Duration.between(LocalDateTime.now(), refreshTokenExpiresAt)
         );
 
         return new LoginResult(
                 LoginResponse.of(accessToken, user.getRole(), user.getStatus(), user.getBootcampId(), user.isNeedResetPw()),
-                refreshToken
+                refreshToken,
+                refreshTokenExpiresAt
         );
     }
-
 
     @Override
     public void logout(Long id, String bearerToken, String refreshToken) {
@@ -134,6 +155,20 @@ public class AuthCommandService implements AuthCommandUsecase {
 
         String newAccessToken = jwtTokenProvider.createAccessToken(userId);
 
-        return new TokenResponse(user.getId(),newAccessToken, user.getRole(), user.getStatus());
+        return new TokenResponse(user.getId(), newAccessToken, user.getRole(), user.getStatus(), user.getBootcampId());
+    }
+
+    private String maskEmail(String email) {
+        if (email == null) return null;
+        int at = email.indexOf('@');
+        if (at <= 2) return "***" + email.substring(Math.max(at, 0));
+        return email.substring(0, 2) + "***" + email.substring(at);
+    }
+
+    private String maskIp(String ip) {
+        if (ip == null) return null;
+        int lastDot = ip.lastIndexOf('.');
+        if (lastDot < 0) return "***";
+        return ip.substring(0, lastDot) + ".*";
     }
 }

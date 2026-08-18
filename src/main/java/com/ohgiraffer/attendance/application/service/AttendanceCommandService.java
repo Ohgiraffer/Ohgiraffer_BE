@@ -7,8 +7,9 @@ import com.ohgiraffer.attendance.domain.model.AttendanceStatus;
 import com.ohgiraffer.attendance.domain.policy.AttendanceMetricsCalculator;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.domain.repository.LeaveBalanceRepository;
+import com.ohgiraffer.attendance.infrastructure.scheduler.AttendanceBalanceProcessor;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
-import com.ohgiraffer.bootcamp.domain.model.AttendancePeriodResult;
+import com.ohgiraffer.bootcamp.domain.model.BootcampPeriodResult;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
@@ -20,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 
 @Transactional
@@ -32,25 +32,29 @@ public class AttendanceCommandService implements AttendanceCommandUsecase {
     private final AttendanceRepository attendanceRepository;
     private final LeaveBalanceRepository leaveBalanceRepository;
     private final UserQueryUsecase userQueryUsecase;
-    private final BootcampQueryUsecase bootcampQueryUsecase;
     private final AttendanceCacheEvictor attendanceCacheEvictor;
+    private final AttendanceBalanceProcessor attendanceBalanceProcessor;
+    private final BootcampQueryUsecase bootcampQueryUsecase;
 
     @Override
     @Transactional
     public void applyApprovedLeave(Long userId, LocalDate startDate, LocalDate endDate, Long approvalId) {
         Long bootcampId = userQueryUsecase.getBootcampId(userId);
-        List<AttendancePeriodResult> periods = bootcampQueryUsecase.getAttendancePeriods(bootcampId);
         String externalRefId = String.valueOf(approvalId);
 
+        BootcampPeriodResult bootcampPeriod = bootcampQueryUsecase.getPeriod(bootcampId);
+        attendanceBalanceProcessor.ensureLeaveBalance(userId, bootcampPeriod, LocalDate.now());
+
         for (LocalDate date : AttendanceMetricsCalculator.weekdaysBetween(startDate, endDate)) {
-            applyLeaveDay(userId, date, externalRefId, periods);
+            applyLeaveDay(userId, date, externalRefId);
         }
 
         attendanceCacheEvictor.evictSummary(userId);
         attendanceCacheEvictor.evictAllForBootcamp(bootcampId);
     }
 
-    private void applyLeaveDay(Long userId, LocalDate date, String externalRefId, List<AttendancePeriodResult> periods) {
+
+    private void applyLeaveDay(Long userId, LocalDate date, String externalRefId) {
         Optional<Attendance> existing = attendanceRepository.findByUserIdAndDateForUpdate(userId, date);
 
         if (existing.isPresent()) {
@@ -81,12 +85,7 @@ public class AttendanceCommandService implements AttendanceCommandUsecase {
             throw new BusinessException(ErrorCode.ATTENDANCE_APPROVAL_CONFLICT, e);
         }
 
-        AttendancePeriodResult period = periods.stream()
-                .filter(p -> !date.isBefore(p.periodStart()) && !date.isAfter(p.periodEnd()))
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(ErrorCode.ATTENDANCE_PERIOD_NOT_FOUND));
-
-        boolean consumed = leaveBalanceRepository.tryConsume(userId, period.periodStart(), BigDecimal.ONE);
+        boolean consumed = leaveBalanceRepository.tryConsume(userId, BigDecimal.ONE);
         if (!consumed) {
             throw new BusinessException(ErrorCode.LEAVE_BALANCE_NOT_ENOUGH);
         }

@@ -1,5 +1,6 @@
 package com.ohgiraffer.consultation.infrastructure.persistence;
 
+import com.ohgiraffer.consultation.domain.model.Consultation;
 import com.ohgiraffer.consultation.domain.model.ConsultationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

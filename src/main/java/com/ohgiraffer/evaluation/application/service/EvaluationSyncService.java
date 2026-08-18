@@ -11,9 +11,11 @@ import com.ohgiraffer.evaluation.domain.model.EvaluationDiffSummaryWriter;
 import com.ohgiraffer.evaluation.domain.model.EvaluationRecord;
 import com.ohgiraffer.evaluation.domain.model.EvaluationSheetLink;
 import com.ohgiraffer.evaluation.domain.model.SheetSyncLog;
+import com.ohgiraffer.evaluation.domain.model.TraineeChangeSummary;
 import com.ohgiraffer.evaluation.domain.repository.EvaluationRecordRepository;
 import com.ohgiraffer.evaluation.domain.repository.EvaluationSheetLinkRepository;
 import com.ohgiraffer.evaluation.domain.repository.SheetSyncLogRepository;
+import com.ohgiraffer.global.aop.ratelimit.RateLimited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import org.slf4j.Logger;
@@ -76,6 +78,7 @@ public class EvaluationSyncService implements EvaluationSyncUseCase {
 
     @Override
     @Transactional
+    @RateLimited(key = "google_sheets_sync", limit = 10, windowSeconds = 60)
     public EvaluationSyncResult sync(Long executedBy) {
         EvaluationSheetLink sheetLink = evaluationSheetLinkRepository.find()
                 .orElseThrow(() -> new BusinessException(
@@ -193,7 +196,7 @@ public class EvaluationSyncService implements EvaluationSyncUseCase {
                 .filter(change -> change.type() == EvaluationChange.Type.ADDED)
                 .count();
 
-        String summary = summarize(changes);
+        List<TraineeChangeSummary> summaries = summarize(changes);
 
         Long syncLogId = null;
 
@@ -202,7 +205,7 @@ public class EvaluationSyncService implements EvaluationSyncUseCase {
                     sheetLink.getId(),
                     executedBy,
                     changes.size(),
-                    summary
+                    summaries
             )).getId();
         }
 
@@ -211,35 +214,46 @@ public class EvaluationSyncService implements EvaluationSyncUseCase {
                 syncLogId,
                 added,
                 changes.size() - added,
-                summary,
+                summaries,
                 skipped
         );
     }
 
     /**
-     * 변경 내역을 요약한다. AI 가 실패하면 직접 만든 목록으로 되돌린다.
+     * 훈련생별 변경 카드를 만든다.
      *
-     * <p>요약은 거들어 주는 값이지 평가 데이터 자체가 아니다. 외부 호출이 느리거나 실패했다고
-     * 이미 반영된 평가까지 되돌리면, 사용자는 다시 눌러야 하고 같은 일이 반복될 수 있다.
+     * <p>무엇이 어떻게 바뀌었는지는 우리가 이미 값으로 들고 있어 직접 적는다. AI 에게는
+     * 확인이 필요한 대목만 묻고, 그 답을 카드에 한 줄씩 끼워 넣는다.
      *
-     * <p>되돌아간 요약은 문장이 투박할 뿐 무엇이 바뀌었는지는 그대로 담긴다.
+     * <p>AI 가 실패해도 카드는 그대로 나간다. 확인 필요 줄만 비게 된다. 확인 필요는 거들어
+     * 주는 값이지 평가 데이터가 아니라서, 외부 호출 때문에 이미 반영된 평가까지 되돌릴 이유가 없다.
      */
-    private String summarize(List<EvaluationChange> changes) {
-        if (changes.isEmpty()) {
-            return EvaluationDiffSummaryWriter.write(changes);
+    private List<TraineeChangeSummary> summarize(List<EvaluationChange> changes) {
+        List<TraineeChangeSummary> summaries =
+                EvaluationDiffSummaryWriter.write(changes);
+
+        if (summaries.isEmpty()) {
+            return summaries;
         }
 
+        Map<String, String> pointsToCheck;
+
         try {
-            return evaluationSummaryPort.summarize(changes);
+            pointsToCheck = evaluationSummaryPort.findPointsToCheck(changes);
         } catch (RuntimeException exception) {
             log.warn(
-                    "평가 변경 요약을 만들지 못해 기본 요약으로 대체합니다. 변경 {}건",
+                    "확인이 필요한 항목을 찾지 못해 그 줄을 비웁니다. 변경 {}건",
                     changes.size(),
                     exception
             );
 
-            return EvaluationDiffSummaryWriter.write(changes);
+            return summaries;
         }
+
+        return summaries.stream()
+                .map(summary -> summary.withNeedsCheck(
+                        pointsToCheck.get(summary.traineeName())))
+                .toList();
     }
 
     private ParsedRow toRecord(
