@@ -19,8 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -95,6 +97,10 @@ public class GetTraineeApprovalHistoryService implements GetTraineeApprovalHisto
                                 )
                         );
 
+        Map<Long, String> approverNameById = findApproverNames(
+                approvals
+        );
+
         List<TraineeApprovalHistoryItemResult> items =
                 approvals.stream()
                         .map(
@@ -102,7 +108,8 @@ public class GetTraineeApprovalHistoryService implements GetTraineeApprovalHisto
                                         approval,
                                         leaveDetailByApprovalId.get(
                                                 approval.getId()
-                                        )
+                                        ),
+                                        approverNameById
                                 )
                         )
                         .toList();
@@ -182,9 +189,40 @@ public class GetTraineeApprovalHistoryService implements GetTraineeApprovalHisto
         }
     }
 
+    private Map<Long, String> findApproverNames(
+            List<ApprovalRequest> approvals
+    ) {
+        Set<Long> approverIds = new LinkedHashSet<>();
+
+        for (ApprovalRequest approval : approvals) {
+            if (approval.getApproverId() != null) {
+                approverIds.add(
+                        approval.getApproverId()
+                );
+            }
+        }
+
+        if (approverIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return userRepository.findByIdIn(
+                        approverIds.stream()
+                                .toList()
+                )
+                .stream()
+                .collect(
+                        Collectors.toMap(
+                                User::getId,
+                                User::getName
+                        )
+                );
+    }
+
     private TraineeApprovalHistoryItemResult toResult(
             ApprovalRequest approval,
-            ApprovalLeaveDetail leaveDetail
+            ApprovalLeaveDetail leaveDetail,
+            Map<Long, String> approverNameById
     ) {
         if (leaveDetail == null) {
             throw new BusinessException(
@@ -198,6 +236,12 @@ public class GetTraineeApprovalHistoryService implements GetTraineeApprovalHisto
                         approval.getRequestedAt()
                 ),
                 LEAVE_APPROVAL_TYPE_NAME,
+                approval.getApproverId(),
+                approval.getApproverId() == null
+                        ? null
+                        : approverNameById.get(
+                        approval.getApproverId()
+                ),
                 leaveDetail.getStartDate(),
                 leaveDetail.getEndDate(),
                 leaveDetail.calculateLeaveDays(),

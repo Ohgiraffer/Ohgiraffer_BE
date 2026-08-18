@@ -7,6 +7,7 @@ import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
 import com.ohgiraffer.approval.domain.repository.ApprovalHistoryRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;
+import com.ohgiraffer.global.aop.auditlog.Audited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.notification.domain.event.NotificationRequestedEvent;
@@ -44,6 +45,12 @@ public class RejectApprovalService implements RejectApprovalUseCase {
 
     @Override
     @Transactional
+    @Audited(
+            domain = "approval",
+            eventType = "APPROVAL_REJECT",
+            targetId = "#approvalId",
+            afterValue = "#result.status"
+    )
     public CreateApprovalResult reject(
             Long loginUserId,
             Role loginUserRole,

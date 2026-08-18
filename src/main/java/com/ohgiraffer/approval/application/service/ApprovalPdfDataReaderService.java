@@ -3,7 +3,6 @@ package com.ohgiraffer.approval.application.service;
 import com.ohgiraffer.approval.application.query.LeavePdfData;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalLeaveDetail;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
-import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalType;
 import com.ohgiraffer.approval.domain.model.profile.ApprovalApplicantProfile;
 import com.ohgiraffer.approval.domain.repository.ApprovalApplicantProfileRepository;
@@ -23,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -59,11 +57,14 @@ public class ApprovalPdfDataReaderService {
 
         validateAccess(
                 loginUserId,
-                loginUserRole,
                 approvalRequest
         );
 
         validateLeaveApproval(
+                approvalRequest
+        );
+
+        validatePdfDownloadReady(
                 approvalRequest
         );
 
@@ -140,7 +141,6 @@ public class ApprovalPdfDataReaderService {
 
     private void validateAccess(
             Long loginUserId,
-            Role loginUserRole,
             ApprovalRequest approvalRequest
     ) {
         if (approvalRequest.getRequesterId().equals(
@@ -156,50 +156,8 @@ public class ApprovalPdfDataReaderService {
             return;
         }
 
-        if (approvalRequest.getStatus() == ApprovalStatus.PENDING
-                && canProcessApproval(
-                loginUserRole
-        )
-                && isSameBootcamp(
-                loginUserId,
-                approvalRequest.getRequesterId()
-        )) {
-            return;
-        }
-
         throw new BusinessException(
                 ErrorCode.APPROVAL_ACCESS_DENIED
-        );
-    }
-
-    private boolean canProcessApproval(
-            Role role
-    ) {
-        return role == Role.INSTRUCTOR
-                || role == Role.MANAGER;
-    }
-
-    private boolean isSameBootcamp(
-            Long loginUserId,
-            Long requesterId
-    ) {
-        Optional<Long> loginUserBootcampId =
-                userRepository.findBootcampIdByUserId(
-                        loginUserId
-                );
-
-        Optional<Long> requesterBootcampId =
-                userRepository.findBootcampIdByUserId(
-                        requesterId
-                );
-
-        if (loginUserBootcampId.isEmpty()
-                || requesterBootcampId.isEmpty()) {
-            return false;
-        }
-
-        return loginUserBootcampId.get().equals(
-                requesterBootcampId.get()
         );
     }
 
@@ -209,6 +167,18 @@ public class ApprovalPdfDataReaderService {
         if (approvalRequest.getRequestType() != ApprovalType.LEAVE) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+    }
+
+    private void validatePdfDownloadReady(
+            ApprovalRequest approvalRequest
+    ) {
+        if (approvalRequest.getApproverId() == null
+                || approvalRequest.getConfirmedAt() == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "담당자 확인 후 PDF 다운로드가 가능합니다."
             );
         }
     }
@@ -302,7 +272,10 @@ public class ApprovalPdfDataReaderService {
 
         if (signatureImage == null
                 || approvalRequest.getSignatureFileTypeSnapshot() == null) {
-            return null;
+            throw new BusinessException(
+                    ErrorCode.SIGNATURE_NOT_FOUND,
+                    "신청자 전자서명 정보가 없습니다."
+            );
         }
 
         return toDataUri(
@@ -315,7 +288,10 @@ public class ApprovalPdfDataReaderService {
             Long approverId
     ) {
         if (approverId == null) {
-            return null;
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "담당자 확인 후 PDF 다운로드가 가능합니다."
+            );
         }
 
         return userSignatureRepository.findActiveByUserId(
@@ -327,8 +303,11 @@ public class ApprovalPdfDataReaderService {
                                 signature.getFileType()
                         )
                 )
-                .orElse(
-                        null
+                .orElseThrow(
+                        () -> new BusinessException(
+                                ErrorCode.SIGNATURE_NOT_FOUND,
+                                "확인자 전자서명이 등록되어 있지 않습니다."
+                        )
                 );
     }
 
@@ -338,7 +317,9 @@ public class ApprovalPdfDataReaderService {
     ) {
         if (image == null
                 || fileType == null) {
-            return null;
+            throw new BusinessException(
+                    ErrorCode.SIGNATURE_NOT_FOUND
+            );
         }
 
         return "data:"

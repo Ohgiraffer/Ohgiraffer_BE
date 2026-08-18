@@ -16,9 +16,10 @@ public record ExtractedScheduleResponse(
                 description = """
                         일정 유형. AI 가 확신하지 못하면 null 이다.
                         화면에서 사용자가 골라야 등록할 수 있다.
+                        CLASS 는 화면의 '수업/발표', EVENT 는 '행사' 다.
                         """,
                 example = "CLASS",
-                allowableValues = {"CLASS", "PRESENTATION", "ASSIGNMENT", "EVENT"}
+                allowableValues = {"CLASS", "EVENT"}
         )
         String eventType,
 

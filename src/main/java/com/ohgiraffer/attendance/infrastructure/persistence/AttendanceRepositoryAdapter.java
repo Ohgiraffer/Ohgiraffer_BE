@@ -4,6 +4,7 @@ import com.ohgiraffer.attendance.domain.model.Attendance;
 import com.ohgiraffer.attendance.domain.dto.AttendanceCalendarView;
 import com.ohgiraffer.attendance.domain.dto.AttendanceSummaryView;
 import com.ohgiraffer.attendance.domain.dto.DailyAttendanceCountView;
+import com.ohgiraffer.attendance.domain.dto.StudentAttendanceCountsView;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.infrastructure.projection.AttendanceSummaryProjection;
 import lombok.RequiredArgsConstructor;
@@ -74,5 +75,13 @@ public class AttendanceRepositoryAdapter implements AttendanceRepository {
             return 0;
         }
         return springDataAttendanceRepository.countCheckedInByUserIdsAndDate(userIds, date);
+    }
+
+    @Override
+    public List<StudentAttendanceCountsView> aggregateByUserIdsAndDateRange(List<Long> userIds, LocalDate start, LocalDate end) {
+        if (userIds.isEmpty()) {
+            return List.of();
+        }
+        return springDataAttendanceRepository.aggregateByUserIdsAndDateRange(userIds, start, end);
     }
 }

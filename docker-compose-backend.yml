@@ -5,6 +5,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      TZ: Asia/Seoul
       MYSQL_HOST: ${DB_HOST}
       MYSQL_PORT: ${DB_PORT:-3306}
       MYSQL_DATABASE: ${DB_NAME:-campflow}
@@ -35,6 +36,8 @@ services:
       CHATBOT_BOT_NICKNAME: ${CHATBOT_BOT_NICKNAME:-AI비서}
       CHATBOT_BOT_CALLBACK_URL: ${CHATBOT_BOT_CALLBACK_URL:-}
       CHATBOT_BOT_TOKEN: ${CHATBOT_BOT_TOKEN:-}
+      AUDIT_HASH_SECRET_KEY: ${AUDIT_HASH_SECRET_KEY:-this-is-ohgiraffer-campflow-audit-hash-key-for-auditlog}
+      AES_SECRET_KEY: ${AES_SECRET_KEY:-aes128-secretkey}
     volumes:
       - app-logs:/var/log/campflow
       - type: bind
@@ -84,7 +87,7 @@ services:
     container_name: promtail-backend
     volumes:
       - ./promtail-backend-config.yml:/etc/promtail/config.yml
-      - app-logs:/var/log/campflow:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/config.yml
     restart: unless-stopped
 

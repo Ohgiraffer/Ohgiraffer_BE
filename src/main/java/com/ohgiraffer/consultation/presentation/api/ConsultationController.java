@@ -254,4 +254,22 @@ public class ConsultationController {
                 new RegisterAvailableTimeCommand(principal.getId(), request.date(), request.times()));
         return ResponseEntity.ok().build();
     }
+
+    @Operation(summary = "학생별 상담 이력 조회", description = "강사/매니저가 특정 학생의 상담 이력을 상태 무관하게 전체 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    @GetMapping("/history/{userId}")
+    public ResponseEntity<List<StudentConsultationHistoryResponse>> getStudentHistory(
+            @PathVariable Long userId
+    ) {
+        List<StudentConsultationHistoryResponse> response = consultationQueryUsecase.getStudentHistory(userId).stream()
+                .map(StudentConsultationHistoryResponse::from)
+                .toList();
+        return ResponseEntity.ok(response);
+    }
 }

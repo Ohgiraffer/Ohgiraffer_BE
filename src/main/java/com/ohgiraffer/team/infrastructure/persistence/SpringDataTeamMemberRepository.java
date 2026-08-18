@@ -216,11 +216,12 @@ public interface SpringDataTeamMemberRepository
     );
 
     @Query("""
-            SELECT DISTINCT
+            SELECT
                 t.id AS teamId,
                 t.name AS teamName,
-                p.startDate AS startDate,
-                p.endDate AS endDate
+                tm.joinedAt AS joinedAt,
+                tm.leftAt AS leftAt,
+                p.endDate AS periodEndDate
             FROM TeamMemberViewJpaEntity tm
             JOIN TeamJpaEntity t
                 ON t.id = tm.teamId
@@ -228,7 +229,7 @@ public interface SpringDataTeamMemberRepository
                 ON p.id = t.teamPeriodId
             WHERE tm.userId = :userId
               AND t.deletedAt IS NULL
-            ORDER BY p.startDate DESC, t.id DESC
+            ORDER BY tm.joinedAt DESC, tm.id DESC
             """)
     List<UserTeamHistoryProjection> findUserTeamHistories(
             @Param("userId") Long userId

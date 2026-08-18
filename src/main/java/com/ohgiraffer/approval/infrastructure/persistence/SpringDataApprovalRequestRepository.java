@@ -43,6 +43,20 @@ public interface SpringDataApprovalRequestRepository
             @Param("pendingStatus") ApprovalStatus pendingStatus
     );
 
+    @Query("""
+            SELECT approvalRequest
+            FROM ApprovalRequestJpaEntity approvalRequest
+            WHERE approvalRequest.requesterId IN (
+                SELECT user.id
+                FROM UserJpaEntity user
+                WHERE user.bootcampId = :bootcampId
+            )
+            ORDER BY approvalRequest.requestedAt DESC
+            """)
+    List<ApprovalRequestJpaEntity> findManagerProcessingApprovals(
+            @Param("bootcampId") Long bootcampId
+    );
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE ApprovalRequestJpaEntity approvalRequest

@@ -5,11 +5,13 @@ import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.team.application.usecase.GetTeamListUseCase;
 import com.ohgiraffer.team.application.usecase.GetTeamPeriodListUseCase;
+import com.ohgiraffer.team.application.usecase.GetTeamWorkspaceUseCase;
 import com.ohgiraffer.team.application.usecase.GetUnassignedStudentUseCase;
 import com.ohgiraffer.team.application.usecase.GetUserTeamHistoryUseCase;
 import com.ohgiraffer.team.application.usecase.TeamListResult;
 import com.ohgiraffer.team.application.usecase.TeamMemberResult;
 import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
+import com.ohgiraffer.team.application.usecase.TeamWorkspaceResult;
 import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
 import com.ohgiraffer.team.application.usecase.UserTeamHistoryResult;
 import com.ohgiraffer.team.domain.model.Team;
@@ -33,7 +35,8 @@ public class TeamQueryService
         implements GetTeamListUseCase,
         GetUnassignedStudentUseCase,
         GetTeamPeriodListUseCase,
-        GetUserTeamHistoryUseCase {
+        GetUserTeamHistoryUseCase,
+        GetTeamWorkspaceUseCase {
 
     private final TeamRepository teamRepository;
     private final TeamPeriodRepository teamPeriodRepository;
@@ -159,6 +162,37 @@ public class TeamQueryService
         );
     }
 
+    @Override
+    public TeamWorkspaceResult getTeamWorkspace(
+            Long requesterId,
+            Role requesterRole,
+            Long teamId
+    ) {
+        validateRequester(
+                requesterId,
+                requesterRole
+        );
+
+        validateTeamId(
+                teamId
+        );
+
+        Team team =
+                teamRepository.findById(
+                                teamId
+                        )
+                        .filter(foundTeam -> !foundTeam.isDeleted())
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.TEAM_NOT_FOUND
+                                )
+                        );
+
+        return TeamWorkspaceResult.from(
+                team
+        );
+    }
+
     private TeamMemberResult toTeamMemberResult(
             TeamMember member
     ) {
@@ -249,6 +283,18 @@ public class TeamQueryService
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
                     "팀 기간 ID가 올바르지 않습니다."
+            );
+        }
+    }
+
+    private void validateTeamId(
+            Long teamId
+    ) {
+        if (teamId == null
+                || teamId <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "팀 ID가 올바르지 않습니다."
             );
         }
     }

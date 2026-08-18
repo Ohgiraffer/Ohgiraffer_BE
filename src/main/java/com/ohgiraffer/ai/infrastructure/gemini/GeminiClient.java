@@ -1,10 +1,15 @@
 package com.ohgiraffer.ai.infrastructure.gemini;
 
+import com.ohgiraffer.ai.application.recorder.AiUsageRecorder;
+import com.ohgiraffer.ai.domain.model.FailReason;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.time.Duration;
 import java.util.List;
@@ -13,14 +18,13 @@ import java.util.Map;
 @Component
 public class GeminiClient {
 
-    private static final String BASE_URL =
-            "https://generativelanguage.googleapis.com/v1beta";
-
     private final RestClient restClient;
     private final GeminiProperties properties;
+    private final AiUsageRecorder aiUsageRecorder;
 
-    public GeminiClient(GeminiProperties properties) {
+    public GeminiClient(GeminiProperties properties, AiUsageRecorder aiUsageRecorder) {
         this.properties = properties;
+        this.aiUsageRecorder = aiUsageRecorder;
 
         SimpleClientHttpRequestFactory requestFactory =
                 new SimpleClientHttpRequestFactory();
@@ -33,7 +37,7 @@ public class GeminiClient {
         );
 
         this.restClient = RestClient.builder()
-                .baseUrl(BASE_URL)
+                .baseUrl(properties.getBaseUrl())
                 .requestFactory(requestFactory)
                 .build();
     }
@@ -47,15 +51,6 @@ public class GeminiClient {
         );
     }
 
-    /*
-     * systemInstruction과 사용자 데이터를 분리하여 전송합니다.
-     *
-     * systemInstruction:
-     * - AI가 반드시 따라야 하는 고정 규칙
-     *
-     * userPrompt:
-     * - 실제 분석 대상 데이터
-     */
     public String generateText(
             String systemInstruction,
             String userPrompt
@@ -94,26 +89,16 @@ public class GeminiClient {
             );
         }
 
-        Map<?, ?> response =
-                restClient.post()
-                        .uri(uriBuilder ->
-                                uriBuilder
-                                        .path(
-                                                "/models/{model}:generateContent"
-                                        )
-                                        .queryParam(
-                                                "key",
-                                                properties.getApiKey()
-                                        )
-                                        .build(
-                                                properties.getModel()
-                                        )
-                        )
-                        .body(body)
-                        .retrieve()
-                        .body(Map.class);
-
-        return extractText(response);
+        Map<?, ?> response = callGemini(body);
+        String text;
+        try {
+            text = extractText(response);
+        } catch (BusinessException e) {
+            aiUsageRecorder.recordFailure(resolveFeatureName(), properties.getModel(), FailReason.EMPTY_RESPONSE);
+            throw e;
+        }
+        recordUsage(response);
+        return text;
     }
 
     private List<Map<String, Object>> createUserContents(
@@ -179,7 +164,6 @@ public class GeminiClient {
         throw new BusinessException(ErrorCode.AI_API_CALL_FAILED);
     }
 
-    // 챗봇 전용 - function-calling 지원. contents는 대화 히스토리(user/model/function role 섞임), tools는 role별 필터링된 함수 목록
     @SuppressWarnings("unchecked")
     public Map<String, Object> generateWithTools(List<Map<String, Object>> contents, List<Map<String, Object>> tools) {
         Map<String, Object> body = Map.of(
@@ -187,20 +171,94 @@ public class GeminiClient {
                 "tools", tools
         );
 
-        Map<String, Object> response = restClient.post()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/models/{model}:generateContent")
-                        .queryParam("key", properties.getApiKey())
-                        .build(properties.getModel()))
-                .body(body)
-                .retrieve()
-                .body(Map.class);
+        Map<?, ?> response = callGemini(body);
 
-        if (response == null) {
+        recordUsage(response);
+
+        return (Map<String, Object>) response;
+    }
+
+    private Map<?, ?> callGemini(Map<String, Object> body) {
+        try {
+            Map<?, ?> response = restClient.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/models/{model}:generateContent")
+                            .queryParam("key", properties.getApiKey())
+                            .build(properties.getModel()))
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
+
+            if (response == null) {
+                aiUsageRecorder.recordFailure(resolveFeatureName(), properties.getModel(), FailReason.EMPTY_RESPONSE);
+                throw new BusinessException(ErrorCode.AI_API_CALL_FAILED);
+            }
+
+            return response;
+
+        } catch (RestClientResponseException e) {
+            FailReason reason = resolveFailReason(e.getStatusCode());
+            aiUsageRecorder.recordFailure(resolveFeatureName(), properties.getModel(), reason);
+            throw mapToBusinessException(reason);
+        } catch (RestClientException e) {
+            aiUsageRecorder.recordFailure(resolveFeatureName(), properties.getModel(), FailReason.SERVER_ERROR);
             throw new BusinessException(ErrorCode.AI_API_CALL_FAILED);
         }
-        return response;
+    }
 
+    private FailReason resolveFailReason(HttpStatusCode status) {
+        if (status.value() == 429) {
+            return FailReason.RATE_LIMIT;
+        }
+        if (status.value() == 401 || status.value() == 403) {
+            return FailReason.AUTH_INVALID;
+        }
+        if (status.value() == 400) {
+            return FailReason.BAD_REQUEST;
+        }
+        return FailReason.SERVER_ERROR;
+    }
+
+    private BusinessException mapToBusinessException(FailReason reason) {
+        return switch (reason) {
+            case RATE_LIMIT -> new BusinessException(ErrorCode.AI_RATE_LIMIT_EXCEEDED);
+            case AUTH_INVALID -> new BusinessException(ErrorCode.AI_API_KEY_INVALID);
+            case BAD_REQUEST -> new BusinessException(ErrorCode.AI_REQUEST_INVALID);
+            default -> new BusinessException(ErrorCode.AI_API_CALL_FAILED);
+        };
+    }
+
+    private void recordUsage(Map<?, ?> response) {
+        if (response == null) {
+            return;
+        }
+
+        Object usageObj = response.get("usageMetadata");
+        if (!(usageObj instanceof Map<?, ?> usage)) {
+            return;
+        }
+
+        aiUsageRecorder.recordSuccess(
+                resolveFeatureName(),
+                properties.getModel(),
+                toInt(usage.get("promptTokenCount")),
+                toInt(usage.get("candidatesTokenCount")),
+                toInt(usage.get("cachedContentTokenCount"))
+        );
+    }
+
+    private int toInt(Object value) {
+        return value instanceof Number number ? number.intValue() : 0;
+    }
+
+    private String resolveFeatureName() {
+        StackWalker.StackFrame callerFrame = StackWalker.getInstance()
+                .walk(frames -> frames
+                        .filter(f -> !f.getClassName().equals(GeminiClient.class.getName()))
+                        .findFirst()
+                        .orElse(null));
+
+        return callerFrame != null ? callerFrame.getClassName() : "unknown";
     }
 
 }

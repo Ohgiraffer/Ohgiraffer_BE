@@ -134,4 +134,17 @@ public class BootcampQueryService implements BootcampQueryUsecase {
                 ))
                 .toList();
     }
+
+    @Override
+    public List<AttendancePeriodStartResult> getActivePeriods(LocalDate referenceDate) {
+        return attendancePeriodRepository.findActivePeriods(referenceDate).stream()
+                .map(p -> new AttendancePeriodStartResult(
+                        p.getId(),
+                        p.getBootcampId(),
+                        p.getPeriodNo(),
+                        p.getPeriodStart(),
+                        p.getPeriodEnd()
+                ))
+                .toList();
+    }
 }

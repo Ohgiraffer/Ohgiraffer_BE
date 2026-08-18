@@ -8,6 +8,7 @@ import com.ohgiraffer.evaluation.domain.model.EvaluationColumnMapping;
 import com.ohgiraffer.evaluation.domain.model.EvaluationRecord;
 import com.ohgiraffer.evaluation.domain.model.EvaluationSheetLink;
 import com.ohgiraffer.evaluation.domain.model.SheetSyncLog;
+import com.ohgiraffer.evaluation.domain.model.TraineeChangeSummary;
 import com.ohgiraffer.evaluation.domain.repository.EvaluationRecordRepository;
 import com.ohgiraffer.evaluation.domain.repository.EvaluationSheetLinkRepository;
 import com.ohgiraffer.evaluation.domain.repository.SheetSyncLogRepository;
@@ -30,6 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -84,8 +86,8 @@ class EvaluationSyncServiceTest {
                 evaluationSummaryPort
         );
 
-        when(evaluationSummaryPort.summarize(any()))
-                .thenReturn("AI 가 만든 요약입니다.");
+        when(evaluationSummaryPort.findPointsToCheck(any()))
+                .thenReturn(Map.of());
 
         when(evaluationSheetLinkRepository.find())
                 .thenReturn(Optional.of(sheetLink()));
@@ -97,7 +99,7 @@ class EvaluationSyncServiceTest {
                     SheetSyncLog log = invocation.getArgument(0);
                     return SheetSyncLog.restore(
                             99L, log.getSheetLinkId(), log.getExecutedBy(),
-                            log.getChangedCount(), log.getDiffSummary(),
+                            log.getChangedCount(), log.getSummaries(),
                             log.getSyncedAt());
                 });
         when(evaluationRecordRepository.findAllBySheetLinkId(SHEET_LINK_ID))
@@ -268,20 +270,45 @@ class EvaluationSyncServiceTest {
     }
 
     @Test
-    @DisplayName("변경이 있으면 AI 요약을 쓴다")
-    void syncUsesAiSummary() {
+    @DisplayName("훈련생별 카드에 바뀐 값을 그대로 적는다")
+    void syncWritesTraineeCard() {
         givenStored(stored("코드 품질", new BigDecimal("70"), "리팩터링 필요"));
         givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "88", "리팩터링 필요"));
 
         EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
 
-        assertEquals("AI 가 만든 요약입니다.", result.diffSummary());
+        TraineeChangeSummary summary = result.summaries().get(0);
+
+        /*
+         * 무엇이 어떻게 바뀌었는지는 이미 값으로 들고 있어 AI 에게 물을 것이 없다.
+         */
+        assertEquals(TRAINEE_NAME, summary.traineeName());
+        assertEquals("중간평가", summary.evaluationType());
+        assertEquals("코드 품질", summary.item());
+        assertEquals("70 → 88", summary.score());
     }
 
     @Test
-    @DisplayName("AI 요약이 실패해도 동기화는 성공하고 기본 요약으로 대체한다")
-    void syncFallsBackWhenSummaryFails() {
-        when(evaluationSummaryPort.summarize(any()))
+    @DisplayName("AI 가 짚은 확인 필요를 해당 훈련생 카드에 넣는다")
+    void syncAttachesPointToCheck() {
+        when(evaluationSummaryPort.findPointsToCheck(any()))
+                .thenReturn(Map.of(TRAINEE_NAME, "점수 급등 사유 확인 필요"));
+
+        givenStored(stored("코드 품질", new BigDecimal("70"), "리팩터링 필요"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "88", "리팩터링 필요"));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        assertEquals(
+                "점수 급등 사유 확인 필요",
+                result.summaries().get(0).needsCheck()
+        );
+    }
+
+    @Test
+    @DisplayName("AI 가 실패해도 동기화는 성공하고 확인 필요만 빈다")
+    void syncKeepsCardWhenAiFails() {
+        when(evaluationSummaryPort.findPointsToCheck(any()))
                 .thenThrow(new RuntimeException("제미나이 호출 실패"));
 
         givenStored(stored("코드 품질", new BigDecimal("70"), "리팩터링 필요"));
@@ -290,13 +317,12 @@ class EvaluationSyncServiceTest {
         EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
 
         /*
-         * 요약은 거들어 주는 값이지 평가 데이터가 아니다. 외부 호출이 실패했다고
+         * 확인 필요는 거들어 주는 값이지 평가 데이터가 아니다. 외부 호출이 실패했다고
          * 이미 반영된 평가까지 되돌리면 사용자는 다시 눌러야 하고 같은 일이 반복된다.
          */
         assertEquals(1, result.updatedCount());
-        assertTrue(result.diffSummary().contains("김철수"));
-        assertTrue(result.diffSummary().contains("70"));
-        assertTrue(result.diffSummary().contains("88"));
+        assertEquals("70 → 88", result.summaries().get(0).score());
+        assertNull(result.summaries().get(0).needsCheck());
         verify(sheetSyncLogRepository).save(any());
     }
 
@@ -309,9 +335,9 @@ class EvaluationSyncServiceTest {
         evaluationSyncService.sync(EXECUTOR_ID);
 
         /*
-         * 요약할 것이 없는데 부르면 호출 비용만 든다.
+         * 짚을 것이 없는데 부르면 호출 비용만 든다.
          */
-        verify(evaluationSummaryPort, never()).summarize(any());
+        verify(evaluationSummaryPort, never()).findPointsToCheck(any());
     }
 
     @Test

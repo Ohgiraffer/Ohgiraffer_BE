@@ -4,6 +4,7 @@ import com.ohgiraffer.approval.application.command.BudgetColumnMapping;
 import com.ohgiraffer.approval.application.port.BudgetSheetPort;
 import com.ohgiraffer.approval.application.port.BudgetSheetRow;
 import com.ohgiraffer.approval.application.usecase.BudgetSyncResult;
+import com.ohgiraffer.global.aop.ratelimit.RateLimited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.global.google.sheets.SpreadsheetIdExtractor;
@@ -32,6 +33,7 @@ public class BudgetSheetSyncService {
     private final BudgetSheetSyncPersistenceService budgetSheetSyncPersistenceService;
     private final Clock clock;
 
+    @RateLimited(key = "google_sheets_sync", limit = 10, windowSeconds = 60)
     public BudgetSyncResult sync(
             String sheetUrl,
             String tabName,

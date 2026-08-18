@@ -48,6 +48,10 @@ public class Consultation {
 
     public static Consultation request(Long counselorId, Long requesterId, String topic,
                                        String content, LocalDateTime scheduledAt) {
+        if (!scheduledAt.isAfter(LocalDateTime.now())) {
+            throw new BusinessException(ErrorCode.CONSULTATION_TIME_IN_PAST);
+        }
+
         return Consultation.builder()
                 .counselorId(counselorId)
                 .requesterId(requesterId)

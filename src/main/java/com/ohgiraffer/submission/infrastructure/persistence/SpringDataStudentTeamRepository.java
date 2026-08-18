@@ -19,29 +19,25 @@ public interface SpringDataStudentTeamRepository
      */
     @Query(
             value = """
-                    SELECT tm.team_id
-                    FROM team_member tm
-                    JOIN team t
-                      ON t.team_id = tm.team_id
-                    JOIN team_period tp
-                      ON tp.team_period_id = t.team_period_id
-                    WHERE tm.user_id = :userId
-                      AND t.dissolved_at IS NULL
-                      AND t.archived_at IS NULL
-                      AND t.deleted_at IS NULL
-                      AND tp.archived_at IS NULL
-                      AND tp.deleted_at IS NULL
-                      AND DATE(:targetAt)
-                          BETWEEN tp.start_date
-                              AND tp.end_date
-                      AND tm.joined_at <= :targetAt
-                      AND (
-                          tm.left_at IS NULL
-                          OR tm.left_at > :targetAt
-                      )
-                    ORDER BY tm.joined_at DESC,
-                             tm.team_member_id DESC
-                    """,
+                SELECT tm.team_id
+                FROM team_member tm
+                JOIN team t
+                  ON t.team_id = tm.team_id
+                JOIN team_period tp
+                  ON tp.team_period_id = t.team_period_id
+                WHERE tm.user_id = :userId
+                  AND t.dissolved_at IS NULL
+                  AND t.archived_at IS NULL
+                  AND t.deleted_at IS NULL
+                  AND tp.archived_at IS NULL
+                  AND tp.deleted_at IS NULL
+                  AND DATE(:targetAt)
+                      BETWEEN tp.start_date
+                          AND tp.end_date
+                  AND tm.left_at IS NULL
+                ORDER BY tm.joined_at DESC,
+                         tm.team_member_id DESC
+                """,
             nativeQuery = true
     )
     List<Long> findTeamIdsByUserIdAndDateTime(

@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -127,5 +128,12 @@ public class UserQueryService implements UserQueryUsecase {
     public Long getAnyActiveBootcampId() {
         return userRepository.findAnyBootcampIdByStatus(UserStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOTCAMP_NOT_FOUND));
+    }
+
+    @Override
+    public LocalDate getJoinDate(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        return user.getJoinDate();
     }
 }

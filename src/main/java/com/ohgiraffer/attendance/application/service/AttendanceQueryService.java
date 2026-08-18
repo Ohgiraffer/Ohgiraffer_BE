@@ -8,11 +8,11 @@ import com.ohgiraffer.attendance.application.usecase.AttendanceQueryUsecase;
 import com.ohgiraffer.attendance.domain.dto.AttendanceCalendarView;
 import com.ohgiraffer.attendance.domain.model.*;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
-import com.ohgiraffer.attendance.domain.repository.LeaveBalanceRepository;
-import com.ohgiraffer.attendance.domain.repository.SickBalanceRepository;
+import com.ohgiraffer.attendance.infrastructure.scheduler.AttendanceBalanceProcessor;
 import com.ohgiraffer.attendance.presentation.api.response.*;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
 import com.ohgiraffer.bootcamp.domain.model.AttendancePeriodResult;
+import com.ohgiraffer.bootcamp.domain.model.BootcampPeriodResult;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
@@ -34,13 +34,11 @@ import java.util.stream.Stream;
 @Service
 public class AttendanceQueryService implements AttendanceQueryUsecase {
 
-
     private final AttendanceRepository attendanceRepository;
     private final BootcampAccessPolicy bootcampAccessPolicy;
-    private final LeaveBalanceRepository leaveBalanceRepository;
-    private final SickBalanceRepository sickBalanceRepository;
     private final UserQueryUsecase userQueryUsecase;
     private final BootcampQueryUsecase bootcampQueryUsecase;
+    private final AttendanceBalanceProcessor attendanceBalanceProcessor;
 
     private final AttendanceSummaryCache attendanceSummaryCache;
     private final AttendanceListCache attendanceListCache;
@@ -117,17 +115,14 @@ public class AttendanceQueryService implements AttendanceQueryUsecase {
     }
 
     private AttendanceBalanceResponse buildBalance(Long userId) {
+        Long bootcampId = userQueryUsecase.getBootcampId(userId);
+        BootcampPeriodResult bootcampPeriod = bootcampQueryUsecase.getPeriod(bootcampId);
         LocalDate today = LocalDate.now();
 
-        int remainingLeave = leaveBalanceRepository.findCurrentByUserId(userId, today)
-                .map(LeaveBalance::remainingDays)
-                .orElse(0);
+        LeaveBalance leave = attendanceBalanceProcessor.ensureLeaveBalance(userId, bootcampPeriod, today);
+        SickBalance sick = attendanceBalanceProcessor.ensureSickBalance(userId, bootcampPeriod);
 
-        int remainingSick = sickBalanceRepository.findCurrentByUserId(userId, today)
-                .map(SickBalance::remainingDays)
-                .orElse(0);
-
-        return AttendanceBalanceResponse.of(remainingLeave, remainingSick);
+        return AttendanceBalanceResponse.of(leave.remainingDays(), sick.remainingDays());
     }
 
     private MonthlyAttendanceResponse buildMonthlyAttendance(Long userId, YearMonth yearMonth) {

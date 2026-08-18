@@ -81,7 +81,7 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
                 : ChatChannel.ChannelType.GROUP;
 
         ChatChannel savedChannel = chatChannelRepository.save(
-                ChatChannel.create(sendbirdChannelUrl, type, command.name(), null)
+                ChatChannel.create(sendbirdChannelUrl, type, normalizedName, null)
         );
 
         // 채널 생성 시 지정된 유저 전원을 참여자로 즉시 등록
@@ -93,7 +93,7 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
         log.info("[Chat] 채널 생성 완료 | channelId={}, memberCount={}",
                 sendbirdChannelUrl, allMemberIds.size());
 
-        return new ChatChannelResult(sendbirdChannelUrl, command.name());
+        return new ChatChannelResult(sendbirdChannelUrl, normalizedName);
     }
 
     // userIds 전원이 users 테이블에 실존하는지 검증, 하나라도 없으면 400으로 즉시 차단
@@ -150,10 +150,30 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
         log.info("[Chat] 채널 멤버 갱신 완료 | channelId={}", command.channelId());
     }
 
-    // 팀 채팅방 자동 생성 - team_id를 채워서 저장, 팀변경 시 findAllByTeamId로 대상 채널 조회 가능하게 함
+    // 팀 채팅방 자동 생성 - 기존 호출 호환용
     @Override
     @Transactional
-    public ChatChannelResult createTeamChannel(Long teamId, List<Long> memberUserIds) {
+    public ChatChannelResult createTeamChannel(
+            Long teamId,
+            List<Long> memberUserIds
+    ) {
+        return createTeamChannel(
+                teamId,
+                createDefaultTeamChannelName(
+                        teamId
+                ),
+                memberUserIds
+        );
+    }
+
+    // 팀 채팅방 자동 생성 - 팀명을 채팅방 이름으로 저장
+    @Override
+    @Transactional
+    public ChatChannelResult createTeamChannel(
+            Long teamId,
+            String teamName,
+            List<Long> memberUserIds
+    ) {
         List<ChatChannel> existingChannels =
                 chatChannelRepository.findAllByTeamId(
                         teamId
@@ -183,20 +203,72 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
             );
         }
 
-        String sendbirdChannelUrl = sendbirdApiPort.createTeamChannel(teamId, memberUserIds);
+        String channelName =
+                normalizeTeamChannelName(
+                        teamName,
+                        teamId
+                );
 
-        ChatChannel savedChannel = chatChannelRepository.save(
-                ChatChannel.create(sendbirdChannelUrl, ChatChannel.ChannelType.GROUP, "team-" + teamId, teamId)
+        String sendbirdChannelUrl =
+                sendbirdApiPort.createTeamChannel(
+                        teamId,
+                        memberUserIds
+                );
+
+        ChatChannel savedChannel =
+                chatChannelRepository.save(
+                        ChatChannel.create(
+                                sendbirdChannelUrl,
+                                ChatChannel.ChannelType.GROUP,
+                                channelName,
+                                teamId
+                        )
+                );
+
+        List<ChatChannelMember> members =
+                memberUserIds.stream()
+                        .map(userId ->
+                                ChatChannelMember.join(
+                                        savedChannel.getId(),
+                                        userId
+                                )
+                        )
+                        .toList();
+
+        chatChannelMemberRepository.saveAll(
+                members
         );
 
-        List<ChatChannelMember> members = memberUserIds.stream()
-                .map(userId -> ChatChannelMember.join(savedChannel.getId(), userId))
-                .toList();
+        log.info(
+                "[Chat] 팀 채널 자동 생성 완료 | teamId={}, channelId={}, name={}",
+                teamId,
+                sendbirdChannelUrl,
+                channelName
+        );
 
-        chatChannelMemberRepository.saveAll(members);
+        return new ChatChannelResult(
+                sendbirdChannelUrl,
+                channelName
+        );
+    }
 
-        log.info("[Chat] 팀 채널 자동 생성 완료 | teamId={}, channelId={}", teamId, sendbirdChannelUrl);
+    private String normalizeTeamChannelName(
+            String teamName,
+            Long teamId
+    ) {
+        if (teamName == null
+                || teamName.isBlank()) {
+            return createDefaultTeamChannelName(
+                    teamId
+            );
+        }
 
-        return new ChatChannelResult(sendbirdChannelUrl, "team-" + teamId);
+        return teamName.trim();
+    }
+
+    private String createDefaultTeamChannelName(
+            Long teamId
+    ) {
+        return "team-" + teamId;
     }
 }

@@ -1,5 +1,7 @@
 package com.ohgiraffer.evaluation.application.query;
 
+import com.ohgiraffer.evaluation.domain.model.TraineeChangeSummary;
+
 import java.util.List;
 
 /**
@@ -16,7 +18,7 @@ public record EvaluationSyncResult(
         Long syncLogId,
         int addedCount,
         int updatedCount,
-        String diffSummary,
+        List<TraineeChangeSummary> summaries,
         List<SkippedRow> skipped
 ) {
 
