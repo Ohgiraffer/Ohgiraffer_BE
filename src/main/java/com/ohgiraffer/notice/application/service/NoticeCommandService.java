@@ -104,11 +104,14 @@ public class NoticeCommandService implements NoticeCommandUseCase {
 
     // 작성자 본인 제외, 같은 부트캠프 전체에게 알림 발행
     private void notifyAudience(Notice notice) {
-        List<Long> audience = noticeAudienceLookupPort.findAllUserIdsInSameBootcamp(notice.getAuthorId());
+        List<Long> audience = noticeAudienceLookupPort.findAllUserIdsInSameBootcamp(
+                notice.getAuthorId(),
+                notice.isVisibleToTrainee() // 신규 - 공지 비공개 여부 전달
+        );
 
         for (Long userId : audience) {
             if (userId.equals(notice.getAuthorId())) {
-                continue; // 작성한 본인은 제외
+                continue;
             }
 
             eventPublisher.publishEvent(new NotificationRequestedEvent(

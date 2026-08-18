@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface NoticeAudienceLookupPort {
 
-    // authorId와 같은 부트캠프에 속한 전체 유저 아이디 조회 (역할 무관)
-    List<Long> findAllUserIdsInSameBootcamp(Long authorId);
+    // authorId와 같은 부트캠프 유저 중, 공지가 비공개(훈련생 제외)면 훈련생 빼고 조회
+    List<Long> findAllUserIdsInSameBootcamp(Long authorId, boolean visibleToTrainee);
 
 }

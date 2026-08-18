@@ -21,7 +21,7 @@ public class NoticeAudienceLookupAdapter implements NoticeAudienceLookupPort {
     private final UserRepository userRepository;
 
     @Override
-    public List<Long> findAllUserIdsInSameBootcamp(Long authorId) {
+    public List<Long> findAllUserIdsInSameBootcamp(Long authorId, boolean visibleToTrainee) {
         Long bootcampId = userRepository.findBootcampIdByUserId(authorId)
                 .orElse(null);
 
@@ -29,7 +29,10 @@ public class NoticeAudienceLookupAdapter implements NoticeAudienceLookupPort {
             return List.of();
         }
 
-        return userRepository.findAllByBootcampId(bootcampId).stream()
+        List<User> users = userRepository.findAllByBootcampId(bootcampId);
+
+        return users.stream()
+                .filter(user -> visibleToTrainee || user.getRole() != Role.STUDENT) // 신규 - 비공개 공지면 훈련생 제외
                 .map(User::getId)
                 .toList();
     }

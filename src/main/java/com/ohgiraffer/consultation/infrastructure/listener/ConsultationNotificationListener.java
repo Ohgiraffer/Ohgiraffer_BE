@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -27,6 +28,7 @@ public class ConsultationNotificationListener {
     private final ApplicationEventPublisher eventPublisher;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional
     public void handle(ConsultationRequestedEvent event) {
         try {
             eventPublisher.publishEvent(new NotificationRequestedEvent(
