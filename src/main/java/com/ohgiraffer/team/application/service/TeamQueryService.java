@@ -26,7 +26,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -73,9 +72,10 @@ public class TeamQueryService
 
         LocalDateTime snapshotAt =
                 teamPeriod.getEndDate()
-                        .atTime(
-                                LocalTime.MAX
-                        );
+                        .plusDays(
+                                1
+                        )
+                        .atStartOfDay();
 
         Map<Long, List<TeamMemberResult>> memberMap =
                 teamRepository.findMembersByTeamIdsAt(
