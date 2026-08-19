@@ -30,7 +30,8 @@ public class NotificationRepositoryAdapter implements NotificationRepository {
     @Override
     public Notification save(Notification notification) {
         NotificationJpaEntity entity = NotificationJpaEntity.from(notification);
-        return jpaRepository.save(entity).toDomain();
+        NotificationJpaEntity saved = jpaRepository.saveAndFlush(entity);
+        return saved.toDomain();
     }
 
     // 단건 조회 - 본인 확인 후 처리해야 하는 NOTI-002/003에서 사용
