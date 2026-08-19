@@ -38,6 +38,7 @@ services:
       CHATBOT_BOT_TOKEN: ${CHATBOT_BOT_TOKEN:-}
       AUDIT_HASH_SECRET_KEY: ${AUDIT_HASH_SECRET_KEY:-this-is-ohgiraffer-campflow-audit-hash-key-for-auditlog}
       AES_SECRET_KEY: ${AES_SECRET_KEY:-aes128-secretkey}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
     volumes:
       - app-logs:/var/log/campflow
       - type: bind
