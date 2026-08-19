@@ -133,6 +133,11 @@ public class CreateLeaveApprovalService
                 approvalHistory
         );
 
+        notifyManagers(
+                savedApprovalRequest,
+                command.requesterId()
+        );
+
         return CreateApprovalResult.from(
                 savedApprovalRequest
         );
