@@ -28,7 +28,6 @@ public class ConsultationNotificationListener {
     private final ApplicationEventPublisher eventPublisher;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional
     public void handle(ConsultationRequestedEvent event) {
         try {
             eventPublisher.publishEvent(new NotificationRequestedEvent(
