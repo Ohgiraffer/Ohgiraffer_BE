@@ -24,24 +24,14 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @RequiredArgsConstructor
 public class ConsultationNotificationListener {
 
-    private static final String RELATED_ENTITY_TYPE = "CONSULTATION";
-
     private final ApplicationEventPublisher eventPublisher;
+    private final ConsultationNotificationTxHelper txHelper; // 새로 분리
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(ConsultationRequestedEvent event) {
         try {
-            eventPublisher.publishEvent(new NotificationRequestedEvent(
-                    event.counselorId(),
-                    NotificationType.CONSULTATION,
-                    "상담 신청이 접수되었습니다",
-                    "\"" + event.topic() + "\" 주제로 상담이 신청되었습니다.",
-                    RELATED_ENTITY_TYPE,
-                    event.consultationId()
-            ));
+            txHelper.publishInNewTransaction(event);
         } catch (Exception e) {
-            // 알림 실패가 상담 신청 자체를 되돌리면 안 됨 - 흡수하고 로그만 남김
             log.error("[Consultation->Notification] 알림 변환 발행 실패 | consultationId={}", event.consultationId(), e);
         }
     }
