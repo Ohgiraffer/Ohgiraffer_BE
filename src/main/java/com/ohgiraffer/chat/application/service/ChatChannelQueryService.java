@@ -14,6 +14,7 @@ import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
 import com.ohgiraffer.chat.domain.repository.ChatMessageMirrorRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,8 @@ import java.util.stream.Collectors;
  *  ChatChannelQueryUseCase 구현체
  *  읽음 인원 계산: 채널 최신 메시지 id를 기준으로, 각 멤버의 lastReadMessageId가
  *  최신 메시지 id 이상이면 읽음으로 판단함 (최신 메시지가 없으면 전원 읽음)
+ *  프로필 이미지: User.profileImg에는 S3 key만 저장되어 있어, 응답에 내려주기 전
+ *  반드시 S3UrlResolver.resolve()로 presigned URL로 변환해야 함 (누락 시 프사 안 뜸)
  */
 
 @Slf4j
@@ -45,6 +48,7 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
     private final ChatMessageMirrorRepository chatMessageMirrorRepository;
     private final UserRepository userRepository;
     private final SendbirdApiPort sendbirdApiPort;
+    private final S3UrlResolver s3UrlResolver;
 
     // 그룹 채팅방 상세 조회 - 참여자 목록 + 최신메시지 기준 읽음 인원 계산
     @Override
@@ -97,7 +101,7 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
                             user != null ? user.getName() : null,
                             user != null ? user.getEmail() : null,
                             user != null ? user.getRole().name() : null,
-                            user != null ? user.getProfileImg() : null,
+                            user != null ? resolveProfileImgUrl(user.getProfileImg()) : null,
                             m.getJoinedAt(), m.getLastReadMessageId(),
                             isRead(m.getLastReadMessageId(), latestMessageId)
                     );
@@ -184,7 +188,7 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
                             last != null ? last.content() : null,
                             last != null ? last.sentAt() : null,
                             unreadCounts.getOrDefault(channel.getId(), 0L),
-                            dmPartnerInfo.profileUrlByChannelUrl().get(url), // GROUP이면 null
+                            dmPartnerInfo.profileUrlByChannelUrl().get(url), // GROUP이면 null, DM이면 이미 presigned URL로 변환된 값
                             dmPartnerInfo.onlineByChannelUrl().get(url) // GROUP이면 null
                     );
                 })
@@ -237,7 +241,8 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
             onlineByChannelUrl.put(url, onlineByUserId.getOrDefault(otherUserId, false));
             User partner = usersByOtherUserId.get(otherUserId);
             if (partner != null) {
-                profileUrlByChannelUrl.put(url, partner.getProfileImg());
+                // S3 key 원본이 아니라 presigned URL로 변환해서 담음 (채널 목록 프사 안 뜨던 원인)
+                profileUrlByChannelUrl.put(url, resolveProfileImgUrl(partner.getProfileImg()));
             }
         });
 
@@ -336,6 +341,14 @@ public class ChatChannelQueryService implements ChatChannelQueryUseCase {
             return true;
         }
         return lastReadMessageId != null && lastReadMessageId >= latestMessageId;
+    }
+
+    // profileImg(S3 key)를 실제 접근 가능한 presigned URL로 변환. key 없으면 null 그대로 반환
+    private String resolveProfileImgUrl(String profileImgKey) {
+        if (profileImgKey == null || profileImgKey.isBlank()) {
+            return null;
+        }
+        return s3UrlResolver.resolve(profileImgKey);
     }
 
 }
