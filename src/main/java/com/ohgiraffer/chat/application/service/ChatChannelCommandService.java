@@ -11,6 +11,7 @@ import com.ohgiraffer.chat.domain.repository.ChatChannelMemberRepository;
 import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ import java.util.stream.Stream;
  *  ChatChannelCommandUseCase 구현체
  *  Sendbird에 먼저 채널/멤버 반영 성공한 다음, 그 결과(sendbirdChannelUrl)를 우리 DB에도 미러링 저장함
  *  - team_id 검색, 채널 타입 조회 같은 도메인 쿼리를 Sendbird API 호출 없이 우리 DB에서 바로 처리하기 위함
+ *  - 상대방이 로그인 이력 없어도 프사/이름이 반영되도록, 채널에 새로 들어오는 유저는 여기서 Sendbird에 프로비저닝함
  */
 
 @Slf4j
@@ -37,6 +39,7 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
     private final ChatChannelRepository chatChannelRepository;
     private final ChatChannelMemberRepository chatChannelMemberRepository;
     private final UserRepository userRepository;
+    private final S3UrlResolver s3UrlResolver;
 
     // 채팅방 생성 - Sendbird 반영 성공 후 채널/참여자 전원을 우리 DB에 미러링
     @Override
@@ -61,6 +64,9 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
         List<Long> allMemberIds = Stream.concat(Stream.of(command.senderId()), invitees.stream())
                 .distinct()
                 .toList();
+
+        // 상대방이 로그인 이력 없어도 Sendbird에 최신 프사/이름이 반영되도록 채널 생성 전 프로비저닝
+        provisionUsers(allMemberIds);
 
         // 이름 미입력(null/빈 문자열/공백)은 전부 null로 통일해서 저장 - 조회 시점에 DM이면 상대방 이름으로 채워짐
         String normalizedName = (command.name() == null || command.name().isBlank()) ? null : command.name();
@@ -108,6 +114,27 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
         }
     }
 
+    // 채팅 상대로 지목된 유저들을 Sendbird에 최신 정보로 반영 (로그인 여부와 무관, 실패해도 흐름 막지 않음)
+    private void provisionUsers(List<Long> userIds) {
+        for (Long userId : userIds) {
+            userRepository.findById(userId).ifPresent(user -> {
+                try {
+                    String profileUrl = resolveProfileImgUrl(user.getProfileImg());
+                    sendbirdApiPort.provisionUser(user.getId(), user.getName(), profileUrl);
+                } catch (Exception e) {
+                    log.warn("[Chat] Sendbird 유저 프로비저닝 실패 | userId={} | reason={}", userId, e.getMessage());
+                }
+            });
+        }
+    }
+
+    private String resolveProfileImgUrl(String profileImgKey) {
+        if (profileImgKey == null || profileImgKey.isBlank()) {
+            return null;
+        }
+        return s3UrlResolver.resolve(profileImgKey);
+    }
+
     // 팀변경 채널 자동반영 - Sendbird에 먼저 초대/제외 반영, 실패하면 우리 DB는 안 건드림
     @Override
     @Transactional
@@ -116,6 +143,7 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
         // 신규 추가 - addUserIds만 검증 (removeUserIds는 없는 유저 제거 시도해도 조용히 no-op이라 검증 불필요)
         if (command.addUserIds() != null && !command.addUserIds().isEmpty()) {
             validateUsersExist(command.addUserIds());
+            provisionUsers(command.addUserIds());
         }
 
         // Sendbird에 먼저 반영 - 실패하면 우리 DB도 건드리지 않음 (Sendbird가 source of truth)
@@ -208,6 +236,8 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
                         teamName,
                         teamId
                 );
+
+        provisionUsers(memberUserIds);
 
         String sendbirdChannelUrl =
                 sendbirdApiPort.createTeamChannel(
