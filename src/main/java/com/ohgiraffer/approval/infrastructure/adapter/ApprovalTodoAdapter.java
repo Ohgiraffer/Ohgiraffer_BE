@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
 
 /*
  * comment.
@@ -28,15 +29,19 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ApprovalTodoAdapter implements ApprovalTodoPort {
 
+    // "처리중"으로 인정할 상태 화이트리스트. PENDING(신청됨), CHECKED(확인됨)만 포함
+    private static final Set<ApprovalStatus> STILL_PROCESSING_STATUSES =
+            Set.of(ApprovalStatus.PENDING, ApprovalStatus.CHECKED);
+
     private final ApprovalRequestRepository approvalRequestRepository;  // 결재 도메인 Repository 직접 주입
     private final GetUserBootcampIdPort getUserBootcampIdPort;          // userId -> bootcampId 조회용 Port
 
     // role별 결재 건수 요약
     @Override
     public TodoResponse getSummary(Long userId, Role role) {
-        List<TodoItemResponse> pendingItems = getPendingItems(userId, role);
-        String label = role == Role.MANAGER ? "결재 대기" : "결재 처리중";
-        return new TodoResponse(TodoSourceDomain.APPROVAL, label, pendingItems.size(), null);
+        List<TodoItemResponse> pendingItems = getPendingItems(userId, role);  // role별 처리중 목록 재사용
+        String label = role == Role.MANAGER ? "결재 대기" : "결재 처리중";     // 매니저는 승인권자 관점, 나머지는 신청자 관점 라벨
+        return new TodoResponse(TodoSourceDomain.APPROVAL, label, pendingItems.size(), null);  // 결재는 페이지네이션 없음
     }
 
     // role별 결재 상세 리스트
@@ -49,11 +54,15 @@ public class ApprovalTodoAdapter implements ApprovalTodoPort {
             Long bootcampId = getUserBootcampIdPort.findBootcampIdByUserId(userId)
                     .orElse(null);
             if (bootcampId == null) {
-                return List.of();
+                return List.of();  // 소속 부트캠프가 없으면 조회 불가로 빈 목록 반환
             }
-            requests = approvalRequestRepository.findProcessingApprovals(userId, bootcampId);
+            // be1 쿼리가 status 조건 없이 approverId 매칭 건을 모두 내려줄 수 있어
+            // TODO 도메인 단에서 한 번 더 화이트리스트 필터링
+            requests = approvalRequestRepository.findProcessingApprovals(userId, bootcampId).stream()
+                    .filter(this::isStillProcessing)
+                    .toList();
         } else {
-            // STUDENT/INSTRUCTOR 공통 - 본인 신청 건 중 완료/반려 전까지 "처리중"
+            // STUDENT/INSTRUCTOR 공통 - 본인 신청 건 중 PENDING/CHECKED만 "처리중"
             requests = approvalRequestRepository.findByRequesterIdOrderByRequestedAtDesc(userId).stream()
                     .filter(this::isStillProcessing)
                     .toList();
@@ -64,9 +73,9 @@ public class ApprovalTodoAdapter implements ApprovalTodoPort {
                 .toList();
     }
 
+    // 화이트리스트(PENDING, CHECKED)에 포함된 상태만 "처리중"으로 인정
     private boolean isStillProcessing(ApprovalRequest request) {
-        return request.getStatus() != ApprovalStatus.COMPLETED
-                && request.getStatus() != ApprovalStatus.REJECTED;
+        return STILL_PROCESSING_STATUSES.contains(request.getStatus());
     }
 
     // ApprovalRequest 도메인 모델 -> TodoItemResponse 변환
