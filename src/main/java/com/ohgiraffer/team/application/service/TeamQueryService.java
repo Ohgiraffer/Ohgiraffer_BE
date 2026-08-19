@@ -16,7 +16,6 @@ import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
 import com.ohgiraffer.team.application.usecase.UserTeamHistoryResult;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
-import com.ohgiraffer.team.domain.model.TeamPeriod;
 import com.ohgiraffer.team.domain.model.UnassignedStudent;
 import com.ohgiraffer.team.domain.repository.TeamPeriodRepository;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
@@ -25,7 +24,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -55,32 +53,18 @@ public class TeamQueryService
                 requesterRole
         );
 
-        TeamPeriod teamPeriod =
-                validateAndGetTeamPeriod(
-                        teamPeriodId
-                );
+        validateAndGetTeamPeriod(
+                teamPeriodId
+        );
 
         List<Team> teams =
                 teamRepository.findVisibleTeamsByPeriodId(
                         teamPeriodId
                 );
 
-        List<Long> teamIds =
-                teams.stream()
-                        .map(Team::getId)
-                        .toList();
-
-        LocalDateTime snapshotAt =
-                teamPeriod.getEndDate()
-                        .plusDays(
-                                1
-                        )
-                        .atStartOfDay();
-
         Map<Long, List<TeamMemberResult>> memberMap =
-                teamRepository.findMembersByTeamIdsAt(
-                                teamIds,
-                                snapshotAt
+                teamRepository.findMembersByTeamPeriodIdForList(
+                                teamPeriodId
                         )
                         .stream()
                         .collect(
@@ -269,14 +253,14 @@ public class TeamQueryService
         }
     }
 
-    private TeamPeriod validateAndGetTeamPeriod(
+    private void validateAndGetTeamPeriod(
             Long teamPeriodId
     ) {
         validateTeamPeriodId(
                 teamPeriodId
         );
 
-        return teamPeriodRepository.findById(
+        teamPeriodRepository.findById(
                         teamPeriodId
                 )
                 .orElseThrow(() ->
