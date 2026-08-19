@@ -142,6 +142,11 @@ public class CreatePurchaseApprovalService
                 approvalHistory
         );
 
+        notifyManagers(
+                savedApprovalRequest,
+                command.requesterId()
+        );
+
         return CreateApprovalResult.from(
                 savedApprovalRequest
         );
