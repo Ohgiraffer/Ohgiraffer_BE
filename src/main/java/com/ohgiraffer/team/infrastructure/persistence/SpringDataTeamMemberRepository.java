@@ -68,27 +68,35 @@ public interface SpringDataTeamMemberRepository
             @Param("teamIds") List<Long> teamIds
     );
 
-    @Query("""
-            SELECT
-                tm.id AS teamMemberId,
-                tm.teamId AS teamId,
-                tm.userId AS userId,
-                u.name AS userName,
-                u.email AS email,
-                u.profileImg AS profileImg,
-                tm.joinedAt AS joinedAt,
-                tm.leftAt AS leftAt
-            FROM TeamMemberViewJpaEntity tm
-            JOIN UserJpaEntity u
-                ON u.id = tm.userId
-            WHERE tm.teamId IN :teamIds
-              AND tm.joinedAt < :snapshotAt
-              AND (tm.leftAt IS NULL OR tm.leftAt >= :snapshotAt)
-            ORDER BY tm.teamId ASC, u.name ASC, u.id ASC
-            """)
-    List<TeamMemberProjection> findMembersByTeamIdsAt(
-            @Param("teamIds") List<Long> teamIds,
-            @Param("snapshotAt") LocalDateTime snapshotAt
+    @Query(
+            value = """
+                    SELECT
+                        tm.team_member_id AS teamMemberId,
+                        tm.team_id AS teamId,
+                        tm.user_id AS userId,
+                        u.name AS userName,
+                        u.email AS email,
+                        u.profile_img AS profileImg,
+                        tm.joined_at AS joinedAt,
+                        tm.left_at AS leftAt
+                    FROM team_member tm
+                    JOIN team t
+                        ON t.team_id = tm.team_id
+                    JOIN users u
+                        ON u.user_id = tm.user_id
+                    WHERE t.team_period_id = :teamPeriodId
+                      AND t.deleted_at IS NULL
+                      AND tm.joined_at < DATE_ADD(t.end_date, INTERVAL 1 DAY)
+                      AND (
+                            tm.left_at IS NULL
+                            OR tm.left_at >= DATE_ADD(t.end_date, INTERVAL 1 DAY)
+                      )
+                    ORDER BY tm.team_id ASC, u.name ASC, u.user_id ASC
+                    """,
+            nativeQuery = true
+    )
+    List<TeamMemberProjection> findMembersByTeamPeriodIdForList(
+            @Param("teamPeriodId") Long teamPeriodId
     );
 
     @Query("""
@@ -189,8 +197,8 @@ public interface SpringDataTeamMemberRepository
             JOIN UserJpaEntity u
                 ON u.id = tm.userId
             WHERE t.teamPeriodId = :teamPeriodId
-              AND tm.joinedAt <= :snapshotAt
-              AND (tm.leftAt IS NULL OR tm.leftAt > :snapshotAt)
+              AND tm.joinedAt < :snapshotAt
+              AND (tm.leftAt IS NULL OR tm.leftAt >= :snapshotAt)
             ORDER BY t.id ASC, u.name ASC, u.id ASC
             """)
     List<TeamSnapshotMemberProjection> findSnapshotMembers(

@@ -81,6 +81,12 @@ public class TeamHistoryQueryService
                         LocalTime.MAX
                 );
 
+        LocalDateTime snapshotAt =
+                endDate.plusDays(
+                                1
+                        )
+                        .atStartOfDay();
+
         List<Team> teams =
                 teamRepository.findVisibleTeamsByPeriodId(
                         teamPeriodId
@@ -89,7 +95,7 @@ public class TeamHistoryQueryService
         List<TeamSnapshotMember> snapshotMembers =
                 teamHistoryRepository.findSnapshotMembers(
                         teamPeriodId,
-                        endAt
+                        snapshotAt
                 );
 
         List<TeamSnapshotResult> teamSnapshots =
