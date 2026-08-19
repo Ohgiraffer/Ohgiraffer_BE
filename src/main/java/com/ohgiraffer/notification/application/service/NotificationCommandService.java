@@ -13,6 +13,7 @@ import com.ohgiraffer.notification.domain.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -37,7 +38,7 @@ public class NotificationCommandService implements NotificationCommandUseCase {
 
     // 알림 생성 - row는 항상 저장, push는 notificationOn=true일 때만
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public NotificationResult create(NotificationCreateCommand command) {
         Notification notification = Notification.create(
                 command.userId(),
