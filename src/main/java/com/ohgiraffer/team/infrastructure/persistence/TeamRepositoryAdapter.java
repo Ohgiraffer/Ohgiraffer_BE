@@ -167,18 +167,11 @@ public class TeamRepositoryAdapter
     }
 
     @Override
-    public List<TeamMember> findMembersByTeamIdsAt(
-            List<Long> teamIds,
-            LocalDateTime snapshotAt
+    public List<TeamMember> findMembersByTeamPeriodIdForList(
+            Long teamPeriodId
     ) {
-        if (teamIds == null
-                || teamIds.isEmpty()) {
-            return List.of();
-        }
-
-        return springDataTeamMemberRepository.findMembersByTeamIdsAt(
-                        teamIds,
-                        snapshotAt
+        return springDataTeamMemberRepository.findMembersByTeamPeriodIdForList(
+                        teamPeriodId
                 )
                 .stream()
                 .map(this::toTeamMember)
