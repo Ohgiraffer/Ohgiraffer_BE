@@ -5,6 +5,7 @@ import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
 import com.ohgiraffer.team.domain.model.UnassignedStudent;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +47,11 @@ public interface TeamRepository {
 
     List<TeamMember> findActiveMembersByTeamIds(
             List<Long> teamIds
+    );
+
+    List<TeamMember> findMembersByTeamIdsAt(
+            List<Long> teamIds,
+            LocalDateTime snapshotAt
     );
 
     Optional<TeamMember> findMemberById(

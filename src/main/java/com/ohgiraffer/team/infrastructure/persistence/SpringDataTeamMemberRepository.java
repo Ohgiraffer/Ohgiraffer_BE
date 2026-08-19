@@ -81,6 +81,29 @@ public interface SpringDataTeamMemberRepository
             FROM TeamMemberViewJpaEntity tm
             JOIN UserJpaEntity u
                 ON u.id = tm.userId
+            WHERE tm.teamId IN :teamIds
+              AND tm.joinedAt <= :snapshotAt
+              AND (tm.leftAt IS NULL OR tm.leftAt > :snapshotAt)
+            ORDER BY tm.teamId ASC, u.name ASC, u.id ASC
+            """)
+    List<TeamMemberProjection> findMembersByTeamIdsAt(
+            @Param("teamIds") List<Long> teamIds,
+            @Param("snapshotAt") LocalDateTime snapshotAt
+    );
+
+    @Query("""
+            SELECT
+                tm.id AS teamMemberId,
+                tm.teamId AS teamId,
+                tm.userId AS userId,
+                u.name AS userName,
+                u.email AS email,
+                u.profileImg AS profileImg,
+                tm.joinedAt AS joinedAt,
+                tm.leftAt AS leftAt
+            FROM TeamMemberViewJpaEntity tm
+            JOIN UserJpaEntity u
+                ON u.id = tm.userId
             WHERE tm.leftAt IS NULL
             ORDER BY tm.teamId ASC, tm.joinedAt ASC, tm.id ASC
             """)
