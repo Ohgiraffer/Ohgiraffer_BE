@@ -1,6 +1,7 @@
 package com.ohgiraffer.notice.infrastructure.adapter;
 
 import com.ohgiraffer.notice.application.port.NoticeAudienceLookupPort;
+import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.domain.model.User;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
