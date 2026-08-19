@@ -167,6 +167,25 @@ public class TeamRepositoryAdapter
     }
 
     @Override
+    public List<TeamMember> findMembersByTeamIdsAt(
+            List<Long> teamIds,
+            LocalDateTime snapshotAt
+    ) {
+        if (teamIds == null
+                || teamIds.isEmpty()) {
+            return List.of();
+        }
+
+        return springDataTeamMemberRepository.findMembersByTeamIdsAt(
+                        teamIds,
+                        snapshotAt
+                )
+                .stream()
+                .map(this::toTeamMember)
+                .toList();
+    }
+
+    @Override
     public Optional<TeamMember> findMemberById(
             Long teamMemberId
     ) {
