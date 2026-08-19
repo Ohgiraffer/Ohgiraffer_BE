@@ -16,6 +16,7 @@ import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
 import com.ohgiraffer.team.application.usecase.UserTeamHistoryResult;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
+import com.ohgiraffer.team.domain.model.TeamPeriod;
 import com.ohgiraffer.team.domain.model.UnassignedStudent;
 import com.ohgiraffer.team.domain.repository.TeamPeriodRepository;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
@@ -24,6 +25,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -53,9 +56,10 @@ public class TeamQueryService
                 requesterRole
         );
 
-        validateAndGetTeamPeriod(
-                teamPeriodId
-        );
+        TeamPeriod teamPeriod =
+                validateAndGetTeamPeriod(
+                        teamPeriodId
+                );
 
         List<Team> teams =
                 teamRepository.findVisibleTeamsByPeriodId(
@@ -67,9 +71,16 @@ public class TeamQueryService
                         .map(Team::getId)
                         .toList();
 
+        LocalDateTime snapshotAt =
+                teamPeriod.getEndDate()
+                        .atTime(
+                                LocalTime.MAX
+                        );
+
         Map<Long, List<TeamMemberResult>> memberMap =
-                teamRepository.findActiveMembersByTeamIds(
-                                teamIds
+                teamRepository.findMembersByTeamIdsAt(
+                                teamIds,
+                                snapshotAt
                         )
                         .stream()
                         .collect(
@@ -258,14 +269,14 @@ public class TeamQueryService
         }
     }
 
-    private void validateAndGetTeamPeriod(
+    private TeamPeriod validateAndGetTeamPeriod(
             Long teamPeriodId
     ) {
         validateTeamPeriodId(
                 teamPeriodId
         );
 
-        teamPeriodRepository.findById(
+        return teamPeriodRepository.findById(
                         teamPeriodId
                 )
                 .orElseThrow(() ->
