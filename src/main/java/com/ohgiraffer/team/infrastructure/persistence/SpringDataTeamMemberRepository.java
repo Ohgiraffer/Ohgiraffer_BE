@@ -82,8 +82,8 @@ public interface SpringDataTeamMemberRepository
             JOIN UserJpaEntity u
                 ON u.id = tm.userId
             WHERE tm.teamId IN :teamIds
-              AND tm.joinedAt <= :snapshotAt
-              AND (tm.leftAt IS NULL OR tm.leftAt > :snapshotAt)
+              AND tm.joinedAt < :snapshotAt
+              AND (tm.leftAt IS NULL OR tm.leftAt >= :snapshotAt)
             ORDER BY tm.teamId ASC, u.name ASC, u.id ASC
             """)
     List<TeamMemberProjection> findMembersByTeamIdsAt(
