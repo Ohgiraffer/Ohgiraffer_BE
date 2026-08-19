@@ -6,6 +6,7 @@ import com.ohgiraffer.global.s3.S3FileHandler;
 import com.ohgiraffer.notice.application.command.CreateNoticeCommand;
 import com.ohgiraffer.notice.application.command.NoticeAttachmentCommand;
 import com.ohgiraffer.notice.application.command.UpdateNoticeCommand;
+import com.ohgiraffer.notice.application.port.NoticeAudienceLookupPort;
 import com.ohgiraffer.notice.application.query.NoticeConfirmationView;
 import com.ohgiraffer.notice.application.usecase.NoticeCommandUseCase;
 import com.ohgiraffer.notice.domain.model.Notice;
@@ -15,8 +16,11 @@ import com.ohgiraffer.notice.domain.repository.NoticeAttachmentRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeCategoryRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeConfirmationRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeRepository;
+import com.ohgiraffer.notification.domain.event.NotificationRequestedEvent;
+import com.ohgiraffer.notification.domain.model.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,24 +35,32 @@ public class NoticeCommandService implements NoticeCommandUseCase {
     private static final Logger log =
             LoggerFactory.getLogger(NoticeCommandService.class);
 
+    private static final String RELATED_ENTITY_TYPE = "NOTICE";
+
     private final NoticeRepository noticeRepository;
     private final NoticeCategoryRepository noticeCategoryRepository;
     private final NoticeConfirmationRepository noticeConfirmationRepository;
     private final NoticeAttachmentRepository noticeAttachmentRepository;
     private final S3FileHandler s3FileHandler;
+    private final NoticeAudienceLookupPort noticeAudienceLookupPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     public NoticeCommandService(
             NoticeRepository noticeRepository,
             NoticeCategoryRepository noticeCategoryRepository,
             NoticeConfirmationRepository noticeConfirmationRepository,
             NoticeAttachmentRepository noticeAttachmentRepository,
-            S3FileHandler s3FileHandler
+            S3FileHandler s3FileHandler,
+            NoticeAudienceLookupPort noticeAudienceLookupPort,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.noticeRepository = noticeRepository;
         this.noticeCategoryRepository = noticeCategoryRepository;
         this.noticeConfirmationRepository = noticeConfirmationRepository;
         this.noticeAttachmentRepository = noticeAttachmentRepository;
         this.s3FileHandler = s3FileHandler;
+        this.noticeAudienceLookupPort = noticeAudienceLookupPort;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -85,7 +97,32 @@ public class NoticeCommandService implements NoticeCommandUseCase {
             );
         }
 
+        notifyAudience(saved);
+
         return saved;
+    }
+
+    // 작성자 본인 제외, 같은 부트캠프 전체에게 알림 발행
+    private void notifyAudience(Notice notice) {
+        List<Long> audience = noticeAudienceLookupPort.findAllUserIdsInSameBootcamp(
+                notice.getAuthorId(),
+                notice.isVisibleToTrainee() // 신규 - 공지 비공개 여부 전달
+        );
+
+        for (Long userId : audience) {
+            if (userId.equals(notice.getAuthorId())) {
+                continue;
+            }
+
+            eventPublisher.publishEvent(new NotificationRequestedEvent(
+                    userId,
+                    NotificationType.NOTICE,
+                    "새 공지사항이 등록되었습니다",
+                    notice.getTitle(),
+                    RELATED_ENTITY_TYPE,
+                    notice.getId()
+            ));
+        }
     }
 
     private void validateAttachments(List<NoticeAttachmentCommand> attachments) {

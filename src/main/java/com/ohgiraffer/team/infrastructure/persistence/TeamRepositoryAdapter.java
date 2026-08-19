@@ -26,12 +26,6 @@ public class TeamRepositoryAdapter
     private static final String TEAM_NAME_UNIQUE_CONSTRAINT =
             "uq_team_period_name";
 
-    private static final String ACTIVE_TEAM_MEMBER_UNIQUE_CONSTRAINT =
-            "uq_team_member_active_user";
-
-    private static final String TEAM_MEMBER_UNIQUE_CONSTRAINT =
-            "UQ_TEAM_MEMBER";
-
     private final SpringDataTeamRepository springDataTeamRepository;
     private final SpringDataTeamMemberRepository springDataTeamMemberRepository;
 
@@ -65,26 +59,14 @@ public class TeamRepositoryAdapter
     public TeamMember saveMember(
             TeamMember teamMember
     ) {
-        try {
-            TeamMemberViewJpaEntity savedEntity =
-                    springDataTeamMemberRepository.saveAndFlush(
-                            TeamMemberViewJpaEntity.from(
-                                    teamMember
-                            )
-                    );
-
-            return savedEntity.toDomain();
-        } catch (DataIntegrityViolationException exception) {
-            if (isTeamMemberUniqueConstraintViolation(
-                    exception
-            )) {
-                throw new BusinessException(
-                        ErrorCode.TEAM_MEMBER_ALREADY_ASSIGNED
+        TeamMemberViewJpaEntity savedEntity =
+                springDataTeamMemberRepository.saveAndFlush(
+                        TeamMemberViewJpaEntity.from(
+                                teamMember
+                        )
                 );
-            }
 
-            throw exception;
-        }
+        return savedEntity.toDomain();
     }
 
     @Override
@@ -357,18 +339,6 @@ public class TeamRepositoryAdapter
         return isConstraintViolation(
                 exception,
                 TEAM_NAME_UNIQUE_CONSTRAINT
-        );
-    }
-
-    private boolean isTeamMemberUniqueConstraintViolation(
-            DataIntegrityViolationException exception
-    ) {
-        return isConstraintViolation(
-                exception,
-                ACTIVE_TEAM_MEMBER_UNIQUE_CONSTRAINT
-        ) || isConstraintViolation(
-                exception,
-                TEAM_MEMBER_UNIQUE_CONSTRAINT
         );
     }
 

@@ -10,7 +10,10 @@ import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;
 import com.ohgiraffer.global.aop.auditlog.Audited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.notification.domain.event.NotificationRequestedEvent;
+import com.ohgiraffer.notification.domain.model.NotificationType;
 import com.ohgiraffer.user.domain.model.Role;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,19 +24,23 @@ import java.time.LocalDateTime;
 public class RejectApprovalService implements RejectApprovalUseCase {
 
     private static final int MAX_REJECTION_REASON_LENGTH = 1000;
+    private static final String RELATED_ENTITY_TYPE = "APPROVAL";
 
     private final ApprovalRequestRepository approvalRequestRepository;
     private final ApprovalHistoryRepository approvalHistoryRepository;
     private final Clock clock;
+    private final ApplicationEventPublisher eventPublisher;
 
     public RejectApprovalService(
             ApprovalRequestRepository approvalRequestRepository,
             ApprovalHistoryRepository approvalHistoryRepository,
-            Clock clock
+            Clock clock,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.approvalRequestRepository = approvalRequestRepository;
         this.approvalHistoryRepository = approvalHistoryRepository;
         this.clock = clock;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -102,6 +109,16 @@ public class RejectApprovalService implements RejectApprovalUseCase {
         approvalHistoryRepository.save(
                 approvalHistory
         );
+
+        // 반려 완료 - 신청자에게 알림 발행
+        eventPublisher.publishEvent(new NotificationRequestedEvent(
+                savedApprovalRequest.getRequesterId(),
+                NotificationType.APPROVAL_RESULT,
+                "결재가 반려되었습니다",
+                savedApprovalRequest.getTitle() + " 요청이 반려되었습니다. 사유: " + savedApprovalRequest.getRejectionReason(),
+                RELATED_ENTITY_TYPE,
+                savedApprovalRequest.getId()
+        ));
 
         return CreateApprovalResult.from(
                 savedApprovalRequest
