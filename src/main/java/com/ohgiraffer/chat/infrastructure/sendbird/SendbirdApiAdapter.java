@@ -549,23 +549,43 @@ public class SendbirdApiAdapter implements SendbirdApiPort {
     @Override
     public SendbirdMessageResult sendBotMessage(String botUserId, String channelId, String content) {
         Map<String, Object> body = new HashMap<>();
+        body.put("user_id", botUserId);
+        body.put("message_type", "MESG");
         body.put("message", content);
-        body.put("channel_url", channelId);
+        body.put("silent", false);
 
         try {
             Map<String, Object> response = restClient.post()
-                    .uri("/bots/{bot_userid}/send", botUserId)
+                    .uri("/group_channels/{channel_url}/messages", channelId)
                     .body(body)
                     .retrieve()
                     .body(Map.class);
 
-            return toBotMessageResult(response, channelId); // 봇 전용 파싱 메서드로 교체
+            return toBotSentMessageResult(response, channelId);
         } catch (HttpClientErrorException e) {
             throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR,
                     "Sendbird 봇 메시지 전송 실패 (status=" + e.getStatusCode() + ", body=" + e.getResponseBodyAsString() + ")");
         } catch (RestClientException e) {
             throw new BusinessException(ErrorCode.CHAT_SENDBIRD_API_ERROR, "Sendbird 봇 메시지 전송 중 통신 오류 발생");
         }
+    }
+
+    // 일반 메시지 전송 API 응답(raw Map)을 봇 발신 메시지로 파싱 - toMessageResult와 달리
+    // sender가 봇(문자열 user_id, 숫자 아님)이므로 senderId는 항상 null로 처리
+    private SendbirdMessageResult toBotSentMessageResult(Map<String, Object> raw, String channelId) {
+        long createdAtMillis = ((Number) raw.get("created_at")).longValue();
+        Map<String, Object> file = (Map<String, Object>) raw.get("file");
+        String attachmentUrl = file != null ? (String) file.get("url") : null;
+
+        return new SendbirdMessageResult(
+                String.valueOf(raw.get("message_id")),
+                channelId,
+                null, // 봇 발신 메시지 - senderId(Long) 개념 자체가 없음
+                (String) raw.get("message"),
+                attachmentUrl,
+                (String) raw.get("type"),
+                Instant.ofEpochMilli(createdAtMillis)
+        );
     }
 
     // 봇 전송 응답(raw Map)을 SendbirdMessageResult로 변환 - 봇의 user_id는 숫자가 아닌 고정 문자열(예: "campflow-ai-assistant")이라
