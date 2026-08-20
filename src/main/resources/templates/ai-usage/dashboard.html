@@ -24,29 +24,62 @@
             background: var(--bg);
             color: var(--text-primary);
             margin: 0;
-            padding: 20px;
-            font-size: 13px;
+            padding: 24px;
+            font-size: 15px;
         }
 
         h2.dashboard-title {
-            font-size: 18px;
+            font-size: 22px;
             font-weight: 500;
             margin: 0 0 20px;
-            padding-bottom: 12px;
+            padding-bottom: 14px;
             border-bottom: 1px solid var(--panel-border);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
 
         h2.dashboard-title .badge {
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 400;
             color: var(--text-secondary);
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
-            padding: 2px 10px;
-            border-radius: 3px;
+            padding: 3px 12px;
+            border-radius: 4px;
+        }
+
+        .date-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .date-nav input[type="date"] {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            color: var(--text-primary);
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 14.5px;
+            font-family: inherit;
+            color-scheme: dark;
+        }
+
+        .date-btn {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            color: var(--text-secondary);
+            border-radius: 4px;
+            padding: 8px 14px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .date-btn:hover {
+            color: var(--text-primary);
+            border-color: var(--accent-blue);
         }
 
         .grid {
@@ -60,7 +93,7 @@
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
             border-radius: 4px;
-            padding: 16px 20px;
+            padding: 18px 22px;
             position: relative;
             overflow: hidden;
         }
@@ -76,15 +109,15 @@
         .stat-panel.is-fail::before { background: var(--accent-red); }
 
         .stat-label {
-            font-size: 11px;
+            font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--text-secondary);
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         .stat-value {
-            font-size: 28px;
+            font-size: 34px;
             font-weight: 500;
             font-variant-numeric: tabular-nums;
             line-height: 1;
@@ -101,32 +134,32 @@
         }
 
         .panel-header {
-            padding: 10px 16px;
+            padding: 12px 18px;
             border-bottom: 1px solid var(--panel-border);
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 500;
             color: var(--text-primary);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
 
         .panel-header::before {
             content: "▤";
             color: var(--accent-blue);
-            font-size: 11px;
+            font-size: 13px;
         }
 
-        .panel-body { padding: 4px 16px 16px; }
+        .panel-body { padding: 6px 18px 18px; }
 
         table {
             border-collapse: collapse;
             width: 100%;
-            font-size: 12.5px;
+            font-size: 14.5px;
         }
 
         th, td {
-            padding: 8px 12px;
+            padding: 10px 14px;
             text-align: right;
             border-bottom: 1px solid var(--panel-border);
         }
@@ -135,7 +168,7 @@
             color: var(--text-secondary);
             font-weight: 400;
             text-transform: uppercase;
-            font-size: 10.5px;
+            font-size: 12px;
             letter-spacing: 0.04em;
         }
 
@@ -144,11 +177,11 @@
         tbody tr:hover { background: rgba(255,255,255,0.03); }
 
         td.fail { color: var(--accent-red); font-weight: 500; }
-        td.empty { text-align: center; color: var(--text-secondary); padding: 20px; }
+        td.empty { text-align: center; color: var(--text-secondary); padding: 24px; }
 
         .chart-wrap {
-            padding: 16px;
-            height: 320px;
+            padding: 18px;
+            height: 340px;
         }
 
         canvas { max-height: 100%; }
@@ -158,12 +191,20 @@
 
 <h2 class="dashboard-title">
     AI 사용량 대시보드
-    <span class="badge" th:text="${today}"></span>
+    <span class="badge" th:text="${selectedDate}"></span>
 </h2>
+
+<form class="date-nav" method="get" th:action="@{/admin/ai-usage/dashboard}">
+    <a class="date-btn" th:href="@{/admin/ai-usage/dashboard(date=${selectedDate.minusDays(1)})}">◀ 이전</a>
+    <input type="date" name="date" th:value="${selectedDate}" onchange="this.form.submit()">
+    <a class="date-btn" th:href="@{/admin/ai-usage/dashboard(date=${selectedDate.plusDays(1)})}"
+       th:unless="${isToday}">다음 ▶</a>
+    <a class="date-btn" th:href="@{/admin/ai-usage/dashboard}" th:unless="${isToday}">오늘로</a>
+</form>
 
 <div class="grid">
     <div class="stat-panel">
-        <div class="stat-label">오늘 총 호출</div>
+        <div class="stat-label">총 호출</div>
         <div class="stat-value" th:text="${totalCalls}"></div>
     </div>
     <div class="stat-panel is-fail">
@@ -186,13 +227,16 @@
                 <td class="fail" th:text="${f.failCount}"></td>
                 <td th:text="${f.totalTokens}"></td>
             </tr>
+            <tr th:if="${byFeature.isEmpty()}">
+                <td colspan="4" class="empty">해당 날짜 호출 기록 없음</td>
+            </tr>
             </tbody>
         </table>
     </div>
 </div>
 
 <div class="panel">
-    <div class="panel-header">실패 원인 분포 (오늘)</div>
+    <div class="panel-header">실패 원인 분포</div>
     <div class="panel-body">
         <table>
             <thead><tr><th>원인</th><th>건수</th></tr></thead>
@@ -202,7 +246,7 @@
                 <td th:text="${r.count}"></td>
             </tr>
             <tr th:if="${failReasons.isEmpty()}">
-                <td colspan="2" class="empty">오늘 실패 없음</td>
+                <td colspan="2" class="empty">해당 날짜 실패 없음</td>
             </tr>
             </tbody>
         </table>
@@ -239,20 +283,20 @@
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    labels: { color: textColor, boxWidth: 12, font: { size: 11 } }
+                    labels: { color: textColor, boxWidth: 14, font: { size: 13 } }
                 }
             },
             scales: {
                 x: {
                     stacked: true,
                     grid: { color: gridColor },
-                    ticks: { color: textColor, font: { size: 11 } }
+                    ticks: { color: textColor, font: { size: 13 } }
                 },
                 y: {
                     stacked: true,
                     beginAtZero: true,
                     grid: { color: gridColor },
-                    ticks: { color: textColor, font: { size: 11 } }
+                    ticks: { color: textColor, font: { size: 13 } }
                 }
             }
         }

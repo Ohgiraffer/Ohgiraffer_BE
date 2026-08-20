@@ -23,7 +23,8 @@ public class GetTeamNamesByUserIdsAdapter implements GetTeamNamesByUserIdsPort {
         return springDataTeamMemberRepository.findActiveTeamNamesByUserIds(userIds).stream()
                 .collect(Collectors.toMap(
                         UserTeamNameProjection::getUserId,
-                        UserTeamNameProjection::getTeamName
+                        UserTeamNameProjection::getTeamName,
+                        (existing, replacement) -> existing
                 ));
     }
 }
