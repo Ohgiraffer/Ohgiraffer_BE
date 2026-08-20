@@ -33,7 +33,7 @@ public class TeamPeriodRepositoryAdapter
 
     @Override
     public List<TeamPeriod> findVisiblePeriods() {
-        return springDataTeamPeriodRepository.findAllByArchivedAtIsNullAndDeletedAtIsNullOrderByStartDateAsc()
+        return springDataTeamPeriodRepository.findAllByDeletedAtIsNullOrderByStartDateAsc()
                 .stream()
                 .map(TeamPeriodJpaEntity::toDomain)
                 .toList();
