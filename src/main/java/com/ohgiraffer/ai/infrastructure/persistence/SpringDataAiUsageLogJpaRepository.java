@@ -26,7 +26,7 @@ public interface SpringDataAiUsageLogJpaRepository extends JpaRepository<AiUsage
             COALESCE(SUM(a.totalTokens), 0)
         )
         FROM AiUsageLogEntity a
-        WHERE a.createdAt BETWEEN :start AND :end
+        WHERE a.createdAt >= :start AND a.createdAt < :end
         GROUP BY a.featureName
         ORDER BY COUNT(a) DESC
         """)
@@ -38,7 +38,7 @@ public interface SpringDataAiUsageLogJpaRepository extends JpaRepository<AiUsage
             a.failReason, COUNT(a)
         )
         FROM AiUsageLogEntity a
-        WHERE a.success = false AND a.createdAt BETWEEN :start AND :end
+        WHERE a.success = false AND a.createdAt >= :start AND a.createdAt < :end
         GROUP BY a.failReason
         ORDER BY COUNT(a) DESC
         """)
@@ -52,7 +52,7 @@ public interface SpringDataAiUsageLogJpaRepository extends JpaRepository<AiUsage
             SUM(CASE WHEN a.success = false THEN 1 ELSE 0 END)
         )
         FROM AiUsageLogEntity a
-        WHERE a.createdAt BETWEEN :start AND :end
+        WHERE a.createdAt >= :start AND a.createdAt < :end
         GROUP BY EXTRACT(HOUR FROM a.createdAt)
         ORDER BY EXTRACT(HOUR FROM a.createdAt)
         """)

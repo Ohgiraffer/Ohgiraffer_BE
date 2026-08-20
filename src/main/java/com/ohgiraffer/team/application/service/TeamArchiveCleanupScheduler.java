@@ -1,7 +1,9 @@
 package com.ohgiraffer.team.application.service;
 
+import com.ohgiraffer.team.domain.model.TeamMember;
 import com.ohgiraffer.team.domain.model.TeamPeriod;
 import com.ohgiraffer.team.domain.repository.TeamPeriodRepository;
+import com.ohgiraffer.team.domain.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -17,6 +19,7 @@ import java.util.List;
 public class TeamArchiveCleanupScheduler {
 
     private final TeamPeriodRepository teamPeriodRepository;
+    private final TeamRepository teamRepository;
     private final Clock clock;
 
     @Scheduled(
@@ -52,11 +55,34 @@ public class TeamArchiveCleanupScheduler {
                         today
                 );
 
-        archivablePeriods.stream()
-                .map(period -> period.archive(
+        archivablePeriods.forEach(period -> {
+            closeActiveMembers(
+                    period.getId(),
+                    archivedAt
+            );
+
+            teamPeriodRepository.save(
+                    period.archive(
+                            archivedAt
+                    )
+            );
+        });
+    }
+
+    private void closeActiveMembers(
+            Long teamPeriodId,
+            LocalDateTime archivedAt
+    ) {
+        List<TeamMember> activeMembers =
+                teamRepository.findActiveMembersByTeamPeriodIdForUpdate(
+                        teamPeriodId
+                );
+
+        activeMembers.stream()
+                .map(member -> member.leave(
                         archivedAt
                 ))
-                .forEach(teamPeriodRepository::save);
+                .forEach(teamRepository::saveMember);
     }
 
     private void cleanupOldArchivedPeriods(

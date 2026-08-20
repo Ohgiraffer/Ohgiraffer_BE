@@ -14,7 +14,7 @@ import java.util.Optional;
 public interface SpringDataTeamPeriodRepository
         extends JpaRepository<TeamPeriodJpaEntity, Long> {
 
-    List<TeamPeriodJpaEntity> findAllByArchivedAtIsNullAndDeletedAtIsNullOrderByStartDateAsc();
+    List<TeamPeriodJpaEntity> findAllByDeletedAtIsNullOrderByStartDateAsc();
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
