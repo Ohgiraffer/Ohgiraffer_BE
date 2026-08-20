@@ -49,9 +49,9 @@ public class ChatbotWebhookPayloadParser {
         // 아직 실제 유저 발화 콜백 샘플로 검증되지 않음
         Map<String, Object> channel = (Map<String, Object>) raw.get("channel");
         Map<String, Object> sender = (Map<String, Object>) raw.get("sender");
-        Map<String, Object> payload = (Map<String, Object>) raw.get("payload");
-        String message = payload != null ? (String) payload.get("message") : null;
-
+        Map<String, Object> messageObj = (Map<String, Object>) raw.get("message");
+        String message = messageObj != null ? (String) messageObj.get("text") : null;
+        
         if (channel == null || sender == null || message == null) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST_BODY,
                     "봇 콜백 필수 필드 누락 - payload 구조 재검증 필요 | category=" + category);
