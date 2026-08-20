@@ -20,11 +20,12 @@ public class AiUsageDashboardQueryService {
     }
 
     public AiUsageDashboardResult getDashboard(LocalDate targetDate) {
-        LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDate today = now.toLocalDate();
         LocalDateTime start = targetDate.atStartOfDay();
 
         LocalDateTime end = targetDate.isEqual(today)
-                ? LocalDateTime.now()
+                ? now
                 : targetDate.plusDays(1).atStartOfDay();
 
         var byFeature = aiUsageLogQueryRepository.aggregateByFeature(start, end);

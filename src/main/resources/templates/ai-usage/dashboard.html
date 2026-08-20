@@ -196,7 +196,8 @@
 
 <form class="date-nav" method="get" th:action="@{/admin/ai-usage/dashboard}">
     <a class="date-btn" th:href="@{/admin/ai-usage/dashboard(date=${selectedDate.minusDays(1)})}">◀ 이전</a>
-    <input type="date" name="date" th:value="${selectedDate}" onchange="this.form.submit()">
+    <input type="date" name="date" th:value="${selectedDate}"
+           aria-label="조회 날짜" onchange="this.form.submit()">
     <a class="date-btn" th:href="@{/admin/ai-usage/dashboard(date=${selectedDate.plusDays(1)})}"
        th:unless="${isToday}">다음 ▶</a>
     <a class="date-btn" th:href="@{/admin/ai-usage/dashboard}" th:unless="${isToday}">오늘로</a>

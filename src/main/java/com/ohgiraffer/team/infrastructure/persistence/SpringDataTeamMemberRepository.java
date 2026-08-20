@@ -233,7 +233,7 @@ public interface SpringDataTeamMemberRepository
                 ON t.id = tm.teamId
             WHERE tm.userId IN :userIds
               AND tm.leftAt IS NULL
-            ORDER BY tm.userId ASC, tm.joinedAt DESC              
+            ORDER BY tm.userId ASC, tm.joinedAt DESC, tm.id DESC
             """)
     List<UserTeamNameProjection> findActiveTeamNamesByUserIds(
             @Param("userIds") List<Long> userIds
