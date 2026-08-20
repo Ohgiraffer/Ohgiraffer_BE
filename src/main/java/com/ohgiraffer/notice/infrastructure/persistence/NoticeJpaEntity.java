@@ -43,6 +43,9 @@ public class NoticeJpaEntity extends BaseTimeEntity {
     @Column(name = "is_visible_to_trainee", nullable = false)
     private boolean visibleToTrainee;
 
+    @Column(name = "is_calendar_registered", nullable = false)
+    private boolean calendarRegistered;
+
     protected NoticeJpaEntity() {
     }
 
@@ -53,8 +56,10 @@ public class NoticeJpaEntity extends BaseTimeEntity {
             String title,
             String content,
             boolean pinned,
-            boolean visibleToTrainee
+            boolean visibleToTrainee,
+            boolean calendarRegistered
     ) {
+        this.calendarRegistered = calendarRegistered;
         this.id = id;
         this.authorId = authorId;
         this.categoryId = categoryId;
@@ -72,7 +77,8 @@ public class NoticeJpaEntity extends BaseTimeEntity {
                 notice.getTitle(),
                 notice.getContent(),
                 notice.isPinned(),
-                notice.isVisibleToTrainee()
+                notice.isVisibleToTrainee(),
+                notice.isCalendarRegistered()
         );
     }
 
@@ -86,6 +92,7 @@ public class NoticeJpaEntity extends BaseTimeEntity {
         this.content = notice.getContent();
         this.pinned = notice.isPinned();
         this.visibleToTrainee = notice.isVisibleToTrainee();
+        this.calendarRegistered = notice.isCalendarRegistered();
     }
 
     public Notice toDomain() {
@@ -97,6 +104,7 @@ public class NoticeJpaEntity extends BaseTimeEntity {
                 content,
                 pinned,
                 visibleToTrainee,
+                calendarRegistered,
                 getCreatedAt(),
                 getUpdatedAt()
         );

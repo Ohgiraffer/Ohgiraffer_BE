@@ -64,6 +64,11 @@ public class PrepareSurveySummaryService
             Long requesterId,
             Role requesterRole
     ) {
+        log.info(
+                "설문 요약 준비 시작. surveyFormId={}",
+                surveyFormId
+        );
+
         accessValidator.validateStaffAuthority(
                 requesterId,
                 requesterRole
@@ -78,10 +83,22 @@ public class PrepareSurveySummaryService
                         surveyFormId
                 );
 
+        log.debug(
+                "설문 폼 조회 완료. surveyFormId={}",
+                surveyFormId
+        );
+
         SurveySheetLink sheetLink =
                 findSheetLink(
                         surveyFormId
                 );
+
+        log.debug(
+                "설문 시트 연결 조회 완료. "
+                        + "surveyFormId={}, sheetName={}",
+                surveyFormId,
+                sheetLink.getSheetName()
+        );
 
         SurveyResponseDataset dataset =
                 surveyResponseDataPort.readResponses(
@@ -94,15 +111,28 @@ public class PrepareSurveySummaryService
                 dataset
         );
 
+        log.info(
+                "설문 응답 조회 완료. "
+                        + "surveyFormId={}, responseCount={}, columnCount={}",
+                surveyFormId,
+                dataset.responseCount(),
+                dataset.headers().size()
+        );
+
         SurveyStatisticsResult statistics =
                 statisticsCalculator.calculate(
-                        dataset,
-                        sheetLink.getRespondentColumn(),
-                        sheetLink.getSubmittedAtColumn()
+                        dataset
                 );
 
         validateStatistics(
                 statistics
+        );
+
+        log.info(
+                "설문 통계 계산 완료. "
+                        + "surveyFormId={}, questionCount={}",
+                surveyFormId,
+                statistics.totalQuestionCount()
         );
 
         SurveyAiSummary aiSummary =
@@ -111,19 +141,34 @@ public class PrepareSurveySummaryService
                         statistics
                 );
 
+        log.info(
+                "설문 AI 분석 완료. "
+                        + "surveyFormId={}, aiGenerated={}",
+                surveyFormId,
+                aiSummary.generated()
+        );
+
         String fileName =
                 fileNameGenerator.generate(
                         surveyForm.getTitle()
                 );
 
-        return new SurveySummaryPreparationResult(
-                surveyForm.getId(),
-                surveyForm.getTitle(),
-                Instant.now(),
-                fileName,
-                statistics,
-                aiSummary
+        SurveySummaryPreparationResult result =
+                new SurveySummaryPreparationResult(
+                        surveyForm.getId(),
+                        surveyForm.getTitle(),
+                        Instant.now(),
+                        fileName,
+                        statistics,
+                        aiSummary
+                );
+
+        log.info(
+                "설문 요약 준비 완료. surveyFormId={}",
+                surveyFormId
         );
+
+        return result;
     }
 
     private SurveyForm findSurveyForm(

@@ -2,13 +2,22 @@ package com.ohgiraffer.team.application.service;
 
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.team.application.usecase.GetTeamListUseCase;
+import com.ohgiraffer.team.application.usecase.GetTeamPeriodListUseCase;
+import com.ohgiraffer.team.application.usecase.GetTeamWorkspaceUseCase;
 import com.ohgiraffer.team.application.usecase.GetUnassignedStudentUseCase;
+import com.ohgiraffer.team.application.usecase.GetUserTeamHistoryUseCase;
 import com.ohgiraffer.team.application.usecase.TeamListResult;
 import com.ohgiraffer.team.application.usecase.TeamMemberResult;
+import com.ohgiraffer.team.application.usecase.TeamPeriodResult;
+import com.ohgiraffer.team.application.usecase.TeamWorkspaceResult;
 import com.ohgiraffer.team.application.usecase.UnassignedStudentResult;
+import com.ohgiraffer.team.application.usecase.UserTeamHistoryResult;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
+import com.ohgiraffer.team.domain.model.UnassignedStudent;
+import com.ohgiraffer.team.domain.repository.TeamPeriodRepository;
 import com.ohgiraffer.team.domain.repository.TeamRepository;
 import com.ohgiraffer.user.domain.model.Role;
 import lombok.RequiredArgsConstructor;
@@ -24,36 +33,45 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class TeamQueryService
         implements GetTeamListUseCase,
-        GetUnassignedStudentUseCase {
+        GetUnassignedStudentUseCase,
+        GetTeamPeriodListUseCase,
+        GetUserTeamHistoryUseCase,
+        GetTeamWorkspaceUseCase {
 
     private final TeamRepository teamRepository;
+    private final TeamPeriodRepository teamPeriodRepository;
+    private final S3UrlResolver s3UrlResolver;
 
     @Override
     public List<TeamListResult> getTeams(
             Long requesterId,
-            Role requesterRole
+            Role requesterRole,
+            Long teamPeriodId
     ) {
         validateRequester(
                 requesterId,
                 requesterRole
         );
 
-        List<Team> teams =
-                teamRepository.findAll();
+        validateAndGetTeamPeriod(
+                teamPeriodId
+        );
 
-        List<Long> teamIds =
-                teams.stream()
-                        .map(Team::getId)
-                        .toList();
+        List<Team> teams =
+                teamRepository.findVisibleTeamsByPeriodId(
+                        teamPeriodId
+                );
 
         Map<Long, List<TeamMemberResult>> memberMap =
-                teamRepository.findActiveMembersByTeamIds(teamIds)
+                teamRepository.findMembersByTeamPeriodIdForList(
+                                teamPeriodId
+                        )
                         .stream()
                         .collect(
                                 Collectors.groupingBy(
                                         TeamMember::getTeamId,
                                         Collectors.mapping(
-                                                TeamMemberResult::from,
+                                                this::toTeamMemberResult,
                                                 Collectors.toList()
                                         )
                                 )
@@ -73,9 +91,26 @@ public class TeamQueryService
     }
 
     @Override
-    public List<UnassignedStudentResult> getUnassignedStudents(
+    public List<TeamPeriodResult> getTeamPeriods(
             Long requesterId,
             Role requesterRole
+    ) {
+        validateRequester(
+                requesterId,
+                requesterRole
+        );
+
+        return teamPeriodRepository.findVisiblePeriods()
+                .stream()
+                .map(TeamPeriodResult::from)
+                .toList();
+    }
+
+    @Override
+    public List<UnassignedStudentResult> getUnassignedStudents(
+            Long requesterId,
+            Role requesterRole,
+            Long teamPeriodId
     ) {
         validateRequester(
                 requesterId,
@@ -86,10 +121,112 @@ public class TeamQueryService
                 requesterRole
         );
 
-        return teamRepository.findUnassignedStudents()
+        validateAndGetTeamPeriod(
+                teamPeriodId
+        );
+
+        return teamRepository.findUnassignedStudents(
+                        teamPeriodId
+                )
                 .stream()
-                .map(UnassignedStudentResult::from)
+                .map(this::toUnassignedStudentResult)
                 .toList();
+    }
+
+    @Override
+    public List<UserTeamHistoryResult> getUserTeamHistories(
+            Long requesterId,
+            Role requesterRole,
+            Long userId
+    ) {
+        validateRequester(
+                requesterId,
+                requesterRole
+        );
+
+        validateManagerAccess(
+                requesterRole
+        );
+
+        validateUserId(
+                userId
+        );
+
+        return teamRepository.findUserTeamHistories(
+                userId
+        );
+    }
+
+    @Override
+    public TeamWorkspaceResult getTeamWorkspace(
+            Long requesterId,
+            Role requesterRole,
+            Long teamId
+    ) {
+        validateRequester(
+                requesterId,
+                requesterRole
+        );
+
+        validateTeamId(
+                teamId
+        );
+
+        Team team =
+                teamRepository.findById(
+                                teamId
+                        )
+                        .filter(foundTeam -> !foundTeam.isDeleted())
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.TEAM_NOT_FOUND
+                                )
+                        );
+
+        return TeamWorkspaceResult.from(
+                team
+        );
+    }
+
+    private TeamMemberResult toTeamMemberResult(
+            TeamMember member
+    ) {
+        return new TeamMemberResult(
+                member.getId(),
+                member.getUserId(),
+                member.getUserName(),
+                member.getEmail(),
+                resolveProfileImgUrl(
+                        member.getProfileImg()
+                ),
+                member.getJoinedAt()
+        );
+    }
+
+    private UnassignedStudentResult toUnassignedStudentResult(
+            UnassignedStudent student
+    ) {
+        return new UnassignedStudentResult(
+                student.getUserId(),
+                student.getName(),
+                student.getEmail(),
+                resolveProfileImgUrl(
+                        student.getProfileImg()
+                )
+        );
+    }
+
+    private String resolveProfileImgUrl(
+            String profileImg
+    ) {
+        if (profileImg == null
+                || profileImg.isBlank()) {
+            return null;
+        }
+
+        return s3UrlResolver.resolve(
+                profileImg
+        );
     }
 
     private void validateRequester(
@@ -112,6 +249,59 @@ public class TeamQueryService
                 && requesterRole != Role.MANAGER) {
             throw new BusinessException(
                     ErrorCode.TEAM_ACCESS_DENIED
+            );
+        }
+    }
+
+    private void validateAndGetTeamPeriod(
+            Long teamPeriodId
+    ) {
+        validateTeamPeriodId(
+                teamPeriodId
+        );
+
+        teamPeriodRepository.findById(
+                        teamPeriodId
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.TEAM_NOT_FOUND
+                        )
+                );
+    }
+
+    private void validateTeamPeriodId(
+            Long teamPeriodId
+    ) {
+        if (teamPeriodId == null
+                || teamPeriodId <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "팀 기간 ID가 올바르지 않습니다."
+            );
+        }
+    }
+
+    private void validateTeamId(
+            Long teamId
+    ) {
+        if (teamId == null
+                || teamId <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "팀 ID가 올바르지 않습니다."
+            );
+        }
+    }
+
+    private void validateUserId(
+            Long userId
+    ) {
+        if (userId == null
+                || userId <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "사용자 ID가 올바르지 않습니다."
             );
         }
     }

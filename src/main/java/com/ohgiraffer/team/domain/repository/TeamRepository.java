@@ -1,5 +1,6 @@
 package com.ohgiraffer.team.domain.repository;
 
+import com.ohgiraffer.team.application.usecase.UserTeamHistoryResult;
 import com.ohgiraffer.team.domain.model.Team;
 import com.ohgiraffer.team.domain.model.TeamMember;
 import com.ohgiraffer.team.domain.model.UnassignedStudent;
@@ -19,6 +20,10 @@ public interface TeamRepository {
 
     List<Team> findAll();
 
+    List<Team> findVisibleTeamsByPeriodId(
+            Long teamPeriodId
+    );
+
     Optional<Team> findById(
             Long teamId
     );
@@ -27,12 +32,24 @@ public interface TeamRepository {
             Long teamId
     );
 
+    List<TeamMember> findActiveMembers();
+
+    List<TeamMember> findActiveMembersForUpdate();
+
+    List<TeamMember> findActiveMembersByTeamPeriodIdForUpdate(
+            Long teamPeriodId
+    );
+
     List<TeamMember> findActiveMembersByTeamId(
             Long teamId
     );
 
     List<TeamMember> findActiveMembersByTeamIds(
             List<Long> teamIds
+    );
+
+    List<TeamMember> findMembersByTeamPeriodIdForList(
+            Long teamPeriodId
     );
 
     Optional<TeamMember> findMemberById(
@@ -47,14 +64,34 @@ public interface TeamRepository {
             Long userId
     );
 
-    boolean existsByName(
-            String name
+    boolean existsByNameAndTeamPeriodId(
+            String name,
+            Long teamPeriodId
     );
 
-    boolean existsByNameAndIdNot(
+    boolean existsByNameAndTeamPeriodIdAndIdNot(
             String name,
+            Long teamPeriodId,
             Long teamId
     );
 
-    List<UnassignedStudent> findUnassignedStudents();
+    boolean existsActiveMemberByTeamPeriodId(
+            Long teamPeriodId
+    );
+
+    void deleteMembersByTeamPeriodId(
+            Long teamPeriodId
+    );
+
+    void deleteTeamsByTeamPeriodId(
+            Long teamPeriodId
+    );
+
+    List<UnassignedStudent> findUnassignedStudents(
+            Long teamPeriodId
+    );
+
+    List<UserTeamHistoryResult> findUserTeamHistories(
+            Long userId
+    );
 }

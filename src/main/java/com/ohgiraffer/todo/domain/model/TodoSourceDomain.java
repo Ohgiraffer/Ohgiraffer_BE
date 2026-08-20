@@ -10,7 +10,5 @@ public enum TodoSourceDomain {
     SUBMISSION,     // 제출물 관리 (발표자료/평가만족도)
     APPROVAL,       // 전자결재 (휴가/예산 신청)
     NOTICE,         // 공지사항
-    EVALUATION,     // 평가 관리
     CONSULTATION,   // 상담 관리
-    ATTENDANCE      // 출결 위험도
 }

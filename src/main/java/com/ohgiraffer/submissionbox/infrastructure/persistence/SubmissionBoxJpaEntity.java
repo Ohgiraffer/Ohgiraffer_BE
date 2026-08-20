@@ -207,6 +207,31 @@ public class SubmissionBoxJpaEntity extends BaseTimeEntity {
         );
     }
 
+    public List<SubmissionBoxItemJpaEntity> getItems() {
+        return items;
+    }
+
+    /**
+     * 항목 순서를 서로 교환하거나 기존 항목을 신규 항목으로 대체할 때
+     * (submission_box_id, sort_order) UNIQUE 제약이 중간 UPDATE에서
+     * 충돌하지 않도록 기존 순서를 임시 범위로 이동합니다.
+     */
+    public void moveItemSortOrdersToTemporaryRange() {
+        int maximumSortOrder =
+                items.stream()
+                        .mapToInt(
+                                SubmissionBoxItemJpaEntity::getSortOrder
+                        )
+                        .max()
+                        .orElse(0);
+
+        int temporarySortOrder = maximumSortOrder + 1;
+
+        for (SubmissionBoxItemJpaEntity item : items) {
+            item.changeSortOrder(temporarySortOrder++);
+        }
+    }
+
     public Long getId() {
         return id;
     }

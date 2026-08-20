@@ -93,6 +93,25 @@ dependencies {
     // 엑셀/csv 파싱용
     implementation 'org.apache.poi:poi-ooxml:5.2.5'
     implementation 'org.apache.commons:commons-csv:1.11.0'
+
+    // redisson : 분산락 비관락
+    implementation 'org.redisson:redisson-spring-boot-starter:4.6.1'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter:1.20.4'
+    testImplementation 'org.testcontainers:testcontainers:1.20.4'
+
+    // Circuit Breaker
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'io.github.resilience4j:resilience4j-spring-boot4:2.4.0'
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.4.0'
+    implementation 'io.github.resilience4j:resilience4j-spring6:2.4.0'
+    implementation 'org.springframework.boot:spring-boot-starter-aspectj'
+    // Circuit Breaker 상태/호출 지표를 Micrometer로 자동 등록 (코드 변경 없이 메트릭 노출)
+    implementation 'io.github.resilience4j:resilience4j-micrometer:2.4.0'
+
+    // cloudWatch
+    implementation 'io.micrometer:micrometer-registry-cloudwatch2'
+
 }
 
 def querydslDir = "$buildDir/generated/querydsl"

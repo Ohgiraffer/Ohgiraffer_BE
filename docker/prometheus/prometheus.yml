@@ -12,4 +12,4 @@ scrape_configs:
   - job_name: "campflow-app"
     metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ["host.docker.internal:8080"]
+      - targets: ["172.31.38.167:8080"]

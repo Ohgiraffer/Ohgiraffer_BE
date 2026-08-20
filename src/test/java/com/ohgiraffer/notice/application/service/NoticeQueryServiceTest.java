@@ -9,6 +9,7 @@ import com.ohgiraffer.notice.application.query.NoticeSummaryView;
 import com.ohgiraffer.notice.domain.model.Notice;
 import com.ohgiraffer.notice.domain.model.NoticeCategory;
 import com.ohgiraffer.notice.domain.model.ViewerRole;
+import com.ohgiraffer.notice.domain.repository.NoticeAttachmentRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeCategoryRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeConfirmationRepository;
 import com.ohgiraffer.notice.domain.repository.NoticeRepository;
@@ -60,6 +61,9 @@ class NoticeQueryServiceTest {
     private NoticeConfirmationRepository noticeConfirmationRepository;
 
     @Mock
+    private NoticeAttachmentRepository noticeAttachmentRepository;
+
+    @Mock
     private AuthorNameQueryPort authorNameQueryPort;
 
     private NoticeQueryService noticeQueryService;
@@ -70,6 +74,7 @@ class NoticeQueryServiceTest {
                 noticeRepository,
                 noticeCategoryRepository,
                 noticeConfirmationRepository,
+                noticeAttachmentRepository,
                 authorNameQueryPort
         );
     }
@@ -473,6 +478,7 @@ class NoticeQueryServiceTest {
                 "<p>본문입니다.</p>",
                 pinned,
                 visibleToTrainee,
+                false,
                 CREATED_AT,
                 CREATED_AT
         );

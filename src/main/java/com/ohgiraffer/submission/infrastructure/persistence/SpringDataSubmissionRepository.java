@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,12 +22,14 @@ public interface SpringDataSubmissionRepository
             Long teamId
     );
 
+    @EntityGraph(attributePaths = "itemValues")
     Optional<SubmissionJpaEntity>
     findBySubmissionBoxIdAndOwnerUserId(
             Long submissionBoxId,
             Long ownerUserId
     );
 
+    @EntityGraph(attributePaths = "itemValues")
     Optional<SubmissionJpaEntity>
     findBySubmissionBoxIdAndTeamId(
             Long submissionBoxId,
@@ -37,6 +40,23 @@ public interface SpringDataSubmissionRepository
     List<SubmissionJpaEntity>
     findAllBySubmissionBoxIdOrderBySubmittedAtAsc(
             Long submissionBoxId
+    );
+
+    @Query("""
+        SELECT new com.ohgiraffer.submission.domain.model.SubmissionListEntry(
+            submission.id,
+            submission.submissionBoxId,
+            submission.ownerUserId,
+            submission.teamId
+        )
+        FROM SubmissionJpaEntity submission
+        WHERE submission.submissionBoxId
+            IN :submissionBoxIds
+        """)
+    List<com.ohgiraffer.submission.domain.model.SubmissionListEntry>
+    findListEntriesBySubmissionBoxIds(
+            @Param("submissionBoxIds")
+            Collection<Long> submissionBoxIds
     );
 
     @EntityGraph(attributePaths = "itemValues")

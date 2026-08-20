@@ -1,8 +1,9 @@
 package com.ohgiraffer.attendance.application.cache;
 
 import com.ohgiraffer.attendance.domain.model.AttendanceRiskLevel;
-import com.ohgiraffer.attendance.domain.model.AttendanceSummaryView;
-import com.ohgiraffer.attendance.domain.model.PeriodAttendanceRate;
+import com.ohgiraffer.attendance.domain.dto.AttendanceSummaryView;
+import com.ohgiraffer.attendance.domain.dto.PeriodAttendanceRate;
+import com.ohgiraffer.attendance.domain.policy.AttendanceMetricsCalculator;
 import com.ohgiraffer.attendance.domain.repository.AttendanceRepository;
 import com.ohgiraffer.attendance.presentation.api.response.AttendanceSummaryResponse;
 import com.ohgiraffer.bootcamp.application.usecase.BootcampQueryUsecase;
@@ -11,16 +12,17 @@ import com.ohgiraffer.bootcamp.domain.model.AttendancePolicyResult;
 import com.ohgiraffer.bootcamp.domain.model.BootcampPeriodResult;
 import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -30,11 +32,43 @@ public class AttendanceSummaryCache {
     private final AttendanceRepository attendanceRepository;
     private final UserQueryUsecase userQueryUsecase;
     private final BootcampQueryUsecase bootcampQueryUsecase;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    private static final int LATE_EARLY_LEAVE_CONVERSION_COUNT = 3;
+    private static final String CACHE_PREFIX = "attendanceSummary::";
+    private static final Duration TTL = Duration.ofHours(25);
 
-    @Cacheable(value = "attendanceSummary", key = "#userId + '-' + T(java.time.LocalDate).now()")
+    // 같은 userId+date 키에 대해 동시에 여러 스레드가 캐시 미스를 겪어도
+    // 실제 DB 조회/계산은 한 번만 실행되도록 막는 키 단위 락
+    private final Map<String, ReentrantLock> lockMap = new ConcurrentHashMap<>();
+
     public AttendanceSummaryResponse getCachedSummary(Long userId) {
+        String key = CACHE_PREFIX + userId + "-" + LocalDate.now();
+
+        AttendanceSummaryResponse cached =
+                (AttendanceSummaryResponse) redisTemplate.opsForValue().get(key);
+        if (cached != null) {
+            return cached;
+        }
+
+        ReentrantLock lock = lockMap.computeIfAbsent(key, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            // 락을 기다리는 동안 다른 스레드가 이미 계산해서 캐시에 넣었을 수 있으므로 재확인
+            cached = (AttendanceSummaryResponse) redisTemplate.opsForValue().get(key);
+            if (cached != null) {
+                return cached;
+            }
+
+            AttendanceSummaryResponse result = loadFromDb(userId);
+            redisTemplate.opsForValue().set(key, result, TTL);
+            return result;
+        } finally {
+            lock.unlock();
+            lockMap.remove(key, lock);
+        }
+    }
+
+    private AttendanceSummaryResponse loadFromDb(Long userId) {
         Long bootcampId = userQueryUsecase.getBootcampId(userId);
         BootcampPeriodResult bootcampPeriod = bootcampQueryUsecase.getPeriod(bootcampId);
         AttendancePolicyResult policy = bootcampQueryUsecase.getPolicy(bootcampId);
@@ -50,9 +84,11 @@ public class AttendanceSummaryCache {
 
         AttendanceSummaryView summary = attendanceRepository.countByUserAndDateRange(userId, start, end);
 
-        long totalDays = countWeekdays(start, end);
-        BigDecimal attendanceRate = calculateAttendanceRate(summary, totalDays);
-        AttendanceRiskLevel riskLevel = calculateRiskLevel(attendanceRate, policy);
+        BigDecimal attendanceRate = AttendanceMetricsCalculator.calculateAttendanceRate(
+                start, end,
+                summary.absentDays(), summary.lateCount(), summary.earlyLeaveCount(), summary.outingCount()
+        );
+        AttendanceRiskLevel riskLevel = AttendanceMetricsCalculator.calculateRiskLevel(attendanceRate, policy);
 
         List<PeriodAttendanceRate> periodRates = calculatePeriodRates(userId, bootcampId, today);
 
@@ -63,65 +99,20 @@ public class AttendanceSummaryCache {
         List<AttendancePeriodResult> periods = bootcampQueryUsecase.getAttendancePeriods(bootcampId);
 
         return periods.stream()
-                .filter(period -> !today.isBefore(period.startDate()))
+                .filter(period -> !today.isBefore(period.periodStart()))
                 .map(period -> {
-                    LocalDate periodEnd = today.isBefore(period.endDate()) ? today : period.endDate();
+                    LocalDate periodEnd = today.isBefore(period.periodEnd()) ? today : period.periodEnd();
 
                     AttendanceSummaryView periodSummary =
-                            attendanceRepository.countByUserAndDateRange(userId, period.startDate(), periodEnd);
+                            attendanceRepository.countByUserAndDateRange(userId, period.periodStart(), periodEnd);
 
-                    long periodTotalDays = countWeekdays(period.startDate(), periodEnd);
-                    BigDecimal periodRate = calculateAttendanceRate(periodSummary, periodTotalDays);
+                    BigDecimal periodRate = AttendanceMetricsCalculator.calculateAttendanceRate(
+                            period.periodStart(), periodEnd,
+                            periodSummary.absentDays(), periodSummary.lateCount(), periodSummary.earlyLeaveCount(), periodSummary.outingCount()
+                    );
 
                     return new PeriodAttendanceRate(period.periodNo(), periodRate);
                 })
                 .toList();
-    }
-
-    private BigDecimal calculateAttendanceRate(AttendanceSummaryView summary, long totalDays) {
-        if (totalDays <= 0) {
-            return BigDecimal.ZERO;
-        }
-
-        long irregularCount = summary.lateCount() + summary.earlyLeaveCount() + summary.outingCount();
-        long convertedAbsences = irregularCount / LATE_EARLY_LEAVE_CONVERSION_COUNT;
-        long effectiveAbsentDays = summary.absentDays() + convertedAbsences;
-
-        long attendedDays = Math.max(totalDays - effectiveAbsentDays, 0);
-
-        return BigDecimal.valueOf(attendedDays)
-                .divide(BigDecimal.valueOf(totalDays), 4, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100))
-                .setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private AttendanceRiskLevel calculateRiskLevel(BigDecimal attendanceRate, AttendancePolicyResult policy) {
-        if (attendanceRate.compareTo(policy.periodExpulsionPct()) <= 0) {
-            return AttendanceRiskLevel.RISK;
-        }
-        if (attendanceRate.compareTo(policy.warningThresholdPct()) <= 0) {
-            return AttendanceRiskLevel.WARNING;
-        }
-        if (attendanceRate.compareTo(policy.cautionThresholdPct()) <= 0) {
-            return AttendanceRiskLevel.CAUTION;
-        }
-        return null;
-    }
-
-    private long countWeekdays(LocalDate start, LocalDate end) {
-        long totalDays = ChronoUnit.DAYS.between(start, end) + 1;
-        long fullWeeks = totalDays / 7;
-        long weekdayCount = fullWeeks * 5;
-
-        long remainingDays = totalDays % 7;
-        LocalDate cursor = end.minusDays(remainingDays - 1);
-        for (int i = 0; i < remainingDays; i++) {
-            DayOfWeek dow = cursor.getDayOfWeek();
-            if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY) {
-                weekdayCount++;
-            }
-            cursor = cursor.plusDays(1);
-        }
-        return weekdayCount;
     }
 }

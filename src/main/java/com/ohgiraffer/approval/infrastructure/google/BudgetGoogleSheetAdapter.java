@@ -20,7 +20,6 @@ import java.util.Map;
 @Component
 public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetPort {
 
-    private static final int MIN_HEADER_COLUMN_COUNT = 1;
     private static final int REQUIRED_BUDGET_MAPPING_COUNT = 4;
 
     private final GoogleSheetsClient googleSheetsClient;
@@ -150,24 +149,33 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
                     categoryIndex
             ).strip();
 
-            if (categoryName.isBlank()) {
+            BigDecimal totalAmount = getCellAsAmount(
+                    row,
+                    totalAmountIndex
+            );
+            BigDecimal usedAmount = getCellAsAmount(
+                    row,
+                    usedAmountIndex
+            );
+            BigDecimal remainingAmount = getCellAsAmount(
+                    row,
+                    remainingAmountIndex
+            );
+
+            if (!isBudgetDataRow(
+                    categoryName,
+                    totalAmount,
+                    usedAmount,
+                    remainingAmount
+            )) {
                 continue;
             }
 
             BudgetSheetRow budgetSheetRow = new BudgetSheetRow(
                     categoryName,
-                    getCellAsAmount(
-                            row,
-                            totalAmountIndex
-                    ),
-                    getCellAsAmount(
-                            row,
-                            usedAmountIndex
-                    ),
-                    getCellAsAmount(
-                            row,
-                            remainingAmountIndex
-                    )
+                    totalAmount,
+                    usedAmount,
+                    remainingAmount
             );
 
             mergeBudgetRow(
@@ -214,12 +222,51 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
         );
     }
 
+    private boolean isBudgetDataRow(
+            String categoryName,
+            BigDecimal totalAmount,
+            BigDecimal usedAmount,
+            BigDecimal remainingAmount
+    ) {
+        if (categoryName == null || categoryName.isBlank()) {
+            return false;
+        }
+
+        String normalizedCategoryName = categoryName.strip();
+
+        if (normalizedCategoryName.equals("합계")
+                || normalizedCategoryName.equals("총계")
+                || normalizedCategoryName.equalsIgnoreCase("total")) {
+            return false;
+        }
+
+        if (totalAmount == null
+                || usedAmount == null
+                || remainingAmount == null) {
+            return false;
+        }
+
+        if (totalAmount.signum() < 0
+                || usedAmount.signum() < 0
+                || remainingAmount.signum() < 0) {
+            return false;
+        }
+
+        return totalAmount.compareTo(
+                usedAmount.add(
+                        remainingAmount
+                )
+        ) == 0;
+    }
+
     private List<String> findColumnCandidates(
             List<List<Object>> rows
     ) {
         if (rows == null || rows.isEmpty()) {
             return List.of();
         }
+
+        List<String> bestColumns = List.of();
 
         for (List<Object> row : rows) {
             List<String> columns = toStringList(
@@ -231,12 +278,12 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
                     )
                     .toList();
 
-            if (columns.size() >= MIN_HEADER_COLUMN_COUNT) {
-                return columns;
+            if (columns.size() > bestColumns.size()) {
+                bestColumns = columns;
             }
         }
 
-        return List.of();
+        return bestColumns;
     }
 
     private int findMappedHeaderRowIndex(
@@ -357,14 +404,11 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
             return List.of();
         }
 
-        return row
-                .stream()
+        return row.stream()
                 .map(
                         value -> value == null
                                 ? ""
-                                : value
-                                .toString()
-                                .strip()
+                                : value.toString().strip()
                 )
                 .toList();
     }
@@ -387,8 +431,7 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
                 continue;
             }
 
-            String header = value
-                    .toString()
+            String header = value.toString()
                     .strip();
 
             if (!header.isBlank()) {
@@ -432,12 +475,9 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
             return "";
         }
 
-        return row
-                .get(
-                        index
-                )
-                .toString()
-                .strip();
+        return row.get(
+                index
+        ).toString().strip();
     }
 
     private BigDecimal getCellAsAmount(
@@ -450,7 +490,7 @@ public class BudgetGoogleSheetAdapter implements BudgetSheetPort, ExternalSheetP
         );
 
         if (value.isBlank()) {
-            return BigDecimal.ZERO;
+            return null;
         }
 
         String normalized = value

@@ -1,6 +1,8 @@
 package com.ohgiraffer.approval.domain.repository;
 
 import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
+import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
+import com.ohgiraffer.approval.domain.model.approval.ApprovalType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +25,16 @@ public interface ApprovalRequestRepository {
     List<ApprovalRequest> findProcessingApprovals(
             Long userId,
             Long bootcampId
+    );
+
+    List<ApprovalRequest> findManagerProcessingApprovals(
+            Long bootcampId
+    );
+
+    List<ApprovalRequest> findByRequesterIdAndRequestTypeAndStatusInOrderByRequestedAtDesc(
+            Long requesterId,
+            ApprovalType requestType,
+            List<ApprovalStatus> statuses
     );
 
     int checkPendingApproval(

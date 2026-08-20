@@ -30,4 +30,26 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, L
     List<UserJpaEntity> findAllByRoleAndStatusAndBootcampId(Role role, UserStatus status, Long bootcampId);
 
     boolean existsByEmail(String email);
+
+    @Query("SELECT u.id FROM UserJpaEntity u WHERE u.bootcampId = :bootcampId AND u.role = :role")
+    List<Long> findIdsByBootcampIdAndRole(@Param("bootcampId") Long bootcampId, @Param("role") Role role);
+
+    @Query("SELECT u FROM UserJpaEntity u WHERE u.bootcampId = :bootcampId AND u.role = :role")
+    List<UserJpaEntity> findAllByBootcampIdAndRole(@Param("bootcampId") Long bootcampId, @Param("role") Role role);
+
+    List<UserJpaEntity> findAllByBootcampId(Long bootcampId);
+
+    @Modifying(clearAutomatically = true)
+    @Query("""
+        UPDATE UserJpaEntity u
+        SET u.status = com.ohgiraffer.user.domain.model.UserStatus.COMPLETED
+        WHERE u.bootcampId = :bootcampId
+          AND u.role = com.ohgiraffer.user.domain.model.Role.STUDENT
+          AND u.status = com.ohgiraffer.user.domain.model.UserStatus.ACTIVE
+        """)
+    int completeActiveStudentsByBootcampId(@Param("bootcampId") Long bootcampId);
+
+    List<UserJpaEntity> findAllByRoleIn(List<Role> roles);
+
+    Optional<UserJpaEntity> findFirstByStatusAndBootcampIdIsNotNull(UserStatus status);
 }

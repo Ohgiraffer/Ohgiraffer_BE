@@ -51,4 +51,5 @@ public interface ChatChannelMemberJpaRepository extends JpaRepository<ChatChanne
     // 활성 멤버십 존재 여부 - Spring Data 이름 기반 자동구현
     boolean existsByChatChannelIdAndUserIdAndLeftAtIsNull(Long chatChannelId, Long userId);
 
+    void deleteByChatChannelId(Long chatChannelId);
 }

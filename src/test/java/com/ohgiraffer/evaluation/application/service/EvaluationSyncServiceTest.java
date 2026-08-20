@@ -1,0 +1,435 @@
+package com.ohgiraffer.evaluation.application.service;
+
+import com.ohgiraffer.evaluation.application.port.EvaluationSheetReaderPort;
+import com.ohgiraffer.evaluation.application.port.EvaluationSummaryPort;
+import com.ohgiraffer.evaluation.application.port.TraineeLookupPort;
+import com.ohgiraffer.evaluation.application.query.EvaluationSyncResult;
+import com.ohgiraffer.evaluation.domain.model.EvaluationColumnMapping;
+import com.ohgiraffer.evaluation.domain.model.EvaluationRecord;
+import com.ohgiraffer.evaluation.domain.model.EvaluationSheetLink;
+import com.ohgiraffer.evaluation.domain.model.SheetSyncLog;
+import com.ohgiraffer.evaluation.domain.model.TraineeChangeSummary;
+import com.ohgiraffer.evaluation.domain.repository.EvaluationRecordRepository;
+import com.ohgiraffer.evaluation.domain.repository.EvaluationSheetLinkRepository;
+import com.ohgiraffer.evaluation.domain.repository.SheetSyncLogRepository;
+import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.exception.ErrorCode;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+/**
+ * 추가와 수정을 가려내는지, 값이 같으면 건드리지 않는지, 잘못된 행만 건너뛰는지 확인한다.
+ */
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class EvaluationSyncServiceTest {
+
+    private static final Long SHEET_LINK_ID = 1L;
+    private static final Long TRAINEE_ID = 101L;
+    private static final Long EXECUTOR_ID = 1L;
+    private static final String EMAIL = "student101@campflow.test";
+    private static final String TRAINEE_NAME = "김철수";
+
+    private static final List<String> HEADER =
+            List.of("이메일", "이름", "평가유형", "평가항목", "점수", "의견");
+
+    @Mock
+    private EvaluationSheetLinkRepository evaluationSheetLinkRepository;
+
+    @Mock
+    private EvaluationRecordRepository evaluationRecordRepository;
+
+    @Mock
+    private EvaluationSheetReaderPort evaluationSheetReaderPort;
+
+    @Mock
+    private TraineeLookupPort traineeLookupPort;
+
+    @Mock
+    private SheetSyncLogRepository sheetSyncLogRepository;
+
+    @Mock
+    private EvaluationSummaryPort evaluationSummaryPort;
+
+    private EvaluationSyncService evaluationSyncService;
+
+    @BeforeEach
+    void setUp() {
+        evaluationSyncService = new EvaluationSyncService(
+                evaluationSheetLinkRepository,
+                evaluationRecordRepository,
+                sheetSyncLogRepository,
+                evaluationSheetReaderPort,
+                traineeLookupPort,
+                evaluationSummaryPort
+        );
+
+        when(evaluationSummaryPort.findPointsToCheck(any()))
+                .thenReturn(Map.of());
+
+        when(evaluationSheetLinkRepository.find())
+                .thenReturn(Optional.of(sheetLink()));
+        when(traineeLookupPort.findTraineesByEmails(any()))
+                .thenReturn(Map.of(EMAIL,
+                        new TraineeLookupPort.Trainee(TRAINEE_ID, TRAINEE_NAME)));
+        when(sheetSyncLogRepository.save(any()))
+                .thenAnswer(invocation -> {
+                    SheetSyncLog log = invocation.getArgument(0);
+                    return SheetSyncLog.restore(
+                            99L, log.getSheetLinkId(), log.getExecutedBy(),
+                            log.getChangedCount(), log.getSummaries(),
+                            log.getSyncedAt());
+                });
+        when(evaluationRecordRepository.findAllBySheetLinkId(SHEET_LINK_ID))
+                .thenReturn(List.of());
+        when(evaluationRecordRepository.saveAll(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    @Test
+    @DisplayName("처음 보는 평가는 새로 저장한다")
+    void syncAddsNewRecords() {
+        givenSheet(
+                row(EMAIL, "김철수", "중간평가", "코드 품질", "85", "잘함"),
+                row(EMAIL, "김철수", "중간평가", "협업", "90", "")
+        );
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        assertEquals(2, result.addedCount());
+        assertEquals(0, result.updatedCount());
+        assertEquals(2, saved().size());
+    }
+
+    @Test
+    @DisplayName("점수가 바뀌면 기존 평가를 갱신한다")
+    void syncUpdatesChangedScore() {
+        givenStored(stored("코드 품질", new BigDecimal("70"), "리팩터링 필요"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "88", "리팩터링 필요"));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        assertEquals(0, result.addedCount());
+        assertEquals(1, result.updatedCount());
+        assertEquals(new BigDecimal("88"), saved().get(0).getScore());
+    }
+
+    @Test
+    @DisplayName("값이 그대로면 저장하지 않는다")
+    void syncSkipsUnchangedRecords() {
+        givenStored(stored("코드 품질", new BigDecimal("85.00"), "잘함"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "85", "잘함"));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        /*
+         * BigDecimal 은 equals 가 소수 자릿수까지 따져 85 와 85.00 을 다르게 본다.
+         * compareTo 로 비교하지 않으면 시트를 안 고쳐도 매번 수정으로 기록된다.
+         */
+        assertEquals(0, result.changedCount());
+        assertTrue(saved().isEmpty());
+    }
+
+    @Test
+    @DisplayName("훈련생을 못 찾으면 그 행만 건너뛴다")
+    void syncSkipsUnknownTrainee() {
+        givenSheet(
+                row(EMAIL, "김철수", "중간평가", "코드 품질", "85", ""),
+                row("없는사람@campflow.test", "???", "중간평가", "협업", "90", "")
+        );
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        /*
+         * 시트가 100행인데 오타 하나로 전부 막히면 쓰기 어렵다.
+         * 나머지는 반영하고 건너뛴 행만 알린다.
+         */
+        assertEquals(1, result.addedCount());
+        assertEquals(1, result.skipped().size());
+        assertEquals(3, result.skipped().get(0).rowNumber());
+        assertTrue(result.skipped().get(0).reason().contains("없는사람"));
+    }
+
+    @Test
+    @DisplayName("점수가 숫자가 아니면 그 행만 건너뛴다")
+    void syncSkipsNonNumericScore() {
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "미제출", ""));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        assertEquals(0, result.addedCount());
+        assertEquals(1, result.skipped().size());
+        assertTrue(result.skipped().get(0).reason().contains("숫자"));
+    }
+
+    @Test
+    @DisplayName("같은 평가가 시트에 두 번 있으면 뒤엣것을 버린다")
+    void syncSkipsDuplicateRowKey() {
+        givenSheet(
+                row(EMAIL, "김철수", "중간평가", "코드 품질", "85", ""),
+                row(EMAIL, "김철수", "중간평가", "코드 품질", "90", "")
+        );
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        /*
+         * 그대로 두면 한 트랜잭션에서 같은 행을 두 번 저장하게 된다.
+         */
+        assertEquals(1, result.addedCount());
+        assertEquals(1, result.skipped().size());
+        assertTrue(result.skipped().get(0).reason().contains("같은 평가"));
+    }
+
+    @Test
+    @DisplayName("빈 행은 조용히 넘어간다")
+    void syncIgnoresBlankRows() {
+        givenSheet(
+                row(EMAIL, "김철수", "중간평가", "코드 품질", "85", ""),
+                List.of("", "", "", "", "", "")
+        );
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        assertEquals(1, result.addedCount());
+        assertTrue(result.skipped().isEmpty());
+    }
+
+    @Test
+    @DisplayName("변경이 있으면 이력을 남기고 실행자를 기록한다")
+    void syncWritesLogWhenChanged() {
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "85", "잘함"));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        ArgumentCaptor<SheetSyncLog> captor =
+                ArgumentCaptor.forClass(SheetSyncLog.class);
+        verify(sheetSyncLogRepository).save(captor.capture());
+
+        SheetSyncLog log = captor.getValue();
+
+        assertEquals(SHEET_LINK_ID, log.getSheetLinkId());
+        assertEquals(EXECUTOR_ID, log.getExecutedBy());
+        assertEquals(1, log.getChangedCount());
+        assertEquals(99L, result.syncLogId());
+    }
+
+    @Test
+    @DisplayName("변경이 없으면 이력을 남기지 않는다")
+    void syncSkipsLogWhenNothingChanged() {
+        givenStored(stored("코드 품질", new BigDecimal("85"), "잘함"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "85", "잘함"));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        /*
+         * 이력 목록은 "언제 무엇이 몇 건 바뀌었나" 를 보는 곳이다.
+         * 눌렀지만 바뀐 것이 없는 실행까지 쌓이면 정작 볼 것이 묻힌다.
+         */
+        verify(sheetSyncLogRepository, never()).save(any());
+        assertEquals(null, result.syncLogId());
+    }
+
+    @Test
+    @DisplayName("변경이 없어도 마지막 동기화 시각은 갱신한다")
+    void syncUpdatesLastSyncedAtEvenWhenNothingChanged() {
+        givenStored(stored("코드 품질", new BigDecimal("85"), "잘함"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "85", "잘함"));
+
+        evaluationSyncService.sync(EXECUTOR_ID);
+
+        /*
+         * "언제 확인했는가" 는 "무엇이 바뀌었는가" 와 별개의 정보다.
+         */
+        ArgumentCaptor<EvaluationSheetLink> captor =
+                ArgumentCaptor.forClass(EvaluationSheetLink.class);
+        verify(evaluationSheetLinkRepository).save(captor.capture());
+
+        assertTrue(captor.getValue().getLastSyncedAt() != null);
+    }
+
+    @Test
+    @DisplayName("훈련생별 카드에 바뀐 값을 그대로 적는다")
+    void syncWritesTraineeCard() {
+        givenStored(stored("코드 품질", new BigDecimal("70"), "리팩터링 필요"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "88", "리팩터링 필요"));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        TraineeChangeSummary summary = result.summaries().get(0);
+
+        /*
+         * 무엇이 어떻게 바뀌었는지는 이미 값으로 들고 있어 AI 에게 물을 것이 없다.
+         */
+        assertEquals(TRAINEE_NAME, summary.traineeName());
+        assertEquals("중간평가", summary.evaluationType());
+        assertEquals("코드 품질", summary.item());
+        assertEquals("70 → 88", summary.score());
+    }
+
+    @Test
+    @DisplayName("AI 가 짚은 확인 필요를 해당 훈련생 카드에 넣는다")
+    void syncAttachesPointToCheck() {
+        when(evaluationSummaryPort.findPointsToCheck(any()))
+                .thenReturn(Map.of(TRAINEE_NAME, "점수 급등 사유 확인 필요"));
+
+        givenStored(stored("코드 품질", new BigDecimal("70"), "리팩터링 필요"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "88", "리팩터링 필요"));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        assertEquals(
+                "점수 급등 사유 확인 필요",
+                result.summaries().get(0).needsCheck()
+        );
+    }
+
+    @Test
+    @DisplayName("AI 가 실패해도 동기화는 성공하고 확인 필요만 빈다")
+    void syncKeepsCardWhenAiFails() {
+        when(evaluationSummaryPort.findPointsToCheck(any()))
+                .thenThrow(new RuntimeException("제미나이 호출 실패"));
+
+        givenStored(stored("코드 품질", new BigDecimal("70"), "리팩터링 필요"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "88", "리팩터링 필요"));
+
+        EvaluationSyncResult result = evaluationSyncService.sync(EXECUTOR_ID);
+
+        /*
+         * 확인 필요는 거들어 주는 값이지 평가 데이터가 아니다. 외부 호출이 실패했다고
+         * 이미 반영된 평가까지 되돌리면 사용자는 다시 눌러야 하고 같은 일이 반복된다.
+         */
+        assertEquals(1, result.updatedCount());
+        assertEquals("70 → 88", result.summaries().get(0).score());
+        assertNull(result.summaries().get(0).needsCheck());
+        verify(sheetSyncLogRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("변경이 없으면 AI 를 부르지 않는다")
+    void syncDoesNotCallAiWhenNothingChanged() {
+        givenStored(stored("코드 품질", new BigDecimal("85"), "잘함"));
+        givenSheet(row(EMAIL, "김철수", "중간평가", "코드 품질", "85", "잘함"));
+
+        evaluationSyncService.sync(EXECUTOR_ID);
+
+        /*
+         * 짚을 것이 없는데 부르면 호출 비용만 든다.
+         */
+        verify(evaluationSummaryPort, never()).findPointsToCheck(any());
+    }
+
+    @Test
+    @DisplayName("연동 설정이 없으면 동기화할 수 없다")
+    void syncRequiresSheetLink() {
+        when(evaluationSheetLinkRepository.find()).thenReturn(Optional.empty());
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> evaluationSyncService.sync(EXECUTOR_ID)
+        );
+
+        assertEquals(
+                ErrorCode.EVALUATION_SHEET_LINK_NOT_FOUND,
+                exception.getErrorCode()
+        );
+        verify(evaluationSheetReaderPort, never()).readRows(any(), any());
+    }
+
+    @Test
+    @DisplayName("시트에서 컬럼 이름이 바뀌면 동기화를 멈춘다")
+    void syncStopsWhenMappedColumnMissing() {
+        when(evaluationSheetReaderPort.readRows(any(), any()))
+                .thenReturn(List.of(
+                        List.of("이메일", "이름", "평가구분", "평가항목", "점수", "의견")));
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> evaluationSyncService.sync(EXECUTOR_ID)
+        );
+
+        /*
+         * 저장할 때 확인했더라도 그 뒤에 시트를 고쳤을 수 있다.
+         * 이 경우는 행 하나가 아니라 설정 자체가 어긋난 것이라 전체를 멈춘다.
+         */
+        assertEquals(
+                ErrorCode.EVALUATION_SHEET_COLUMN_NOT_FOUND,
+                exception.getErrorCode()
+        );
+    }
+
+    private void givenSheet(List<String>... dataRows) {
+        List<List<String>> rows = new java.util.ArrayList<>();
+        rows.add(HEADER);
+        rows.addAll(List.of(dataRows));
+
+        when(evaluationSheetReaderPort.readRows(any(), any())).thenReturn(rows);
+    }
+
+    private void givenStored(EvaluationRecord record) {
+        when(evaluationRecordRepository.findAllBySheetLinkId(SHEET_LINK_ID))
+                .thenReturn(List.of(record));
+    }
+
+    private List<EvaluationRecord> saved() {
+        ArgumentCaptor<List<EvaluationRecord>> captor =
+                ArgumentCaptor.forClass(List.class);
+        verify(evaluationRecordRepository).saveAll(captor.capture());
+
+        return captor.getValue();
+    }
+
+    private List<String> row(String... values) {
+        return List.of(values);
+    }
+
+    private EvaluationRecord stored(
+            String item,
+            BigDecimal score,
+            String comment
+    ) {
+        return EvaluationRecord.restore(
+                50L,
+                TRAINEE_ID,
+                SHEET_LINK_ID,
+                "중간평가",
+                item,
+                score,
+                comment,
+                EvaluationRecord.sheetRowKey(EMAIL, "중간평가", item),
+                Instant.parse("2026-08-09T05:00:00Z")
+        );
+    }
+
+    private EvaluationSheetLink sheetLink() {
+        return EvaluationSheetLink.restore(
+                SHEET_LINK_ID,
+                "https://docs.google.com/spreadsheets/d/1AbC/edit",
+                "시트1",
+                new EvaluationColumnMapping(
+                        "이메일", "평가유형", "평가항목", "점수", "의견"),
+                null
+        );
+    }
+}

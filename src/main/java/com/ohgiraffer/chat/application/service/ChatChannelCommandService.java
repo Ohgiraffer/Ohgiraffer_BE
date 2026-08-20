@@ -11,6 +11,7 @@ import com.ohgiraffer.chat.domain.repository.ChatChannelMemberRepository;
 import com.ohgiraffer.chat.domain.repository.ChatChannelRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ import java.util.stream.Stream;
  *  ChatChannelCommandUseCase 구현체
  *  Sendbird에 먼저 채널/멤버 반영 성공한 다음, 그 결과(sendbirdChannelUrl)를 우리 DB에도 미러링 저장함
  *  - team_id 검색, 채널 타입 조회 같은 도메인 쿼리를 Sendbird API 호출 없이 우리 DB에서 바로 처리하기 위함
+ *  - 상대방이 로그인 이력 없어도 프사/이름이 반영되도록, 채널에 새로 들어오는 유저는 여기서 Sendbird에 프로비저닝함
  */
 
 @Slf4j
@@ -37,6 +39,7 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
     private final ChatChannelRepository chatChannelRepository;
     private final ChatChannelMemberRepository chatChannelMemberRepository;
     private final UserRepository userRepository;
+    private final S3UrlResolver s3UrlResolver;
 
     // 채팅방 생성 - Sendbird 반영 성공 후 채널/참여자 전원을 우리 DB에 미러링
     @Override
@@ -62,6 +65,12 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
                 .distinct()
                 .toList();
 
+        // 상대방이 로그인 이력 없어도 Sendbird에 최신 프사/이름이 반영되도록 채널 생성 전 프로비저닝
+        provisionUsers(allMemberIds);
+
+        // 이름 미입력(null/빈 문자열/공백)은 전부 null로 통일해서 저장 - 조회 시점에 DM이면 상대방 이름으로 채워짐
+        String normalizedName = (command.name() == null || command.name().isBlank()) ? null : command.name();
+
         String sendbirdChannelUrl = sendbirdApiPort.createChannel(allMemberIds, command.name());
 
         // Sendbird가 is_distinct=true로 기존 채널 URL을 재사용해서 돌려준 경우,
@@ -78,7 +87,7 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
                 : ChatChannel.ChannelType.GROUP;
 
         ChatChannel savedChannel = chatChannelRepository.save(
-                ChatChannel.create(sendbirdChannelUrl, type, command.name(), null)
+                ChatChannel.create(sendbirdChannelUrl, type, normalizedName, null)
         );
 
         // 채널 생성 시 지정된 유저 전원을 참여자로 즉시 등록
@@ -90,7 +99,7 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
         log.info("[Chat] 채널 생성 완료 | channelId={}, memberCount={}",
                 sendbirdChannelUrl, allMemberIds.size());
 
-        return new ChatChannelResult(sendbirdChannelUrl, command.name());
+        return new ChatChannelResult(sendbirdChannelUrl, normalizedName);
     }
 
     // userIds 전원이 users 테이블에 실존하는지 검증, 하나라도 없으면 400으로 즉시 차단
@@ -105,6 +114,26 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
         }
     }
 
+    // 채팅 상대로 지목된 유저들을 Sendbird에 최신 정보로 반영 (로그인 여부와 무관, 실패해도 흐름 막지 않음)
+    private void provisionUsers(List<Long> userIds) {
+        for (Long userId : userIds) {
+            userRepository.findById(userId).ifPresent(user -> {
+                try {
+                    String profileUrl = resolveProfileImgUrl(user.getProfileImg());
+                    sendbirdApiPort.provisionUser(user.getId(), user.getName(), profileUrl);
+                } catch (Exception e) {
+                    log.warn("[Chat] Sendbird 유저 프로비저닝 실패 | userId={} | reason={}", userId, e.getMessage());
+                }
+            });
+        }
+    }
+
+    private String resolveProfileImgUrl(String profileImgKey) {
+        if (profileImgKey == null || profileImgKey.isBlank()) {
+            return null;
+        }
+        return s3UrlResolver.resolve(profileImgKey);
+    }
 
     // 팀변경 채널 자동반영 - Sendbird에 먼저 초대/제외 반영, 실패하면 우리 DB는 안 건드림
     @Override
@@ -114,6 +143,7 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
         // 신규 추가 - addUserIds만 검증 (removeUserIds는 없는 유저 제거 시도해도 조용히 no-op이라 검증 불필요)
         if (command.addUserIds() != null && !command.addUserIds().isEmpty()) {
             validateUsersExist(command.addUserIds());
+            provisionUsers(command.addUserIds());
         }
 
         // Sendbird에 먼저 반영 - 실패하면 우리 DB도 건드리지 않음 (Sendbird가 source of truth)
@@ -129,7 +159,7 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
                         .findByChatChannelIdAndUserId(channel.getId(), userId);
 
                 if (existing.isPresent()) {
-                    existing.get().rejoin(); // 아래 도메인 모델에 메서드 추가 필요
+                    existing.get().rejoin();
                     chatChannelMemberRepository.save(existing.get());
                 } else {
                     chatChannelMemberRepository.save(ChatChannelMember.join(channel.getId(), userId));
@@ -148,25 +178,127 @@ public class ChatChannelCommandService implements ChatChannelCommandUseCase {
         log.info("[Chat] 채널 멤버 갱신 완료 | channelId={}", command.channelId());
     }
 
-    // 팀 채팅방 자동 생성 - team_id를 채워서 저장, 팀변경 시 findAllByTeamId로 대상 채널 조회 가능하게 함
+    // 팀 채팅방 자동 생성 - 기존 호출 호환용
     @Override
     @Transactional
-    public ChatChannelResult createTeamChannel(Long teamId, List<Long> memberUserIds) {
-        String sendbirdChannelUrl = sendbirdApiPort.createTeamChannel(teamId, memberUserIds);
-
-        // 팀 채널은 항상 GROUP, team_id를 채워서 CHAT-011 팀변경 시 조회 가능하게 함
-        ChatChannel savedChannel = chatChannelRepository.save(
-                ChatChannel.create(sendbirdChannelUrl, ChatChannel.ChannelType.GROUP, "team-" + teamId, teamId)
+    public ChatChannelResult createTeamChannel(
+            Long teamId,
+            List<Long> memberUserIds
+    ) {
+        return createTeamChannel(
+                teamId,
+                createDefaultTeamChannelName(
+                        teamId
+                ),
+                memberUserIds
         );
-
-        List<ChatChannelMember> members = memberUserIds.stream()
-                .map(userId -> ChatChannelMember.join(savedChannel.getId(), userId))
-                .toList();
-        chatChannelMemberRepository.saveAll(members);
-
-        log.info("[Chat] 팀 채널 자동 생성 완료 | teamId={}, channelId={}", teamId, sendbirdChannelUrl);
-
-        return new ChatChannelResult(sendbirdChannelUrl, "team-" + teamId);
     }
 
+    // 팀 채팅방 자동 생성 - 팀명을 채팅방 이름으로 저장
+    @Override
+    @Transactional
+    public ChatChannelResult createTeamChannel(
+            Long teamId,
+            String teamName,
+            List<Long> memberUserIds
+    ) {
+        List<ChatChannel> existingChannels =
+                chatChannelRepository.findAllByTeamId(
+                        teamId
+                );
+
+        if (!existingChannels.isEmpty()) {
+            ChatChannel existingChannel =
+                    existingChannels.get(0);
+
+            log.info(
+                    "[Chat] 기존 팀 채널 재사용 | teamId={}, channelId={}",
+                    teamId,
+                    existingChannel.getSendbirdChannelUrl()
+            );
+
+            updateChannelMembers(
+                    new UpdateChannelMembersCommand(
+                            existingChannel.getSendbirdChannelUrl(),
+                            memberUserIds,
+                            List.of()
+                    )
+            );
+
+            return new ChatChannelResult(
+                    existingChannel.getSendbirdChannelUrl(),
+                    existingChannel.getName()
+            );
+        }
+
+        String channelName =
+                normalizeTeamChannelName(
+                        teamName,
+                        teamId
+                );
+
+        provisionUsers(memberUserIds);
+
+        String sendbirdChannelUrl =
+                sendbirdApiPort.createTeamChannel(
+                        teamId,
+                        memberUserIds
+                );
+
+        ChatChannel savedChannel =
+                chatChannelRepository.save(
+                        ChatChannel.create(
+                                sendbirdChannelUrl,
+                                ChatChannel.ChannelType.GROUP,
+                                channelName,
+                                teamId
+                        )
+                );
+
+        List<ChatChannelMember> members =
+                memberUserIds.stream()
+                        .map(userId ->
+                                ChatChannelMember.join(
+                                        savedChannel.getId(),
+                                        userId
+                                )
+                        )
+                        .toList();
+
+        chatChannelMemberRepository.saveAll(
+                members
+        );
+
+        log.info(
+                "[Chat] 팀 채널 자동 생성 완료 | teamId={}, channelId={}, name={}",
+                teamId,
+                sendbirdChannelUrl,
+                channelName
+        );
+
+        return new ChatChannelResult(
+                sendbirdChannelUrl,
+                channelName
+        );
+    }
+
+    private String normalizeTeamChannelName(
+            String teamName,
+            Long teamId
+    ) {
+        if (teamName == null
+                || teamName.isBlank()) {
+            return createDefaultTeamChannelName(
+                    teamId
+            );
+        }
+
+        return teamName.trim();
+    }
+
+    private String createDefaultTeamChannelName(
+            Long teamId
+    ) {
+        return "team-" + teamId;
+    }
 }

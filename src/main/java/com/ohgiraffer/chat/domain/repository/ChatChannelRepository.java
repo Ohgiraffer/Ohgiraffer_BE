@@ -28,4 +28,12 @@ public interface ChatChannelRepository {
     // 멤버십 조회로 얻은 channelId 목록을 IN절로 일괄 조회 - 채널목록 N+1 방지용
     List<ChatChannel> findAllByIdIn(List<Long> ids);
 
+    // 여러 채널을 Sendbird URL로 한 번에 조회 - 통합검색 결과에 섞인 여러 채널을 벌크 조회할 때 사용 (N+1 방지)
+    List<ChatChannel> findAllBySendbirdChannelUrlIn(List<String> sendbirdChannelUrls);
+
+    // Sendbird 채널 URL 기준으로 채널 멤버 미러링 데이터 삭제
+    void deleteMembersBySendbirdChannelUrl(String sendbirdChannelUrl);
+
+    // Sendbird 채널 URL 기준으로 채널 미러링 데이터 삭제
+    void deleteBySendbirdChannelUrl(String sendbirdChannelUrl);
 }

@@ -22,28 +22,37 @@ public interface SpringDataSubmissionBoxRepository
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = "items")
     @Query("""
-        SELECT submissionBox
-        FROM SubmissionBoxJpaEntity submissionBox
-        WHERE submissionBox.id = :submissionBoxId
-        """)
-    Optional<SubmissionBoxJpaEntity> findWithItemsByIdForUpdate(
+    SELECT submissionBox
+    FROM SubmissionBoxJpaEntity submissionBox
+    WHERE submissionBox.id = :submissionBoxId
+    """)
+    Optional<SubmissionBoxJpaEntity> findByIdForUpdate(
             @Param("submissionBoxId") Long submissionBoxId
     );
 
     @Query(
             value = """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM submission
-                        WHERE submission_box_id = :submissionBoxId
-                    )
-                    """,
+                SELECT COUNT(*)
+                FROM submission
+                WHERE submission_box_id = :submissionBoxId
+                """,
             nativeQuery = true
     )
-    boolean existsSubmissionBySubmissionBoxId(
-            @Param("submissionBoxId")
-            Long submissionBoxId
+    long countSubmissionsBySubmissionBoxId(
+            @Param("submissionBoxId") Long submissionBoxId
+    );
+
+    @EntityGraph(attributePaths = "items")
+    @Query("""
+        SELECT submissionBox
+        FROM SubmissionBoxJpaEntity submissionBox
+        JOIN UserJpaEntity creator
+          ON creator.id = submissionBox.createdBy
+        WHERE creator.bootcampId = :bootcampId
+        ORDER BY submissionBox.dueAt DESC
+        """)
+    List<SubmissionBoxJpaEntity> findAllByBootcampIdOrderByDueAtDesc(
+            @Param("bootcampId") Long bootcampId
     );
 }

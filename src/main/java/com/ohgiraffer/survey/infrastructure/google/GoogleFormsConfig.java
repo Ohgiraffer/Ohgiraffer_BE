@@ -7,6 +7,7 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
+import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.forms.v1.Forms;
@@ -39,9 +40,9 @@ import java.util.List;
 )
 public class GoogleFormsConfig {
 
-    private static final JsonFactory JSON_FACTORY =
-            GsonFactory.getDefaultInstance();
-
+    private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
+    private static final int CONNECT_TIMEOUT_MILLIS = 3_000;
+    private static final int READ_TIMEOUT_MILLIS = 10_000;
     private static final List<String> SCOPES =
             List.of(
                     FormsScopes.FORMS_BODY,
@@ -165,7 +166,7 @@ public class GoogleFormsConfig {
         return new Forms.Builder(
                 GoogleNetHttpTransport.newTrustedTransport(),
                 JSON_FACTORY,
-                credential
+                googleRequestInitializer(credential)
         )
                 .setApplicationName(
                         properties.applicationName()
@@ -183,7 +184,7 @@ public class GoogleFormsConfig {
         return new Drive.Builder(
                 GoogleNetHttpTransport.newTrustedTransport(),
                 JSON_FACTORY,
-                credential
+                googleRequestInitializer(credential)
         )
                 .setApplicationName(
                         properties.applicationName()
@@ -256,4 +257,30 @@ public class GoogleFormsConfig {
                 trimmedLocation
         );
     }
+
+    private HttpRequestInitializer googleRequestInitializer(
+            Credential credential
+    ) {
+        return request -> {
+            /*
+             * OAuth access token과 refresh token 처리를 기존과 동일하게 적용합니다.
+             */
+            credential.initialize(request);
+
+            /*
+             * Google 서버 연결 자체가 지연되는 경우의 최대 대기 시간입니다.
+             */
+            request.setConnectTimeout(
+                    CONNECT_TIMEOUT_MILLIS
+            );
+
+            /*
+             * 연결된 이후 Google 응답을 기다리는 최대 시간입니다.
+             */
+            request.setReadTimeout(
+                    READ_TIMEOUT_MILLIS
+            );
+        };
+    }
+
 }

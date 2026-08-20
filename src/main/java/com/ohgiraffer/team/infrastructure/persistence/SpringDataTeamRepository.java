@@ -3,6 +3,7 @@ package com.ohgiraffer.team.infrastructure.persistence;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,12 +15,18 @@ public interface SpringDataTeamRepository
 
     List<TeamJpaEntity> findAllByOrderByIdAsc();
 
-    boolean existsByName(
-            String name
+    List<TeamJpaEntity> findAllByTeamPeriodIdAndDeletedAtIsNullOrderByIdAsc(
+            Long teamPeriodId
     );
 
-    boolean existsByNameAndIdNot(
+    boolean existsByNameAndTeamPeriodId(
             String name,
+            Long teamPeriodId
+    );
+
+    boolean existsByNameAndTeamPeriodIdAndIdNot(
+            String name,
+            Long teamPeriodId,
             Long id
     );
 
@@ -31,5 +38,14 @@ public interface SpringDataTeamRepository
             """)
     Optional<TeamJpaEntity> findByIdForUpdate(
             @Param("teamId") Long teamId
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM TeamJpaEntity t
+            WHERE t.teamPeriodId = :teamPeriodId
+            """)
+    void deleteByTeamPeriodId(
+            @Param("teamPeriodId") Long teamPeriodId
     );
 }

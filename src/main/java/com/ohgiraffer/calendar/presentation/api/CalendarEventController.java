@@ -95,14 +95,19 @@ public class CalendarEventController {
     }
 
     /**
-     * 일정 등록. 훈련생은 개인 일정만, 운영진은 공용 일정만 만들 수 있다.
+     * 일정 등록. 훈련생은 개인 일정만, 운영진은 유형을 직접 고른다.
      */
     @Operation(
             summary = "캘린더 일정 등록",
             description = """
                     훈련생이 등록하면 요청의 eventType 과 무관하게 개인 일정(PERSONAL)으로 저장한다.
                     훈련생 화면에는 유형 선택이 없고, 개인 일정은 등록한 본인에게만 보인다.
-                    운영진은 CLASS / PRESENTATION / ASSIGNMENT / EVENT 중에서 고른다.
+
+                    운영진은 CLASS / EVENT / PERSONAL 중에서 고른다.
+                    화면 드롭다운의 수업/발표가 CLASS, 행사가 EVENT, 개인이 PERSONAL 이다.
+                    운영진이 고른 개인 일정도 등록한 본인에게만 보인다. 누가 만들었는지가 아니라
+                    유형으로 갈리므로 규칙은 훈련생과 같다.
+                    공휴일(HOLIDAY)은 시스템이 넣는 값이라 고를 수 없다.
 
                     시작 시각과 종료 시각을 모두 비우면 종일 일정으로 저장한다.
                     시각을 비운 쪽은 시작이면 그날 0시, 종료면 그날 끝으로 채운다.
@@ -116,7 +121,7 @@ public class CalendarEventController {
                     responseCode = "400",
                     description = """
                             필수 값 누락, 형식 오류, 종료가 시작보다 앞섬,
-                            또는 운영진이 개인 일정 유형을 보냄 (COMMON_001)
+                            또는 공휴일 유형을 보냄 (COMMON_001)
                             """,
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
@@ -184,7 +189,11 @@ public class CalendarEventController {
     }
 
     /**
-     * 훈련생이 만든 일정은 항상 개인 일정이고, 운영진은 공용 일정만 만들 수 있다.
+     * 훈련생이 만든 일정은 항상 개인 일정이고, 운영진은 유형을 직접 고른다.
+     *
+     * <p>운영진도 개인 일정을 만들 수 있다. 강사와 매니저에게도 본인만 보면 되는 일정이 있고,
+     * 화면의 유형 목록에도 개인 일정이 들어 있다. 등록자에게만 보이는 규칙은 조회에서
+     * 유형으로 갈리므로, 누가 만들었는지와 무관하게 그대로 지켜진다.
      *
      * <p>요청 값을 그대로 믿지 않는 이유는 공지 작성자와 같다. 화면에 선택이 없더라도
      * API 는 직접 호출할 수 있으므로, 훈련생이 수업 일정을 만들지 못하게 서버가 정한다.
@@ -203,20 +212,10 @@ public class CalendarEventController {
             return EventType.PERSONAL;
         }
 
-        EventType eventType = EventType.from(request.eventType());
-
         /*
-         * 운영진 화면의 유형 목록에는 개인 일정이 없다. 훈련생과 달리 운영진은 값을 직접 골라
-         * 보내므로, 조용히 바꿔 저장하면 요청과 다른 결과를 돌려주면서 아무 신호도 주지 않는다.
+         * 공휴일을 거르는 일은 도메인이 한다. 여기서 한 번 더 보면 규칙이 두 곳에 흩어진다.
          */
-        if (eventType.isPersonal()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "개인 일정은 훈련생만 등록할 수 있습니다."
-            );
-        }
-
-        return eventType;
+        return EventType.from(request.eventType());
     }
 
     /**

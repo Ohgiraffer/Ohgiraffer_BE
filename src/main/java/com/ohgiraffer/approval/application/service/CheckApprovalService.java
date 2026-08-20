@@ -7,6 +7,7 @@ import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
 import com.ohgiraffer.approval.domain.repository.ApprovalHistoryRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;
+import com.ohgiraffer.global.aop.auditlog.Audited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.user.domain.model.Role;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class CheckApprovalService implements CheckApprovalUseCase {
@@ -39,6 +41,12 @@ public class CheckApprovalService implements CheckApprovalUseCase {
 
     @Override
     @Transactional
+    @Audited(
+            domain = "approval",
+            eventType = "APPROVAL_CHECK",
+            targetId = "#approvalId",
+            afterValue = "#result.status"
+    )
     public CreateApprovalResult check(
             Long loginUserId,
             Role loginUserRole,
@@ -154,27 +162,23 @@ public class CheckApprovalService implements CheckApprovalUseCase {
             Long loginUserId,
             Long requesterId
     ) {
-        Long loginUserBootcampId = findBootcampId(
-                loginUserId
-        );
+        Optional<Long> loginUserBootcampId =
+                userRepository.findBootcampIdByUserId(
+                        loginUserId
+                );
 
-        Long requesterBootcampId = findBootcampId(
-                requesterId
-        );
+        Optional<Long> requesterBootcampId =
+                userRepository.findBootcampIdByUserId(
+                        requesterId
+                );
 
-        return loginUserBootcampId.equals(
-                requesterBootcampId
-        );
-    }
+        if (loginUserBootcampId.isEmpty()
+                || requesterBootcampId.isEmpty()) {
+            return false;
+        }
 
-    private Long findBootcampId(
-            Long userId
-    ) {
-        return userRepository.findBootcampIdByUserId(
-                        userId
-                )
-                .orElseThrow(() -> new BusinessException(
-                        ErrorCode.USER_NOT_FOUND
-                ));
+        return loginUserBootcampId.get().equals(
+                requesterBootcampId.get()
+        );
     }
 }

@@ -1,6 +1,7 @@
 package com.ohgiraffer.approval.application.service;
 
 import com.ohgiraffer.approval.application.command.CreatePurchaseApprovalCommand;
+import com.ohgiraffer.approval.application.port.GetBootcampManagerIdsPort;
 import com.ohgiraffer.approval.application.usecase.CreateApprovalResult;
 import com.ohgiraffer.approval.application.usecase.CreatePurchaseApprovalUseCase;
 import com.ohgiraffer.approval.domain.model.approval.ApprovalHistory;
@@ -14,12 +15,17 @@ import com.ohgiraffer.approval.domain.repository.BudgetCategoryRepository;
 import com.ohgiraffer.approval.domain.repository.UserSignatureRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.notification.domain.event.NotificationRequestedEvent;
+import com.ohgiraffer.notification.domain.model.NotificationType;
+import com.ohgiraffer.user.application.usecase.UserQueryUsecase;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class CreatePurchaseApprovalService
@@ -32,6 +38,7 @@ public class CreatePurchaseApprovalService
     private static final BigDecimal MAX_AMOUNT = new BigDecimal(
             "999999999999.99"
     );
+    private static final String RELATED_ENTITY_TYPE = "APPROVAL";
 
     private final ApprovalRequestRepository approvalRequestRepository;
     private final ApprovalPurchaseDetailRepository approvalPurchaseDetailRepository;
@@ -39,6 +46,10 @@ public class CreatePurchaseApprovalService
     private final UserSignatureRepository userSignatureRepository;
     private final BudgetCategoryRepository budgetCategoryRepository;
     private final Clock clock;
+    private final UserQueryUsecase userQueryUsecase;
+    private final GetBootcampManagerIdsPort getBootcampManagerIdsPort;
+    private final ApplicationEventPublisher eventPublisher;
+
 
     public CreatePurchaseApprovalService(
             ApprovalRequestRepository approvalRequestRepository,
@@ -46,7 +57,10 @@ public class CreatePurchaseApprovalService
             ApprovalHistoryRepository approvalHistoryRepository,
             UserSignatureRepository userSignatureRepository,
             BudgetCategoryRepository budgetCategoryRepository,
-            Clock clock
+            Clock clock,
+            UserQueryUsecase userQueryUsecase,
+            GetBootcampManagerIdsPort getBootcampManagerIdsPort,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.approvalRequestRepository = approvalRequestRepository;
         this.approvalPurchaseDetailRepository = approvalPurchaseDetailRepository;
@@ -54,6 +68,9 @@ public class CreatePurchaseApprovalService
         this.userSignatureRepository = userSignatureRepository;
         this.budgetCategoryRepository = budgetCategoryRepository;
         this.clock = clock;
+        this.userQueryUsecase = userQueryUsecase;
+        this.getBootcampManagerIdsPort = getBootcampManagerIdsPort;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -125,10 +142,32 @@ public class CreatePurchaseApprovalService
                 approvalHistory
         );
 
+        notifyManagers(
+                savedApprovalRequest,
+                command.requesterId()
+        );
+
         return CreateApprovalResult.from(
                 savedApprovalRequest
         );
     }
+
+    private void notifyManagers(ApprovalRequest savedApprovalRequest, Long requesterId) {
+        Long bootcampId = userQueryUsecase.getBootcampId(requesterId);
+        List<Long> managerIds = getBootcampManagerIdsPort.findManagerIdsByBootcampId(bootcampId);
+
+        for (Long managerId : managerIds) {
+            eventPublisher.publishEvent(new NotificationRequestedEvent(
+                    managerId,
+                    NotificationType.APPROVAL_REQUEST,
+                    "구매 요청이 접수되었습니다",
+                    "구매 요청이 새로 접수되었습니다. 확인이 필요합니다.",
+                    RELATED_ENTITY_TYPE,
+                    savedApprovalRequest.getId()
+            ));
+        }
+    }
+
 
     private void validateCommand(
             CreatePurchaseApprovalCommand command

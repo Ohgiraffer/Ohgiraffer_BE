@@ -1,6 +1,8 @@
 package com.ohgiraffer.user.application.service;
 
+import com.ohgiraffer.attendance.application.usecase.AttendanceCacheEvictUsecase;
 import com.ohgiraffer.auth.application.policy.LogoutPolicy;
+import com.ohgiraffer.global.aop.auditlog.Audited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.global.s3.S3KeyGenerator;
@@ -42,6 +44,7 @@ public class UserCommandService implements UserCommandUsecase {
     private final S3FileHandler s3FileHandler;
     private final S3UrlResolver s3UrlResolver;
     private final UserProfileImgTransactionHelper transactionHelper;
+    private final AttendanceCacheEvictUsecase attendanceCacheEvictUsecase;
 
     @Override
     @Transactional
@@ -115,6 +118,12 @@ public class UserCommandService implements UserCommandUsecase {
 
     @Override
     @Transactional
+    @Audited(
+            domain = "user",
+            eventType = "USER_STATUS_CHANGE",
+            targetId = "#userId",
+            afterValue = "#newStatus"
+    )
     public void changeUserStatus(Long userId, UserStatus newStatus) {
         if (newStatus != UserStatus.WITHDRAWN && newStatus != UserStatus.EXPELLED) {
             throw new BusinessException(ErrorCode.INVALID_USER_STATUS_TARGET);
@@ -124,8 +133,9 @@ public class UserCommandService implements UserCommandUsecase {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         user.dismiss(newStatus);
-
         userRepository.save(user);
+
+        attendanceCacheEvictUsecase.evictAllForBootcamp(user.getBootcampId());
     }
 
     @Override
@@ -149,5 +159,7 @@ public class UserCommandService implements UserCommandUsecase {
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.USER_BULK_INSERT_FAILED);
         }
+
+        attendanceCacheEvictUsecase.evictAllForBootcamp(bootcampId);
     }
 }

@@ -1,6 +1,8 @@
 spring:
   application:
     name: ohgiraffer
+  config:
+    import: application-resilience4j.yaml
 
   # ===== Database (MySQL) =====
   datasource:
@@ -47,12 +49,15 @@ spring:
       password: ${REDIS_PASSWORD:}
   servlet:
     multipart:
-      max-file-size: 110MB
-      max-request-size: 120MB
+      max-file-size: 1GB
+      max-request-size: 1GB
+    encoding:
+      charset: UTF-8
+      force: true
 
 google:
   sheets:
-    enabled: ${GOOGLE_SHEETS_ENABLED:false}
+    enabled: ${GOOGLE_SHEETS_ENABLED:true}
     application-name: ${GOOGLE_SHEETS_APPLICATION_NAME:ohgiraffer}
     credentials-location: ${GOOGLE_SHEETS_CREDENTIALS_LOCATION:}
 
@@ -76,8 +81,8 @@ cloud:
     region:
       static: ap-northeast-2
     credentials:
-      access-key: ${AWS_ACCESS_KEY_ID}
-      secret-key: ${AWS_SECRET_ACCESS_KEY}
+      access-key: ${AWS_ACCESS_KEY_ID:dummy}
+      secret-key: ${AWS_SECRET_ACCESS_KEY:dummy}
 
 
 # ===== Swagger (SpringDoc) =====
@@ -92,12 +97,20 @@ springdoc:
 logging:
   level:
     root: INFO
-    com.wanted.momocity: DEBUG
+    com.ohgiraffer: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.stat: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
+#    org.hibernate.orm.jdbc.bind: TRACE
     org.springframework.data.redis: DEBUG
     org.flywaydb: INFO
+  file:
+    name: /var/log/campflow/app.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+campflow:
+  logging:
+    service-io: false
 
 # ===== Async =====
 app:
@@ -109,6 +122,9 @@ app:
   retry:
     fixed-delay-ms: 5000
   seed-scale: large
+  cookie:
+    secure: ${COOKIE_SECURE:false}
+    domain: ${COOKIE_DOMAIN:}
 
 sendbird:
   app-id: ${SENDBIRD_APP_ID}
@@ -120,7 +136,16 @@ ai:
     api-key: ${GEMINI_API_KEY}
     model: ${GEMINI_MODEL:gemini-3.6-flash}
     timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:90}
+  chatbot:
+    bot:
+      user-id: ${CHATBOT_BOT_USER_ID:campflow-ai-assistant}
+      nickname: ${CHATBOT_BOT_NICKNAME:AI비서}
+      callback-url: ${CHATBOT_BOT_CALLBACK_URL:}
+      token: ${CHATBOT_BOT_TOKEN:}
+  usage:
+    retention-days: 30
 
+      
 # ==== management =====
 management:
   endpoints:
@@ -141,3 +166,38 @@ management:
       # → RED 방법론의 Duration(응답시간) 지표를 나중에 바로 쓸 수 있음
       percentiles-histogram:
         http.server.requests: true
+    export:
+      cloudwatch:
+        # CloudWatch로 커스텀 메트릭(Gemini 성공률/레이턴시, Circuit Breaker 전환,
+        # Outbox 재시도 실패 등) 전송. namespace는 Prometheus의 application 태그와
+        # 헷갈리지 않게 CloudWatch 콘솔에서 바로 알아볼 수 있는 이름으로 지정.
+        namespace: campflow-app
+        batch-size: 20
+        step: 1m
+
+admin:
+  internal-token: ${ADMIN_INTERNAL_TOKEN:changeme}
+
+# ===== NOTION =====
+notion:
+  api-token: ${NOTION_API_TOKEN}
+  data-source-id: ${NOTION_DATA_SOURCE_ID}
+  template-id: ${NOTION_TEMPLATE_ID}
+  api-version: ${NOTION_API_VERSION:2026-03-11}
+
+# ===== OUTBOX =====
+team:
+  outbox:
+    retry-fixed-delay-ms: 60000
+    retry-initial-delay-ms: 30000
+
+# ===== hashchain =====
+audit:
+  hash:
+    secret-key: ${AUDIT_HASH_SECRET_KEY:this-is-ohgiraffer-campflow-audit-hash-key-for-auditlog}
+
+# ===== AES =====
+encryption:
+  aes:
+    secret-key: ${AES_SECRET_KEY:aes128-secretkey}
+

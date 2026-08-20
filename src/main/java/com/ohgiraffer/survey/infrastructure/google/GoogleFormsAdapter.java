@@ -381,7 +381,7 @@ public class GoogleFormsAdapter implements GoogleFormPort {
 
         } catch (IOException exception) {
             throw new BusinessException(
-                    ErrorCode.GOOGLE_FORM_API_ERROR
+                    ErrorCode.GOOGLE_FORM_API_ERROR, exception
             );
         }
     }

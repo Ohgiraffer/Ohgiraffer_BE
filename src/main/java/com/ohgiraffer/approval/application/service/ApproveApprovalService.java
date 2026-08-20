@@ -1,15 +1,19 @@
 package com.ohgiraffer.approval.application.service;
 
+import com.ohgiraffer.approval.application.port.ApplyApprovedLeavePort;
 import com.ohgiraffer.approval.application.usecase.ApproveApprovalUseCase;
 import com.ohgiraffer.approval.application.usecase.CreateApprovalResult;
-import com.ohgiraffer.approval.domain.model.approval.ApprovalHistory;
-import com.ohgiraffer.approval.domain.model.approval.ApprovalRequest;
-import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
+import com.ohgiraffer.approval.domain.model.approval.*;
 import com.ohgiraffer.approval.domain.repository.ApprovalHistoryRepository;
+import com.ohgiraffer.approval.domain.repository.ApprovalLeaveDetailRepository;
 import com.ohgiraffer.approval.domain.repository.ApprovalRequestRepository;
+import com.ohgiraffer.global.aop.auditlog.Audited;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.global.exception.ErrorCode;
+import com.ohgiraffer.notification.domain.event.NotificationRequestedEvent;
+import com.ohgiraffer.notification.domain.model.NotificationType;
 import com.ohgiraffer.user.domain.model.Role;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,22 +23,38 @@ import java.time.LocalDateTime;
 @Service
 public class ApproveApprovalService implements ApproveApprovalUseCase {
 
+    // 알림 relatedEntityType 폴리모픽 값 고정
+    private static final String RELATED_ENTITY_TYPE = "APPROVAL";
+
     private final ApprovalRequestRepository approvalRequestRepository;
     private final ApprovalHistoryRepository approvalHistoryRepository;
     private final Clock clock;
+    private final ApprovalLeaveDetailRepository approvalLeaveDetailRepository;
+    private final ApplyApprovedLeavePort applyApprovedLeavePort;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ApproveApprovalService(
             ApprovalRequestRepository approvalRequestRepository,
             ApprovalHistoryRepository approvalHistoryRepository,
-            Clock clock
+            Clock clock, ApprovalLeaveDetailRepository approvalLeaveDetailRepository, ApplyApprovedLeavePort applyApprovedLeavePort,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.approvalRequestRepository = approvalRequestRepository;
         this.approvalHistoryRepository = approvalHistoryRepository;
         this.clock = clock;
+        this.approvalLeaveDetailRepository = approvalLeaveDetailRepository;
+        this.applyApprovedLeavePort = applyApprovedLeavePort;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
     @Transactional
+    @Audited(
+            domain = "approval",
+            eventType = "APPROVAL_APPROVE",
+            targetId = "#approvalId",
+            afterValue = "#result.status"
+    )
     public CreateApprovalResult approve(
             Long loginUserId,
             Role loginUserRole,
@@ -77,6 +97,19 @@ public class ApproveApprovalService implements ApproveApprovalUseCase {
                         approvalRequest
                 );
 
+        if (savedApprovalRequest.getRequestType() == ApprovalType.LEAVE) {
+            ApprovalLeaveDetail leaveDetail = approvalLeaveDetailRepository
+                    .findByApprovalId(savedApprovalRequest.getId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_NOT_FOUND));
+
+            applyApprovedLeavePort.applyApprovedLeave(
+                    savedApprovalRequest.getRequesterId(),
+                    leaveDetail.getStartDate(),
+                    leaveDetail.getEndDate(),
+                    savedApprovalRequest.getId()
+            );
+        }
+
         ApprovalHistory approvalHistory =
                 ApprovalHistory.statusChanged(
                         savedApprovalRequest.getId(),
@@ -90,6 +123,16 @@ public class ApproveApprovalService implements ApproveApprovalUseCase {
         approvalHistoryRepository.save(
                 approvalHistory
         );
+
+        // 승인 완료 - 신청자에게 알림 발행 (AFTER_COMMIT에서 알림 도메인이 실제 생성)
+        eventPublisher.publishEvent(new NotificationRequestedEvent(
+                savedApprovalRequest.getRequesterId(),
+                NotificationType.APPROVAL_RESULT,
+                "결재가 승인되었습니다",
+                savedApprovalRequest.getTitle() + " 요청이 승인되었습니다.",
+                RELATED_ENTITY_TYPE,
+                savedApprovalRequest.getId()
+        ));
 
         return CreateApprovalResult.from(
                 savedApprovalRequest

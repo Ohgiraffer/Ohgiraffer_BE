@@ -8,8 +8,6 @@ import com.ohgiraffer.calendar.domain.model.CalendarEvent;
 import com.ohgiraffer.calendar.domain.model.EventType;
 import com.ohgiraffer.calendar.presentation.api.request.CreateCalendarEventRequest;
 import com.ohgiraffer.calendar.presentation.api.response.CalendarEventResponse;
-import com.ohgiraffer.global.exception.BusinessException;
-import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.security.user.CustomUserPrincipal;
 import com.ohgiraffer.user.domain.model.Role;
 import com.ohgiraffer.user.domain.model.User;
@@ -31,10 +29,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -93,22 +89,20 @@ class CalendarEventControllerTest {
     }
 
     @Test
-    @DisplayName("운영진이 개인 일정 유형을 보내면 거절한다")
-    void staffCannotCreatePersonalEvent() {
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> calendarEventController.create(
-                        principal(Role.INSTRUCTOR),
-                        request("PERSONAL", null, null)
-                )
+    @DisplayName("운영진도 개인 일정을 등록할 수 있다")
+    void staffCanCreatePersonalEvent() {
+        stubCreate();
+
+        calendarEventController.create(
+                principal(Role.INSTRUCTOR),
+                request("PERSONAL", null, null)
         );
 
         /*
-         * 운영진 화면의 유형 목록에 개인 일정이 없다. 조용히 개인 일정으로 바꿔 저장하면
-         * 요청과 다른 결과를 돌려주면서 아무 신호도 주지 않는다.
+         * 강사와 매니저에게도 본인만 보면 되는 일정이 있다. 등록자에게만 보이는 규칙은
+         * 조회에서 유형으로 갈리므로, 누가 만들었는지와 무관하게 그대로 지켜진다.
          */
-        assertEquals(ErrorCode.INVALID_INPUT_VALUE, exception.getErrorCode());
-        verify(calendarEventCommandUseCase, never()).create(any());
+        assertEquals(EventType.PERSONAL, captured().eventType());
     }
 
     @Test
@@ -299,7 +293,8 @@ class CalendarEventControllerTest {
                 true,
                 LocalDate.of(2026, 8, 1),
                 null,
-                UserStatus.ACTIVE
+                UserStatus.ACTIVE,
+                null
         ));
     }
 }

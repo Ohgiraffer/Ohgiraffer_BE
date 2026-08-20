@@ -8,6 +8,7 @@ import java.util.List;
 public record SubmissionStatusResult(
         Long targetId,
         String targetName,
+        String targetEmail,
         Long submissionId,
         boolean submitted,
         boolean mine,
@@ -25,6 +26,7 @@ public record SubmissionStatusResult(
     public static SubmissionStatusResult submitted(
             Submission submission,
             String targetName,
+            String targetEmail,
             boolean mine,
             boolean editable
     ) {
@@ -40,6 +42,7 @@ public record SubmissionStatusResult(
         return new SubmissionStatusResult(
                 targetId,
                 targetName,
+                targetEmail,
                 submission.getId(),
                 true,
                 mine,
@@ -54,12 +57,14 @@ public record SubmissionStatusResult(
     public static SubmissionStatusResult notSubmitted(
             Long targetId,
             String targetName,
+            String targetEmail,
             boolean mine,
             boolean acceptingSubmissions
     ) {
         return new SubmissionStatusResult(
                 targetId,
                 targetName,
+                targetEmail,
                 null,
                 false,
                 mine,

@@ -1,6 +1,7 @@
 package com.ohgiraffer.approval.infrastructure.persistence;
 
 import com.ohgiraffer.approval.domain.model.approval.ApprovalStatus;
+import com.ohgiraffer.approval.domain.model.approval.ApprovalType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -14,6 +15,12 @@ public interface SpringDataApprovalRequestRepository
 
     List<ApprovalRequestJpaEntity> findByRequesterIdOrderByRequestedAtDesc(
             Long requesterId
+    );
+
+    List<ApprovalRequestJpaEntity> findByRequesterIdAndRequestTypeAndStatusInOrderByRequestedAtDesc(
+            Long requesterId,
+            ApprovalType requestType,
+            List<ApprovalStatus> statuses
     );
 
     @Query("""
@@ -36,15 +43,29 @@ public interface SpringDataApprovalRequestRepository
             @Param("pendingStatus") ApprovalStatus pendingStatus
     );
 
+    @Query("""
+            SELECT approvalRequest
+            FROM ApprovalRequestJpaEntity approvalRequest
+            WHERE approvalRequest.requesterId IN (
+                SELECT user.id
+                FROM UserJpaEntity user
+                WHERE user.bootcampId = :bootcampId
+            )
+            ORDER BY approvalRequest.requestedAt DESC
+            """)
+    List<ApprovalRequestJpaEntity> findManagerProcessingApprovals(
+            @Param("bootcampId") Long bootcampId
+    );
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
-        UPDATE ApprovalRequestJpaEntity approvalRequest
-        SET approvalRequest.status = :checkedStatus,
-            approvalRequest.approverId = :approverId,
-            approvalRequest.confirmedAt = :confirmedAt
-        WHERE approvalRequest.id = :approvalId
-          AND approvalRequest.status = :pendingStatus
-        """)
+            UPDATE ApprovalRequestJpaEntity approvalRequest
+            SET approvalRequest.status = :checkedStatus,
+                approvalRequest.approverId = :approverId,
+                approvalRequest.confirmedAt = :confirmedAt
+            WHERE approvalRequest.id = :approvalId
+              AND approvalRequest.status = :pendingStatus
+            """)
     int checkPendingApproval(
             @Param("approvalId") Long approvalId,
             @Param("approverId") Long approverId,

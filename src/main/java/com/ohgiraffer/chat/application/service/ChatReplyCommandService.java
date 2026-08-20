@@ -67,6 +67,13 @@ public class ChatReplyCommandService implements ChatReplyCommandUseCase {
             throw new BusinessException(ErrorCode.CHAT_MESSAGE_ALREADY_DELETED);
         }
 
+        // 원본 메시지가 이미 답글(parentMessageId != null)이면 차단
+        // Sendbird는 답글에 답글을 다는 것 자체를 허용하지 않아 그대로 보내면 502로 실패함,
+        // 프론트에 원인이 명확한 400으로 미리 걸러서 응답
+        if (parentMessage.getParentMessageId() != null) {
+            throw new BusinessException(ErrorCode.CHAT_CANNOT_REPLY_TO_REPLY);
+        }
+
         // Sendbird 호출에는 Sendbird 자체 숫자ID가 필요 - parentMessage에서 조회한 sendbirdMessageId를 Long으로 파싱
         Long sendbirdParentId = Long.parseLong(parentMessage.getSendbirdMessageId());
 

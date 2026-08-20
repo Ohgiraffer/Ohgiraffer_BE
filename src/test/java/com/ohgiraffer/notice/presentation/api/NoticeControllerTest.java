@@ -1,6 +1,7 @@
 package com.ohgiraffer.notice.presentation.api;
 
 import com.ohgiraffer.global.exception.BusinessException;
+import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.global.exception.ErrorCode;
 import com.ohgiraffer.notice.application.command.CreateNoticeCommand;
 import com.ohgiraffer.notice.application.query.NoticeConfirmationView;
@@ -60,13 +61,17 @@ class NoticeControllerTest {
     @Mock
     private NoticeQueryUseCase noticeQueryUseCase;
 
+    @Mock
+    private S3UrlResolver s3UrlResolver;
+
     private NoticeController noticeController;
 
     @BeforeEach
     void setUp() {
         noticeController = new NoticeController(
                 noticeCommandUseCase,
-                noticeQueryUseCase
+                noticeQueryUseCase,
+                s3UrlResolver
         );
     }
 
@@ -223,7 +228,8 @@ class NoticeControllerTest {
                 true,
                 LocalDate.of(2026, 8, 1),
                 null,
-                UserStatus.ACTIVE
+                UserStatus.ACTIVE,
+                null
         ));
     }
 
@@ -233,7 +239,8 @@ class NoticeControllerTest {
                 TITLE,
                 CONTENT,
                 false,
-                true
+                true,
+                List.of()
         );
     }
 
@@ -252,6 +259,8 @@ class NoticeControllerTest {
                 true,
                 0L,
                 false,
+                false,
+                List.of(),
                 now,
                 now
         );
@@ -268,6 +277,7 @@ class NoticeControllerTest {
                 CONTENT,
                 false,
                 true,
+                false,
                 now,
                 now
         );

@@ -1,0 +1,2 @@
+ALTER TABLE team_member
+DROP INDEX uq_team_member_active_user;

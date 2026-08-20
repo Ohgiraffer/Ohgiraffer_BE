@@ -15,6 +15,10 @@ public interface SurveyFormRepository {
 
     List<SurveyForm> findAll();
 
+    List<SurveyForm> findAllByBootcampId(
+            Long bootcampId
+    );
+
     /*
      * 설문 폼 단건 조회 API에서 사용합니다.
      */

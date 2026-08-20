@@ -15,10 +15,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
@@ -31,6 +33,12 @@ import java.time.LocalDateTime;
 @Tag(name="Auth - 인증·인가 ", description = "인증·인가를 위한 Auth api 관련 컨트롤러")
 public class AuthController {
     private final AuthCommandUsecase authCommandUsecase;
+
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie.domain:}")
+    private String cookieDomain;
 
     @Operation(summary = "로그인", description = "아이디와 비밀번호를 기입하여 로그인 합니다")
     @ApiResponses({
@@ -48,7 +56,8 @@ public class AuthController {
         String clientIp = ClientIpResolver.resolve(httpRequest);
         LoginResult result = authCommandUsecase.login(request, clientIp);
 
-        ResponseCookie cookie = buildRefreshCookie(result.refreshToken());
+        Duration maxAge = Duration.between(LocalDateTime.now(), result.refreshTokenExpiresAt());
+        ResponseCookie cookie = buildRefreshCookie(result.refreshToken(), maxAge);
         httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
         return ResponseEntity.ok(result.body());
@@ -72,33 +81,43 @@ public class AuthController {
 
         authCommandUsecase.logout(principal.getId(), bearerToken, refreshToken);
 
-        ResponseCookie expiredCookie = ResponseCookie.from("refreshToken", "")
-                .httpOnly(true)
-                .secure(false)
-                .sameSite("Strict")
-                .path("/auth")
-                .maxAge(0)
-                .build();
+        ResponseCookie expiredCookie = buildExpiredRefreshCookie();
 
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
                 .build();
     }
 
-    private ResponseCookie buildRefreshCookie(String refreshToken) {
-        long ttlSeconds = Duration.between(
-                LocalDateTime.now(),
-                LocalDate.now().plusDays(1).atStartOfDay()
-        ).toSeconds();
-
-        return ResponseCookie.from("refreshToken", refreshToken)
+    private ResponseCookie buildRefreshCookie(String refreshToken, Duration maxAge) {
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
-                .secure(false)        // 로컬 개발 시 false, 배포 시 true
-                .sameSite("Strict")
+                .secure(cookieSecure)
+                .sameSite("None")
                 .path("/auth")
-                .maxAge(ttlSeconds)
-                .build();
+                .maxAge(maxAge);
+
+        if (StringUtils.hasText(cookieDomain)) {
+            builder.domain(cookieDomain);
+        }
+
+        return builder.build();
     }
+
+    private ResponseCookie buildExpiredRefreshCookie() {
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("None")
+                .path("/auth")
+                .maxAge(0);
+
+        if (StringUtils.hasText(cookieDomain)) {
+            builder.domain(cookieDomain);
+        }
+
+        return builder.build();
+    }
+
 
     @Operation(summary = "Access Token 재발급", description = "쿠키에 담긴 refresh token으로 새로운 access token을 발급받습니다.")
     @ApiResponses({

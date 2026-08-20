@@ -14,6 +14,7 @@ public record ChatChannelListItemResult(
         String lastMessageContent,
         Instant lastMessageSentAt,
         long unreadCount,
+        String profileImageUrl,
         Boolean isOnline
 ) {
 }

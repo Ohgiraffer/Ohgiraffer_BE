@@ -4,6 +4,7 @@ import com.ohgiraffer.chat.application.port.SendbirdApiPort;
 import com.ohgiraffer.chat.application.result.SendbirdUserResult;
 import com.ohgiraffer.chat.application.result.SendbirdUserStatus;
 import com.ohgiraffer.chat.application.usecase.ChatUserQueryUseCase;
+import com.ohgiraffer.global.s3.S3UrlResolver;
 import com.ohgiraffer.user.domain.repository.UserRepository;
 import com.ohgiraffer.global.exception.BusinessException;
 import com.ohgiraffer.user.domain.model.User;
@@ -28,6 +29,8 @@ public class ChatUserQueryService implements ChatUserQueryUseCase {
 
     private final SendbirdApiPort sendbirdApiPort;
     private final UserRepository userRepository;
+    // profileImg(S3 key)를 응답에 내려줄 수 있는 실제 접근 URL로 변환
+    private final S3UrlResolver s3UrlResolver;
 
     // 채팅 상대 검색 - 우리 DB에서 이름 부분검색 후, 검색된 유저들의 온라인 상태만 Sendbird에서 조회
     @Override
@@ -51,7 +54,7 @@ public class ChatUserQueryService implements ChatUserQueryUseCase {
         return new SendbirdUserResult(
                 user.getId(),
                 user.getName(),
-                user.getProfileImg(),
+                resolveProfileImgUrl(user.getProfileImg()), // S3 key 원본이 아니라 presigned URL로 변환해서 반환
                 isOnline,
                 user.getRole().name()
         );
@@ -66,6 +69,13 @@ public class ChatUserQueryService implements ChatUserQueryUseCase {
             log.warn("[Chat] 온라인 상태 조회 실패 - offline으로 처리 | userId={}", userId);
             return false;
         }
+    }
+
+    private String resolveProfileImgUrl(String profileImgKey) {
+        if (profileImgKey == null || profileImgKey.isBlank()) {
+            return null;
+        }
+        return s3UrlResolver.resolve(profileImgKey);
     }
 
     // 온라인 상태 조회 - Sendbird 접속정보 그대로 위임

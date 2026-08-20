@@ -1,11 +1,14 @@
 package com.ohgiraffer.approval.presentation.api;
 
+import com.ohgiraffer.approval.application.query.BudgetSheetSettingsResult;
 import com.ohgiraffer.approval.application.query.BudgetSummaryResult;
 import com.ohgiraffer.approval.application.usecase.BudgetSyncResult;
+import com.ohgiraffer.approval.application.usecase.GetBudgetSheetSettingsUseCase;
 import com.ohgiraffer.approval.application.usecase.GetBudgetSummaryUseCase;
 import com.ohgiraffer.approval.application.usecase.SaveBudgetSheetSettingsUseCase;
 import com.ohgiraffer.approval.application.usecase.SyncBudgetSheetUseCase;
 import com.ohgiraffer.approval.presentation.api.request.SaveBudgetSheetSettingsRequest;
+import com.ohgiraffer.approval.presentation.api.response.BudgetSheetSettingsResponse;
 import com.ohgiraffer.approval.presentation.api.response.BudgetSummaryResponse;
 import com.ohgiraffer.approval.presentation.api.response.BudgetSyncResponse;
 import jakarta.validation.Valid;
@@ -24,15 +27,18 @@ public class BudgetController {
     private final SaveBudgetSheetSettingsUseCase saveBudgetSheetSettingsUseCase;
     private final SyncBudgetSheetUseCase syncBudgetSheetUseCase;
     private final GetBudgetSummaryUseCase getBudgetSummaryUseCase;
+    private final GetBudgetSheetSettingsUseCase getBudgetSheetSettingsUseCase;
 
     public BudgetController(
             SaveBudgetSheetSettingsUseCase saveBudgetSheetSettingsUseCase,
             SyncBudgetSheetUseCase syncBudgetSheetUseCase,
-            GetBudgetSummaryUseCase getBudgetSummaryUseCase
+            GetBudgetSummaryUseCase getBudgetSummaryUseCase,
+            GetBudgetSheetSettingsUseCase getBudgetSheetSettingsUseCase
     ) {
         this.saveBudgetSheetSettingsUseCase = saveBudgetSheetSettingsUseCase;
         this.syncBudgetSheetUseCase = syncBudgetSheetUseCase;
         this.getBudgetSummaryUseCase = getBudgetSummaryUseCase;
+        this.getBudgetSheetSettingsUseCase = getBudgetSheetSettingsUseCase;
     }
 
     @PostMapping("/sheets/settings")
@@ -47,6 +53,19 @@ public class BudgetController {
 
         return ResponseEntity.ok(
                 BudgetSyncResponse.from(
+                        result
+                )
+        );
+    }
+
+    @GetMapping("/sheets/settings")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'MANAGER')")
+    public ResponseEntity<BudgetSheetSettingsResponse> getBudgetSheetSettings() {
+        BudgetSheetSettingsResult result =
+                getBudgetSheetSettingsUseCase.getSettings();
+
+        return ResponseEntity.ok(
+                BudgetSheetSettingsResponse.from(
                         result
                 )
         );
