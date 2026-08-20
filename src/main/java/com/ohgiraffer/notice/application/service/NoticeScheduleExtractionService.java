@@ -38,7 +38,7 @@ public class NoticeScheduleExtractionService
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ExtractedSchedule> extract(Long noticeId) {
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
